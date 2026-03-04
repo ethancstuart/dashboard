@@ -6,7 +6,9 @@
       "Bash(cp:*)",
       "Bash(mkdir:*)",
       "Bash(npm install:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)"
     ]
   }
 }
