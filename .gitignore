@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+.svelte-kit/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# AI / editor local configs
+CLAUDE.local.md
+.cursor/rules/private.mdc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/settings.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Hosting
+.vercel/
