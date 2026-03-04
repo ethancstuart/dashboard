@@ -9,7 +9,9 @@
       "Bash(npx vite:*)",
       "Bash(npm run:*)",
       "Bash(rm:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(mv:*)"
     ]
   }
 }

@@ -34,3 +34,5 @@ coverage/
 
 # Hosting
 .vercel/
+
+.vercel

@@ -30,7 +30,8 @@ export async function fetchWithRetry(
   options?: RequestInit,
   maxRetries = 2
 ): Promise<Response> {
-  const hostname = new URL(url).hostname;
+  const parsed = new URL(url, window.location.origin);
+  const hostname = parsed.hostname;
   const entry = getEntry(hostname);
   const state = getCircuitState(hostname);
 

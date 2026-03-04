@@ -3,10 +3,13 @@ import { App } from './App.ts';
 import { createHeader } from './ui/header.ts';
 import { createLayout } from './ui/layout.ts';
 import { qs } from './utils/dom.ts';
+import { WeatherPanel } from './panels/WeatherPanel.ts';
 
 applyTheme();
 
 const app = new App();
+
+app.registerPanel(new WeatherPanel());
 
 document.body.appendChild(createHeader(app));
 
