@@ -58,8 +58,8 @@ export abstract class Panel {
   abstract fetchData(): Promise<void>;
   abstract render(data: unknown): void;
 
-  async init(): Promise<void> {
-    const root = document.getElementById('app');
+  async init(parent?: HTMLElement): Promise<void> {
+    const root = parent ?? document.getElementById('app');
     if (!root) return;
     root.appendChild(this.container);
 

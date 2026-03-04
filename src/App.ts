@@ -6,22 +6,22 @@ const STORAGE_KEY = 'dashview:panels';
 
 export class App {
   private panels = new Map<string, Panel>();
+  gridContainer: HTMLElement | null = null;
 
   async init(): Promise<void> {
-    const root = document.getElementById('app');
-    if (!root) return;
-    root.textContent = '';
-
     const state = storage.get<PanelState>(STORAGE_KEY, { panels: {} });
 
-    // Apply saved preferences to registered panels
     for (const [id, panel] of this.panels) {
       const saved = state.panels[id];
       if (saved !== undefined) {
         panel.enabled = saved.enabled;
       }
-      await panel.init();
+      await panel.init(this.gridContainer ?? undefined);
     }
+  }
+
+  getPanels(): Panel[] {
+    return Array.from(this.panels.values());
   }
 
   registerPanel(panel: Panel): void {
