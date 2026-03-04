@@ -39,7 +39,7 @@ async function handleGeocode(req: VercelRequest, res: VercelResponse, apiKey: st
   }
 
   const response = await fetch(
-    `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=1&appid=${apiKey}`,
+    `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=5&appid=${apiKey}`,
   );
   if (!response.ok) {
     return res.status(response.status).json({ error: 'Geocoding request failed' });
@@ -50,7 +50,18 @@ async function handleGeocode(req: VercelRequest, res: VercelResponse, apiKey: st
     return res.status(404).json({ error: 'Location not found' });
   }
 
-  const { name, lat, lon, country } = data[0];
+  // Pick the result whose name best matches the query
+  const queryLower = q.toLowerCase();
+  const match =
+    data.find((r: { name: string }) => r.name.toLowerCase() === queryLower) ??
+    data.find((r: { name: string; state?: string }) =>
+      r.name.toLowerCase().includes(queryLower) ||
+      queryLower.includes(r.name.toLowerCase()) ||
+      (r.state && r.state.toLowerCase().includes(queryLower)),
+    ) ??
+    data[0];
+
+  const { name, lat, lon, country } = match;
   return res.setHeader('Cache-Control', 'max-age=1800').json({ name, lat, lon, country });
 }
 

@@ -54,6 +54,12 @@ export class WeatherPanel extends Panel {
     );
   }
 
+  updateLocation(lat: number, lon: number): void {
+    this.lat = lat;
+    this.lon = lon;
+    void this.fetchData();
+  }
+
   async fetchData(): Promise<void> {
     this.data = await fetchWeather(this.lat, this.lon);
     if (this.data.name) {
