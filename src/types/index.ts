@@ -65,3 +65,9 @@ export interface StocksData {
   watchlist: StockQuote[];
   timestamp: number;
 }
+
+export interface SymbolSearchResult {
+  symbol: string;
+  description: string;
+  type: string;
+}

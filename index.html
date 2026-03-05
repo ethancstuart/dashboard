@@ -475,38 +475,137 @@
         color: var(--color-negative);
       }
 
-      .stocks-add-row {
-        display: flex;
-        gap: 8px;
+      .stocks-row-star {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0 2px;
+        color: var(--color-text-muted);
+        opacity: 0.4;
+        transition: opacity 0.15s;
+      }
+
+      .stocks-row:hover .stocks-row-star {
+        opacity: 0.7;
+      }
+
+      .stocks-row-star-active {
+        color: #f59e0b;
+        opacity: 1;
+      }
+
+      .stocks-row:hover .stocks-row-star-active {
+        opacity: 1;
+      }
+
+      .stocks-row-star:hover {
+        opacity: 1;
+      }
+
+      .stocks-search-wrapper {
+        position: relative;
         margin-top: 8px;
       }
 
-      .stocks-add-input {
-        width: 80px;
+      .stocks-search-input {
+        width: 100%;
         background: #1a1a1a;
         border: 1px solid var(--color-border);
         border-radius: 8px;
-        padding: 6px 10px;
+        padding: 8px 12px;
         color: var(--color-text);
         font-family: inherit;
         font-size: 13px;
-        text-transform: uppercase;
         outline: none;
       }
 
-      .stocks-add-input::placeholder {
+      .stocks-search-input::placeholder {
         color: var(--color-text-muted);
         opacity: 0.6;
-        text-transform: none;
       }
 
-      .stocks-add-input:focus {
+      .stocks-search-input:focus {
         border-color: var(--color-accent);
       }
 
-      .stocks-add-btn {
-        padding: 6px 12px;
+      .stocks-search-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 4px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        overflow: hidden;
+        z-index: 50;
+        max-height: 240px;
+        overflow-y: auto;
+      }
+
+      .stocks-search-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+
+      .stocks-search-result:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .stocks-search-result-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+
+      .stocks-search-result-symbol {
         font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text);
+      }
+
+      .stocks-search-result-name {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .stocks-search-result-add {
+        background: none;
+        border: 1px solid var(--color-accent);
+        color: var(--color-accent);
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-family: inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .stocks-search-result-add:hover {
+        background: var(--color-accent);
+        color: #fff;
+      }
+
+      .stocks-search-result-added {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        flex-shrink: 0;
+      }
+
+      .stocks-search-empty {
+        padding: 12px;
+        font-size: 12px;
+        color: var(--color-text-muted);
+        text-align: center;
       }
     </style>
   </head>

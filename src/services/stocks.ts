@@ -1,5 +1,5 @@
 import { fetchWithRetry } from '../utils/fetch.ts';
-import type { StockQuote, StocksData } from '../types/index.ts';
+import type { StockQuote, StocksData, SymbolSearchResult } from '../types/index.ts';
 
 const INDEX_SYMBOLS = ['SPY', 'DIA', 'QQQ'];
 
@@ -31,4 +31,11 @@ function splitResponse(
   }
 
   return { indices, watchlist, timestamp };
+}
+
+export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {
+  const res = await fetchWithRetry(`/api/stocks?action=search&q=${encodeURIComponent(query)}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.results as SymbolSearchResult[];
 }
