@@ -8,8 +8,10 @@ import { WeatherPanel } from './panels/WeatherPanel.ts';
 import { StocksPanel } from './panels/StocksPanel.ts';
 import { NewsPanel } from './panels/NewsPanel.ts';
 import { SettingsPanel } from './panels/SettingsPanel.ts';
+import { showWelcome } from './ui/welcome.ts';
 
 applyTheme();
+showWelcome();
 
 const app = new App();
 

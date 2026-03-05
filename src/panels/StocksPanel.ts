@@ -29,6 +29,9 @@ export class StocksPanel extends Panel {
   private nameCache: Record<string, string>;
   private data: StocksData | null = null;
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  private dragFromIndex: number = -1;
+  private dragOverIndex: number = -1;
+  private gripActive: boolean = false;
 
   constructor() {
     super({
@@ -67,8 +70,8 @@ export class StocksPanel extends Panel {
     watchHeader.appendChild(watchContext);
     this.contentEl.appendChild(watchHeader);
 
-    for (const q of d.watchlist) {
-      this.contentEl.appendChild(this.createWatchlistRow(q));
+    for (let i = 0; i < d.watchlist.length; i++) {
+      this.contentEl.appendChild(this.createWatchlistRow(d.watchlist[i], i));
     }
     this.contentEl.appendChild(this.createSearchRow());
 
@@ -84,8 +87,55 @@ export class StocksPanel extends Panel {
     return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
-  private createWatchlistRow(q: StockQuote): HTMLElement {
+  private createWatchlistRow(q: StockQuote, index: number): HTMLElement {
     const row = createElement('div', { className: 'stocks-row' });
+    row.setAttribute('draggable', 'true');
+
+    // Grip handle — drag initiator
+    const grip = createElement('span', {
+      className: 'stocks-row-grip',
+      textContent: '\u2630',
+    });
+    grip.addEventListener('mousedown', () => { this.gripActive = true; });
+
+    row.addEventListener('dragstart', (e) => {
+      if (!this.gripActive) {
+        e.preventDefault();
+        return;
+      }
+      this.dragFromIndex = index;
+      row.classList.add('stocks-row-dragging');
+      (e as DragEvent).dataTransfer!.effectAllowed = 'move';
+    });
+
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (this.dragFromIndex === -1) return;
+      this.clearDragIndicators();
+      this.dragOverIndex = index;
+      if (index < this.dragFromIndex) {
+        row.classList.add('stocks-row-drag-above');
+      } else if (index > this.dragFromIndex) {
+        row.classList.add('stocks-row-drag-below');
+      }
+    });
+
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('stocks-row-drag-above', 'stocks-row-drag-below');
+    });
+
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (this.dragFromIndex !== -1 && this.dragFromIndex !== index) {
+        this.reorderWatchlist(this.dragFromIndex, index);
+      }
+      this.cleanupDragState();
+    });
+
+    row.addEventListener('dragend', () => {
+      this.cleanupDragState();
+    });
+
     const isFav = this.favorites.has(q.symbol);
 
     const starBtn = createElement('button', {
@@ -137,6 +187,7 @@ export class StocksPanel extends Panel {
       this.removeSymbol(q.symbol);
     });
 
+    row.appendChild(grip);
     row.appendChild(starBtn);
     row.appendChild(identCol);
     row.appendChild(priceEl);
@@ -275,6 +326,31 @@ export class StocksPanel extends Panel {
       this.data.watchlist = this.data.watchlist.filter((q) => q.symbol !== symbol);
       this.render(this.data);
     }
+  }
+
+  private reorderWatchlist(from: number, to: number): void {
+    const [symbol] = this.watchlist.splice(from, 1);
+    this.watchlist.splice(to, 0, symbol);
+    storage.set(WATCHLIST_KEY, this.watchlist);
+    if (this.data) {
+      const [quote] = this.data.watchlist.splice(from, 1);
+      this.data.watchlist.splice(to, 0, quote);
+      this.render(this.data);
+    }
+  }
+
+  private clearDragIndicators(): void {
+    const rows = this.contentEl.querySelectorAll('.stocks-row');
+    rows.forEach((r) => r.classList.remove('stocks-row-drag-above', 'stocks-row-drag-below'));
+  }
+
+  private cleanupDragState(): void {
+    this.clearDragIndicators();
+    const rows = this.contentEl.querySelectorAll('.stocks-row');
+    rows.forEach((r) => r.classList.remove('stocks-row-dragging'));
+    this.dragFromIndex = -1;
+    this.dragOverIndex = -1;
+    this.gripActive = false;
   }
 
   private toggleFavorite(symbol: string): void {

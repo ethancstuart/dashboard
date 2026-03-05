@@ -51,7 +51,7 @@ export function createHeader(app: App): HTMLElement {
 
   const title = createElement('span', {
     className: 'header-title',
-    textContent: 'dashview',
+    textContent: 'J.A.R.V.I.S.',
   });
 
   const right = createElement('div', { className: 'header-right' });

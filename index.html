@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""></script>
-    <title>dashview</title>
+    <title>J.A.R.V.I.S.</title>
     <style>
       *, *::before, *::after {
         margin: 0;
@@ -42,7 +42,7 @@
       .header-title {
         font-size: 24px;
         font-weight: 300;
-        letter-spacing: -0.02em;
+        letter-spacing: 0.08em;
         color: var(--color-text);
       }
 
@@ -961,6 +961,96 @@
         .news-map-wrap {
           height: 200px;
         }
+      }
+
+      /* Welcome overlay */
+      .welcome-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #0a0a0a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 800ms ease;
+      }
+
+      .welcome-overlay-exit {
+        opacity: 0;
+      }
+
+      .welcome-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .welcome-brand {
+        font-size: 42px;
+        font-weight: 300;
+        letter-spacing: 0.12em;
+        color: var(--color-accent, #3b82f6);
+        text-shadow: 0 0 40px rgba(59, 130, 246, 0.3), 0 0 80px rgba(59, 130, 246, 0.1);
+        opacity: 0;
+        transform: translateY(12px);
+        transition: opacity 500ms ease, transform 500ms ease;
+      }
+
+      .welcome-greeting {
+        font-size: 24px;
+        font-weight: 300;
+        color: var(--color-text, #fafafa);
+        opacity: 0;
+        transform: translateY(12px);
+        transition: opacity 500ms ease, transform 500ms ease;
+      }
+
+      .welcome-subtitle {
+        font-size: 16px;
+        font-weight: 400;
+        color: var(--color-text-muted, #888);
+        opacity: 0;
+        transform: translateY(12px);
+        transition: opacity 500ms ease, transform 500ms ease;
+      }
+
+      .welcome-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Stock drag-and-drop */
+      .stocks-row-grip {
+        cursor: grab;
+        opacity: 0;
+        font-size: 12px;
+        flex-shrink: 0;
+        color: var(--color-text-muted);
+        transition: opacity 0.15s;
+        user-select: none;
+        padding: 0 2px;
+      }
+
+      .stocks-row:hover .stocks-row-grip {
+        opacity: 0.5;
+      }
+
+      .stocks-row-grip:hover {
+        opacity: 1 !important;
+      }
+
+      .stocks-row-dragging {
+        opacity: 0.4;
+        background: rgba(59, 130, 246, 0.05);
+      }
+
+      .stocks-row-drag-above {
+        box-shadow: 0 -2px 0 0 var(--color-accent);
+      }
+
+      .stocks-row-drag-below {
+        box-shadow: 0 2px 0 0 var(--color-accent);
       }
     </style>
   </head>
