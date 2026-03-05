@@ -1,4 +1,5 @@
 {
+  "buildCommand": "vite build",
   "build": {
     "env": {}
   }
