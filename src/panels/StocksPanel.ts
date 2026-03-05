@@ -6,6 +6,7 @@ import type { StocksData, StockQuote, SymbolSearchResult } from '../types/index.
 
 const WATCHLIST_KEY = 'dashview-watchlist';
 const FAVORITES_KEY = 'dashview-favorites';
+const NAMES_KEY = 'dashview-stock-names';
 const MAX_WATCHLIST = 10;
 const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
 
@@ -15,9 +16,23 @@ const INDEX_LABELS: Record<string, string> = {
   QQQ: 'Nasdaq',
 };
 
+const DEFAULT_NAMES: Record<string, string> = {
+  AAPL: 'Apple Inc',
+  MSFT: 'Microsoft Corp',
+  GOOGL: 'Alphabet Inc',
+  AMZN: 'Amazon.com Inc',
+  TSLA: 'Tesla Inc',
+  META: 'Meta Platforms',
+  NVDA: 'NVIDIA Corp',
+  NFLX: 'Netflix Inc',
+  JPM: 'JPMorgan Chase',
+  V: 'Visa Inc',
+};
+
 export class StocksPanel extends Panel {
   private watchlist: string[];
   private favorites: Set<string>;
+  private nameCache: Record<string, string>;
   private data: StocksData | null = null;
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -31,6 +46,7 @@ export class StocksPanel extends Panel {
 
     this.watchlist = storage.get<string[]>(WATCHLIST_KEY, DEFAULT_WATCHLIST);
     this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, DEFAULT_WATCHLIST));
+    this.nameCache = { ...DEFAULT_NAMES, ...storage.get<Record<string, string>>(NAMES_KEY, {}) };
     this.container.classList.add('panel-wide');
   }
 
@@ -49,20 +65,56 @@ export class StocksPanel extends Panel {
 
     // Left: indices
     const indicesCol = createElement('div', { className: 'stocks-indices' });
+    const indicesHeader = createElement('div', {
+      className: 'stocks-section-header',
+      textContent: 'US Markets',
+    });
+    indicesCol.appendChild(indicesHeader);
     for (const q of d.indices) {
       indicesCol.appendChild(this.createIndexCard(q));
     }
     layout.appendChild(indicesCol);
 
+    // Vertical divider
+    const divider = createElement('div', { className: 'stocks-divider' });
+    layout.appendChild(divider);
+
     // Right: watchlist
     const watchCol = createElement('div', { className: 'stocks-watchlist' });
+
+    const watchHeader = createElement('div', { className: 'stocks-watchlist-header' });
+    const watchTitle = createElement('span', {
+      className: 'stocks-section-header',
+      textContent: 'Watchlist',
+    });
+    const watchContext = createElement('span', {
+      className: 'stocks-column-label',
+      textContent: 'Day Change',
+    });
+    watchHeader.appendChild(watchTitle);
+    watchHeader.appendChild(watchContext);
+    watchCol.appendChild(watchHeader);
+
     for (const q of d.watchlist) {
       watchCol.appendChild(this.createWatchlistRow(q));
     }
     watchCol.appendChild(this.createSearchRow());
+
+    // Timestamp
+    const updated = createElement('div', {
+      className: 'stocks-updated',
+      textContent: `Updated ${this.formatTime(d.timestamp)}`,
+    });
+    watchCol.appendChild(updated);
+
     layout.appendChild(watchCol);
 
     this.contentEl.appendChild(layout);
+  }
+
+  private formatTime(ts: number): string {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
   private createIndexCard(q: StockQuote): HTMLElement {
@@ -74,21 +126,41 @@ export class StocksPanel extends Panel {
       textContent: label,
     });
 
-    const priceEl = createElement('div', {
+    const priceRow = createElement('div', { className: 'stocks-index-price-row' });
+    const priceEl = createElement('span', {
       className: 'stocks-index-price',
       textContent: `$${q.price.toFixed(2)}`,
     });
+    priceRow.appendChild(priceEl);
 
     const changeClass = q.changePercent >= 0 ? 'stocks-positive' : 'stocks-negative';
     const sign = q.changePercent >= 0 ? '+' : '';
-    const changeEl = createElement('div', {
-      className: `stocks-index-change ${changeClass}`,
-      textContent: `${sign}${q.changePercent.toFixed(2)}%`,
-    });
+
+    const changeRow = createElement('div', { className: `stocks-index-change ${changeClass}` });
+    changeRow.textContent = `${sign}${q.change.toFixed(2)} (${sign}${q.changePercent.toFixed(2)}%)`;
+
+    // Daily range bar
+    const rangeContainer = createElement('div', { className: 'stocks-range' });
+    const rangeBar = createElement('div', { className: 'stocks-range-bar' });
+    const rangeFill = createElement('div', { className: `stocks-range-fill ${changeClass}` });
+
+    const range = q.high - q.low;
+    if (range > 0) {
+      const position = ((q.price - q.low) / range) * 100;
+      rangeFill.style.width = `${position}%`;
+    }
+
+    const rangeLabels = createElement('div', { className: 'stocks-range-labels' });
+    rangeLabels.innerHTML = `<span>L $${q.low.toFixed(2)}</span><span>H $${q.high.toFixed(2)}</span>`;
+
+    rangeBar.appendChild(rangeFill);
+    rangeContainer.appendChild(rangeBar);
+    rangeContainer.appendChild(rangeLabels);
 
     card.appendChild(nameEl);
-    card.appendChild(priceEl);
-    card.appendChild(changeEl);
+    card.appendChild(priceRow);
+    card.appendChild(changeRow);
+    card.appendChild(rangeContainer);
     return card;
   }
 
@@ -104,10 +176,18 @@ export class StocksPanel extends Panel {
       this.toggleFavorite(q.symbol);
     });
 
+    const identCol = createElement('div', { className: 'stocks-row-ident' });
     const symbolEl = createElement('span', {
       className: 'stocks-row-symbol',
       textContent: q.symbol,
     });
+    const companyName = this.nameCache[q.symbol] ?? '';
+    const nameEl = createElement('span', {
+      className: 'stocks-row-name',
+      textContent: companyName,
+    });
+    identCol.appendChild(symbolEl);
+    identCol.appendChild(nameEl);
 
     const priceEl = createElement('span', {
       className: 'stocks-row-price',
@@ -116,10 +196,18 @@ export class StocksPanel extends Panel {
 
     const changeClass = q.changePercent >= 0 ? 'stocks-positive' : 'stocks-negative';
     const sign = q.changePercent >= 0 ? '+' : '';
-    const changeEl = createElement('span', {
-      className: `stocks-row-change ${changeClass}`,
+
+    const changeCol = createElement('div', { className: `stocks-row-change-col ${changeClass}` });
+    const changePct = createElement('span', {
+      className: 'stocks-row-change-pct',
       textContent: `${sign}${q.changePercent.toFixed(2)}%`,
     });
+    const changeDollar = createElement('span', {
+      className: 'stocks-row-change-dollar',
+      textContent: `${sign}${q.change.toFixed(2)}`,
+    });
+    changeCol.appendChild(changePct);
+    changeCol.appendChild(changeDollar);
 
     const removeBtn = createElement('button', {
       className: 'stocks-row-remove',
@@ -130,9 +218,9 @@ export class StocksPanel extends Panel {
     });
 
     row.appendChild(starBtn);
-    row.appendChild(symbolEl);
+    row.appendChild(identCol);
     row.appendChild(priceEl);
-    row.appendChild(changeEl);
+    row.appendChild(changeCol);
     row.appendChild(removeBtn);
     return row;
   }
@@ -169,7 +257,6 @@ export class StocksPanel extends Panel {
       }
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
       if (!wrapper.contains(e.target as Node)) {
         dropdown.style.display = 'none';
@@ -235,7 +322,7 @@ export class StocksPanel extends Panel {
         textContent: '+ Add',
       });
       addBtn.addEventListener('click', () => {
-        this.addSymbol(r.symbol);
+        this.addSymbol(r.symbol, r.description);
         dropdown.style.display = 'none';
         const input = this.contentEl.querySelector('.stocks-search-input') as HTMLInputElement;
         if (input) input.value = '';
@@ -247,11 +334,15 @@ export class StocksPanel extends Panel {
     return row;
   }
 
-  private addSymbol(symbol: string): void {
+  private addSymbol(symbol: string, name?: string): void {
     if (this.watchlist.length >= MAX_WATCHLIST) return;
     if (this.watchlist.includes(symbol)) return;
     this.watchlist.push(symbol);
     storage.set(WATCHLIST_KEY, this.watchlist);
+    if (name) {
+      this.nameCache[symbol] = name;
+      storage.set(NAMES_KEY, this.nameCache);
+    }
     void this.fetchData();
   }
 
