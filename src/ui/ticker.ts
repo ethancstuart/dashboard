@@ -75,6 +75,28 @@ function renderTicker(
   const itemsHtml = buildTickerItems(data.items);
   track1.innerHTML = itemsHtml;
   track2.innerHTML = itemsHtml;
+
+  // Fill tracks to cover viewport width (seamless scroll)
+  requestAnimationFrame(() => {
+    const wrapperWidth = track1.parentElement?.offsetWidth ?? 0;
+    const singleCopyWidth = track1.scrollWidth;
+
+    if (wrapperWidth > 0 && singleCopyWidth > 0) {
+      const copies = Math.ceil(wrapperWidth / singleCopyWidth) + 1;
+      if (copies > 1) {
+        const repeated = itemsHtml.repeat(copies);
+        track1.innerHTML = repeated;
+        track2.innerHTML = repeated;
+
+        const totalWidth = track1.scrollWidth;
+        const speed = (totalWidth / wrapperWidth) * 30;
+        const wrapper = track1.parentElement!;
+        wrapper.style.setProperty('--ticker-speed', `${speed}s`);
+        track1.style.animationDuration = `${speed}s`;
+        track2.style.animationDuration = `${speed}s`;
+      }
+    }
+  });
 }
 
 function buildTickerItems(items: TickerItem[]): string {

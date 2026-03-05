@@ -25,7 +25,6 @@ export class NewsPanel extends Panel {
       enabled: true,
       refreshInterval: 600000,
     });
-    this.container.classList.add('panel-wide');
     this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'world');
   }
 
@@ -88,6 +87,7 @@ export class NewsPanel extends Panel {
     // Init map after DOM attachment
     requestAnimationFrame(() => {
       this.initMap(mapWrap, d.articles);
+      if (this.map) this.map.invalidateSize();
     });
   }
 
@@ -161,17 +161,41 @@ export class NewsPanel extends Panel {
     link.rel = 'noopener';
     link.className = 'news-article-title';
     link.textContent = article.title;
+    row.appendChild(link);
 
-    const meta = createElement('span', { className: 'news-article-meta' });
+    if (article.description) {
+      const desc = createElement('div', { className: 'news-article-desc' });
+      const truncated = article.description.length > 120
+        ? article.description.slice(0, 120) + '\u2026'
+        : article.description;
+      desc.textContent = truncated;
+      row.appendChild(desc);
+    }
+
+    const meta = createElement('div', { className: 'news-article-meta' });
     const source = createElement('span', {
       className: 'news-article-source',
       textContent: article.source,
     });
-    const timeText = article.pubDate ? ` \u00B7 ${this.relativeTime(article.pubDate)}` : '';
     meta.appendChild(source);
-    meta.append(timeText);
 
-    row.appendChild(link);
+    if (article.sourceCountry) {
+      const country = createElement('span', {
+        className: 'news-article-country',
+        textContent: article.sourceCountry,
+      });
+      meta.appendChild(document.createTextNode(' \u00B7 '));
+      meta.appendChild(country);
+    }
+
+    if (article.pubDate) {
+      const time = this.relativeTime(article.pubDate);
+      if (time) {
+        meta.appendChild(document.createTextNode(' \u00B7 '));
+        meta.append(time);
+      }
+    }
+
     row.appendChild(meta);
     return row;
   }
