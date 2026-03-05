@@ -18,6 +18,12 @@ const FEEDS: Record<string, FeedSource[]> = {
     { name: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=political-general&post_type=best', country: 'GB', lat: 51.51, lon: -0.13 },
     { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', country: 'QA', lat: 25.29, lon: 51.53 },
     { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml', country: 'US', lat: 38.89, lon: -77.01 },
+    { name: 'NHK World', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', country: 'JP', lat: 35.68, lon: 139.69 },
+    { name: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', country: 'HK', lat: 22.28, lon: 114.16 },
+    { name: 'The Hindu', url: 'https://www.thehindu.com/news/international/feeder/default.rss', country: 'IN', lat: 13.08, lon: 80.27 },
+    { name: 'France24', url: 'https://www.france24.com/en/rss', country: 'FR', lat: 48.86, lon: 2.35 },
+    { name: 'DW', url: 'https://rss.dw.com/xml/rss-en-all', country: 'DE', lat: 50.72, lon: 7.09 },
+    { name: 'ABC Australia', url: 'https://www.abc.net.au/news/feed/2942460/rss.xml', country: 'AU', lat: -33.87, lon: 151.21 },
   ],
   tech: [
     { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', country: 'US', lat: 37.77, lon: -122.42 },
@@ -31,6 +37,9 @@ const FEEDS: Record<string, FeedSource[]> = {
     { name: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', country: 'US', lat: 40.71, lon: -74.01 },
     { name: 'Financial Times', url: 'https://www.ft.com/?format=rss', country: 'GB', lat: 51.51, lon: -0.11 },
     { name: 'Bloomberg', url: 'https://feeds.bloomberg.com/markets/news.rss', country: 'US', lat: 40.76, lon: -73.98 },
+    { name: 'Nikkei Asia', url: 'https://asia.nikkei.com/rss', country: 'JP', lat: 35.68, lon: 139.76 },
+    { name: 'Economic Times', url: 'https://economictimes.indiatimes.com/rssfeedsdefault.cms', country: 'IN', lat: 19.08, lon: 72.88 },
+    { name: 'Arab News', url: 'https://www.arabnews.com/rss.xml', country: 'SA', lat: 21.49, lon: 39.19 },
   ],
   science: [
     { name: 'Nature', url: 'https://www.nature.com/nature.rss', country: 'GB', lat: 51.53, lon: -0.13 },

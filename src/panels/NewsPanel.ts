@@ -17,6 +17,8 @@ export class NewsPanel extends Panel {
   private category: NewsCategory;
   private data: NewsData | null = null;
   private map: L.Map | null = null;
+  private terminator: L.Polygon | null = null;
+  private terminatorInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     super({
@@ -37,11 +39,16 @@ export class NewsPanel extends Panel {
     const d = data as NewsData;
     if (!d) return;
 
-    // Clean up previous map
+    // Clean up previous map and terminator interval
+    if (this.terminatorInterval) {
+      clearInterval(this.terminatorInterval);
+      this.terminatorInterval = null;
+    }
     if (this.map) {
       this.map.remove();
       this.map = null;
     }
+    this.terminator = null;
 
     this.contentEl.textContent = '';
 
@@ -143,6 +150,69 @@ export class NewsPanel extends Panel {
       const sourceName = group[0].source;
       const popupHtml = `<strong>${this.escapeHtml(sourceName)}</strong>${count > 1 ? ` +${count - 1}` : ''}<br>${popupLines.join('<br>')}`;
       marker.bindPopup(popupHtml, { maxWidth: 250 });
+    }
+
+    // Add day/night terminator
+    this.updateTerminator();
+    this.terminatorInterval = setInterval(() => this.updateTerminator(), 60000);
+  }
+
+  private buildTerminatorCoords(): L.LatLngExpression[] {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now.getTime() - start.getTime();
+    const dayOfYear = Math.floor(diff / 86400000);
+
+    // Solar declination (approximate)
+    const declination = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10));
+    const decRad = declination * Math.PI / 180;
+
+    // Hour angle: how far the sun is from local noon
+    const hours = now.getUTCHours() + now.getUTCMinutes() / 60;
+    const sunLon = (12 - hours) * 15; // degrees longitude where sun is overhead
+
+    const points: L.LatLngExpression[] = [];
+
+    // Trace the terminator line
+    for (let lon = -180; lon <= 180; lon += 1) {
+      const lonRad = (lon - sunLon) * Math.PI / 180;
+      const lat = Math.atan(-Math.cos(lonRad) / Math.tan(decRad)) * 180 / Math.PI;
+      points.push([lat, lon]);
+    }
+
+    // Determine which side is night: at midnight longitude (opposite sun), it should be dark
+    // If declination > 0 (northern summer), night is on the south side of the terminator at midnight lon
+    // We close the polygon along the bottom or top edge
+    const nightOnSouth = declination >= 0;
+
+    // Close polygon to cover night hemisphere
+    if (nightOnSouth) {
+      // Night is south of the terminator line
+      points.push([-90, 180]);
+      points.push([-90, -180]);
+    } else {
+      // Night is north of the terminator line
+      points.push([90, 180]);
+      points.push([90, -180]);
+    }
+
+    return points;
+  }
+
+  private updateTerminator(): void {
+    if (!this.map) return;
+
+    const coords = this.buildTerminatorCoords();
+
+    if (this.terminator) {
+      this.terminator.setLatLngs(coords);
+    } else {
+      this.terminator = L.polygon(coords, {
+        color: 'transparent',
+        fillColor: '#000',
+        fillOpacity: 0.3,
+        interactive: false,
+      }).addTo(this.map);
     }
   }
 

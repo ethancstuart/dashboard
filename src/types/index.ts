@@ -92,6 +92,25 @@ export interface TickerData {
   marketStatus: MarketStatus;
 }
 
+// Stock detail
+export interface CandleData {
+  t: number[];
+  c: number[];
+  h: number[];
+  l: number[];
+  o: number[];
+  v: number[];
+}
+
+export interface CompanyNews {
+  headline: string;
+  summary: string;
+  url: string;
+  source: string;
+  datetime: number;
+  image: string;
+}
+
 // News
 export type NewsCategory = 'world' | 'tech' | 'business' | 'science' | 'entertainment';
 

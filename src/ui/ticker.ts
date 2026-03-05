@@ -118,5 +118,6 @@ function buildTickerItems(items: TickerItem[]): string {
       : '';
 
     return `<span class="ticker-item"><span class="ticker-label">${item.label}</span> <span class="ticker-price">${priceStr}</span> ${changeStr}</span>`;
-  }).join('<span class="ticker-sep">\u00b7</span>');
+  }).join('<span class="ticker-sep">\u00b7</span>')
+    + '<span class="ticker-sep">\u00b7</span>';
 }

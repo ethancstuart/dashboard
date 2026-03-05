@@ -1,8 +1,9 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { fetchStocks, searchSymbols } from '../services/stocks.ts';
+import { fetchStocks, searchSymbols, fetchCandles, fetchCompanyNews } from '../services/stocks.ts';
+import { renderChart } from '../ui/chart.ts';
 import * as storage from '../services/storage.ts';
-import type { StocksData, StockQuote, SymbolSearchResult } from '../types/index.ts';
+import type { StocksData, StockQuote, SymbolSearchResult, CandleData, CompanyNews } from '../types/index.ts';
 
 const WATCHLIST_KEY = 'dashview-watchlist';
 const FAVORITES_KEY = 'dashview-favorites';
@@ -32,6 +33,11 @@ export class StocksPanel extends Panel {
   private dragFromIndex: number = -1;
   private dragOverIndex: number = -1;
   private gripActive: boolean = false;
+  private selectedSymbol: string | null = null;
+  private selectedPeriod: string = '1M';
+  private detailCandles: CandleData | null = null;
+  private detailNews: CompanyNews[] | null = null;
+  private detailLoading: boolean = false;
 
   constructor() {
     super({
@@ -72,6 +78,9 @@ export class StocksPanel extends Panel {
 
     for (let i = 0; i < d.watchlist.length; i++) {
       this.contentEl.appendChild(this.createWatchlistRow(d.watchlist[i], i));
+      if (d.watchlist[i].symbol === this.selectedSymbol) {
+        this.contentEl.appendChild(this.createDetailPanel(d.watchlist[i].symbol));
+      }
     }
     this.contentEl.appendChild(this.createSearchRow());
 
@@ -88,8 +97,30 @@ export class StocksPanel extends Panel {
   }
 
   private createWatchlistRow(q: StockQuote, index: number): HTMLElement {
-    const row = createElement('div', { className: 'stocks-row' });
+    const isSelected = q.symbol === this.selectedSymbol;
+    const row = createElement('div', {
+      className: `stocks-row stocks-row-clickable ${isSelected ? 'stocks-row-selected' : ''}`,
+    });
     row.setAttribute('draggable', 'true');
+
+    // Click to toggle detail view
+    row.addEventListener('click', (e) => {
+      // Don't toggle if clicking buttons or grip
+      const target = e.target as HTMLElement;
+      if (target.closest('.stocks-row-remove') || target.closest('.stocks-row-star') || target.closest('.stocks-row-grip')) return;
+      if (this.selectedSymbol === q.symbol) {
+        this.selectedSymbol = null;
+        this.detailCandles = null;
+        this.detailNews = null;
+      } else {
+        this.selectedSymbol = q.symbol;
+        this.selectedPeriod = '1M';
+        this.detailCandles = null;
+        this.detailNews = null;
+        void this.loadDetailData(q.symbol, '1M');
+      }
+      if (this.data) this.render(this.data);
+    });
 
     // Grip handle — drag initiator
     const grip = createElement('span', {
@@ -351,6 +382,147 @@ export class StocksPanel extends Panel {
     this.dragFromIndex = -1;
     this.dragOverIndex = -1;
     this.gripActive = false;
+  }
+
+  private static readonly PERIODS: { key: string; label: string; resolution: string; daysBack: number | 'ytd' }[] = [
+    { key: '1D', label: '1D', resolution: '5', daysBack: 1 },
+    { key: '7D', label: '7D', resolution: '15', daysBack: 7 },
+    { key: '1M', label: '1M', resolution: 'D', daysBack: 30 },
+    { key: '6M', label: '6M', resolution: 'D', daysBack: 180 },
+    { key: '1Y', label: '1Y', resolution: 'D', daysBack: 365 },
+    { key: 'YTD', label: 'YTD', resolution: 'D', daysBack: 'ytd' },
+    { key: 'Max', label: 'Max', resolution: 'W', daysBack: 1825 },
+  ];
+
+  private getPeriodParams(periodKey: string): { resolution: string; from: number; to: number } {
+    const period = StocksPanel.PERIODS.find((p) => p.key === periodKey) ?? StocksPanel.PERIODS[2];
+    const now = Math.floor(Date.now() / 1000);
+    let from: number;
+    if (period.daysBack === 'ytd') {
+      from = Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000);
+    } else {
+      from = now - period.daysBack * 86400;
+    }
+    return { resolution: period.resolution, from, to: now };
+  }
+
+  private async loadDetailData(symbol: string, periodKey: string): Promise<void> {
+    this.detailLoading = true;
+    if (this.data) this.render(this.data);
+
+    const { resolution, from, to } = this.getPeriodParams(periodKey);
+    const toDate = new Date().toISOString().split('T')[0];
+    const fromDate = new Date(from * 1000).toISOString().split('T')[0];
+
+    try {
+      const [candles, news] = await Promise.all([
+        fetchCandles(symbol, resolution, from, to),
+        fetchCompanyNews(symbol, fromDate, toDate),
+      ]);
+      // Only update if still selected
+      if (this.selectedSymbol === symbol) {
+        this.detailCandles = candles;
+        this.detailNews = news;
+        this.detailLoading = false;
+        if (this.data) this.render(this.data);
+      }
+    } catch {
+      if (this.selectedSymbol === symbol) {
+        this.detailLoading = false;
+        this.detailCandles = { t: [], c: [], h: [], l: [], o: [], v: [] };
+        this.detailNews = [];
+        if (this.data) this.render(this.data);
+      }
+    }
+  }
+
+  private createDetailPanel(symbol: string): HTMLElement {
+    const detail = createElement('div', { className: 'stocks-detail' });
+
+    // Period buttons
+    const periods = createElement('div', { className: 'stocks-detail-periods' });
+    for (const p of StocksPanel.PERIODS) {
+      const btn = createElement('button', {
+        className: `stocks-detail-period ${p.key === this.selectedPeriod ? 'stocks-detail-period-active' : ''}`,
+        textContent: p.label,
+      });
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.selectedPeriod = p.key;
+        this.detailCandles = null;
+        this.detailNews = null;
+        void this.loadDetailData(symbol, p.key);
+      });
+      periods.appendChild(btn);
+    }
+    detail.appendChild(periods);
+
+    if (this.detailLoading) {
+      const loading = createElement('div', { className: 'stocks-detail-loading' });
+      const dot = createElement('div', { className: 'panel-loading-dot' });
+      loading.appendChild(dot);
+      detail.appendChild(loading);
+      return detail;
+    }
+
+    // Chart
+    if (this.detailCandles && this.detailCandles.t.length > 1) {
+      const canvas = document.createElement('canvas');
+      canvas.className = 'stocks-detail-chart';
+      detail.appendChild(canvas);
+      requestAnimationFrame(() => {
+        renderChart(canvas, {
+          timestamps: this.detailCandles!.t,
+          prices: this.detailCandles!.c,
+        });
+      });
+    } else if (this.detailCandles) {
+      const empty = createElement('div', {
+        className: 'stocks-detail-empty',
+        textContent: 'No chart data available',
+      });
+      detail.appendChild(empty);
+    }
+
+    // Company news
+    if (this.detailNews && this.detailNews.length > 0) {
+      const newsList = createElement('div', { className: 'stocks-detail-news' });
+      for (const article of this.detailNews.slice(0, 5)) {
+        const row = createElement('div', { className: 'stocks-detail-article' });
+
+        const link = document.createElement('a');
+        link.href = article.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'stocks-detail-headline';
+        link.textContent = article.headline;
+        link.addEventListener('click', (e) => e.stopPropagation());
+        row.appendChild(link);
+
+        const meta = createElement('div', { className: 'stocks-detail-meta' });
+        const timeAgo = this.relativeTime(article.datetime);
+        meta.textContent = `${article.source}${timeAgo ? ' · ' + timeAgo : ''}`;
+        row.appendChild(meta);
+
+        newsList.appendChild(row);
+      }
+      detail.appendChild(newsList);
+    }
+
+    return detail;
+  }
+
+  private relativeTime(timestamp: number): string {
+    const now = Date.now();
+    const then = timestamp * 1000;
+    const diff = now - then;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }
 
   private toggleFavorite(symbol: string): void {

@@ -25,6 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'ticker') {
     return handleTicker(res, apiKey);
   }
+  if (action === 'candle') {
+    return handleCandle(req, res, apiKey);
+  }
+  if (action === 'news') {
+    return handleCompanyNews(req, res, apiKey);
+  }
 
   const symbols = (req.query.symbols as string | undefined)?.split(',').filter(Boolean);
   if (!symbols || symbols.length === 0) {
@@ -166,6 +172,90 @@ async function handleTicker(res: VercelResponse, apiKey: string) {
     return res
       .setHeader('Cache-Control', 'max-age=30')
       .json({ items, marketStatus });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleCandle(req: VercelRequest, res: VercelResponse, apiKey: string) {
+  const symbol = req.query.symbol as string | undefined;
+  const resolution = req.query.resolution as string | undefined;
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
+
+  if (!symbol || !resolution || !from || !to) {
+    return res.status(400).json({ error: 'Missing required parameters: symbol, resolution, from, to' });
+  }
+
+  try {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=${encodeURIComponent(resolution)}&from=${from}&to=${to}&token=${apiKey}`,
+    );
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Candle request failed' });
+    }
+
+    const data = await response.json();
+    if (data.s === 'no_data') {
+      return res.json({ candles: { t: [], c: [], h: [], l: [], o: [], v: [] } });
+    }
+
+    return res
+      .setHeader('Cache-Control', 'max-age=300')
+      .json({
+        candles: {
+          t: data.t || [],
+          c: data.c || [],
+          h: data.h || [],
+          l: data.l || [],
+          o: data.o || [],
+          v: data.v || [],
+        },
+      });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleCompanyNews(req: VercelRequest, res: VercelResponse, apiKey: string) {
+  const symbol = req.query.symbol as string | undefined;
+  const from = req.query.from as string | undefined;
+  const to = req.query.to as string | undefined;
+
+  if (!symbol || !from || !to) {
+    return res.status(400).json({ error: 'Missing required parameters: symbol, from, to' });
+  }
+
+  try {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&token=${apiKey}`,
+    );
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Company news request failed' });
+    }
+
+    const data = await response.json();
+    const news = (Array.isArray(data) ? data : []).slice(0, 10).map((item: {
+      headline: string;
+      summary: string;
+      url: string;
+      source: string;
+      datetime: number;
+      image: string;
+    }) => ({
+      headline: item.headline || '',
+      summary: item.summary || '',
+      url: item.url || '',
+      source: item.source || '',
+      datetime: item.datetime || 0,
+      image: item.image || '',
+    }));
+
+    return res
+      .setHeader('Cache-Control', 'max-age=600')
+      .json({ news });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(502).json({ error: message });
