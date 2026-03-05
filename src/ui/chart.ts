@@ -1,3 +1,54 @@
+export function renderSparkline(
+  canvas: HTMLCanvasElement,
+  prices: number[],
+  opts?: { color?: string; width?: number; height?: number },
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || prices.length < 2) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const w = opts?.width ?? (canvas.offsetWidth || 60);
+  const h = opts?.height ?? (canvas.offsetHeight || 20);
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  ctx.scale(dpr, dpr);
+
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const lineColor = opts?.color ?? (isUp ? '#22c55e' : '#ef4444');
+
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const pad = 2;
+
+  const toX = (i: number) => (i / (prices.length - 1)) * w;
+  const toY = (p: number) => pad + (1 - (p - min) / range) * (h - pad * 2);
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(toX(0), toY(prices[0]));
+  for (let i = 1; i < prices.length; i++) {
+    ctx.lineTo(toX(i), toY(prices[i]));
+  }
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Gradient fill
+  const gradient = ctx.createLinearGradient(0, 0, 0, h);
+  gradient.addColorStop(0, lineColor + '40');
+  gradient.addColorStop(1, lineColor + '00');
+  ctx.lineTo(toX(prices.length - 1), h);
+  ctx.lineTo(toX(0), h);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+}
+
 export function renderChart(
   canvas: HTMLCanvasElement,
   data: { timestamps: number[]; prices: number[] },

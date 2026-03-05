@@ -3,7 +3,6 @@ import { App } from './App.ts';
 import { createHeader } from './ui/header.ts';
 import { createTicker } from './ui/ticker.ts';
 import { createLayout } from './ui/layout.ts';
-import { qs } from './utils/dom.ts';
 import { WeatherPanel } from './panels/WeatherPanel.ts';
 import { StocksPanel } from './panels/StocksPanel.ts';
 import { NewsPanel } from './panels/NewsPanel.ts';
@@ -15,17 +14,25 @@ showWelcome();
 
 const app = new App();
 
+const newsPanel = new NewsPanel();
 app.registerPanel(new WeatherPanel());
 app.registerPanel(new StocksPanel());
-app.registerPanel(new NewsPanel());
+app.registerPanel(newsPanel);
 app.registerPanel(new SettingsPanel(app));
 
 document.body.appendChild(createHeader(app));
 document.body.appendChild(createTicker());
 
 const layout = createLayout();
-document.body.appendChild(layout);
+document.body.appendChild(layout.root);
 
-app.gridContainer = qs<HTMLElement>('.panel-grid', layout)!;
+// Give NewsPanel access to the hero map container
+newsPanel.setMapContainer(layout.mapHero);
+
+// Route panels to correct layout areas:
+// - Sidebar: weather, stocks, settings
+// - Content: news (article list)
+app.sidebarContainer = layout.sidebar;
+app.contentContainer = layout.content;
 
 app.init();

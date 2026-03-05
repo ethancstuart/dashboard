@@ -1,6 +1,7 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchWeather } from '../services/weather.ts';
+import { renderSparkline } from '../ui/chart.ts';
 import * as storage from '../services/storage.ts';
 import type { WeatherData } from '../types/index.ts';
 
@@ -129,10 +130,53 @@ export class WeatherPanel extends Panel {
     this.contentEl.appendChild(hiLo);
 
     // Divider
-    const divider = createElement('div', { className: 'weather-divider' });
-    this.contentEl.appendChild(divider);
+    this.contentEl.appendChild(createElement('div', { className: 'weather-divider' }));
 
-    // 3-day forecast
+    // Hourly sparkline
+    if (w.hourly && w.hourly.length >= 2) {
+      const hourlyCanvas = document.createElement('canvas');
+      hourlyCanvas.className = 'weather-hourly';
+      this.contentEl.appendChild(hourlyCanvas);
+      requestAnimationFrame(() => {
+        const temps = w.hourly.map((h) => h.temp);
+        renderSparkline(hourlyCanvas, temps, {
+          color: '#3b82f6',
+          width: hourlyCanvas.offsetWidth || 200,
+          height: 48,
+        });
+      });
+
+      this.contentEl.appendChild(createElement('div', { className: 'weather-divider' }));
+    }
+
+    // Atmospheric stats grid
+    const stats = createElement('div', { className: 'weather-stats' });
+
+    const sunriseTime = this.formatShortTime(w.current.sunrise);
+    const sunsetTime = this.formatShortTime(w.current.sunset);
+    const windDir = this.degToCompass(w.current.windDirection ?? 0);
+
+    const statItems = [
+      { icon: '\uD83D\uDCA7', text: `${w.current.humidity}%` },
+      { icon: '\uD83D\uDCA8', text: `${w.current.windSpeed}mph ${windDir}` },
+      { icon: '\u2600\uFE0F', text: sunriseTime },
+      { icon: '\uD83C\uDF19', text: sunsetTime },
+    ];
+
+    for (const item of statItems) {
+      const stat = createElement('div', { className: 'weather-stat' });
+      const iconEl = createElement('span', { className: 'weather-stat-icon', textContent: item.icon });
+      const textEl = createElement('span', { textContent: item.text });
+      stat.appendChild(iconEl);
+      stat.appendChild(textEl);
+      stats.appendChild(stat);
+    }
+    this.contentEl.appendChild(stats);
+
+    // Divider
+    this.contentEl.appendChild(createElement('div', { className: 'weather-divider' }));
+
+    // 5-day forecast
     const forecastRow = createElement('div', { className: 'weather-forecast' });
     for (const day of w.forecast) {
       const col = createElement('div', { className: 'weather-forecast-day' });
@@ -160,5 +204,20 @@ export class WeatherPanel extends Panel {
       forecastRow.appendChild(col);
     }
     this.contentEl.appendChild(forecastRow);
+  }
+
+  private formatShortTime(unixTs: number): string {
+    const date = new Date(unixTs * 1000);
+    let hours = date.getHours();
+    const mins = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'p' : 'a';
+    hours = hours % 12 || 12;
+    return `${hours}:${mins}${ampm}`;
+  }
+
+  private degToCompass(deg: number): string {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round(deg / 45) % 8;
+    return dirs[index];
   }
 }

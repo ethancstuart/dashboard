@@ -19,6 +19,7 @@ export class NewsPanel extends Panel {
   private map: L.Map | null = null;
   private terminator: L.Polygon | null = null;
   private terminatorInterval: ReturnType<typeof setInterval> | null = null;
+  private mapContainer: HTMLElement | null = null;
 
   constructor() {
     super({
@@ -28,6 +29,11 @@ export class NewsPanel extends Panel {
       refreshInterval: 600000,
     });
     this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'world');
+  }
+
+  /** Call this before init to attach the map to the hero container */
+  setMapContainer(el: HTMLElement): void {
+    this.mapContainer = el;
   }
 
   async fetchData(): Promise<void> {
@@ -72,28 +78,33 @@ export class NewsPanel extends Panel {
     if (d.articles.length === 0) {
       const empty = createElement('div', { className: 'news-empty', textContent: 'No articles available' });
       this.contentEl.appendChild(empty);
+      this.initHeroMap([]);
       return;
     }
 
-    // Body: map + list
-    const body = createElement('div', { className: 'news-body' });
-
-    // Map
-    const mapWrap = createElement('div', { className: 'news-map-wrap' });
-    body.appendChild(mapWrap);
-
-    // Article list
-    const list = createElement('div', { className: 'news-list' });
+    // Article list (inside the panel card in content row)
+    const list = createElement('div', { className: 'news-list news-panel-articles' });
     for (const article of d.articles) {
       list.appendChild(this.createArticleRow(article));
     }
-    body.appendChild(list);
+    this.contentEl.appendChild(list);
 
-    this.contentEl.appendChild(body);
+    // Init hero map
+    this.initHeroMap(d.articles);
+  }
 
-    // Init map after DOM attachment
+  private initHeroMap(articles: NewsArticle[]): void {
+    const container = this.mapContainer;
+    if (!container || typeof L === 'undefined') return;
+
+    // Clear previous map content
+    container.textContent = '';
+
+    const mapWrap = createElement('div', { className: 'news-map-wrap' });
+    container.appendChild(mapWrap);
+
     requestAnimationFrame(() => {
-      this.initMap(mapWrap, d.articles);
+      this.initMap(mapWrap, articles);
       if (this.map) this.map.invalidateSize();
     });
   }
@@ -180,18 +191,12 @@ export class NewsPanel extends Panel {
       points.push([lat, lon]);
     }
 
-    // Determine which side is night: at midnight longitude (opposite sun), it should be dark
-    // If declination > 0 (northern summer), night is on the south side of the terminator at midnight lon
-    // We close the polygon along the bottom or top edge
     const nightOnSouth = declination >= 0;
 
-    // Close polygon to cover night hemisphere
     if (nightOnSouth) {
-      // Night is south of the terminator line
       points.push([-90, 180]);
       points.push([-90, -180]);
     } else {
-      // Night is north of the terminator line
       points.push([90, 180]);
       points.push([90, -180]);
     }

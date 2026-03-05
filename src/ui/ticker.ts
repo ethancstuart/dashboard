@@ -1,6 +1,7 @@
 import { createElement } from '../utils/dom.ts';
-import { fetchTickerData } from '../services/ticker.ts';
-import type { TickerItem, TickerData } from '../types/index.ts';
+import { fetchTickerData, fetchSparklines } from '../services/ticker.ts';
+import { renderSparkline } from './chart.ts';
+import type { TickerItem, TickerData, SparklineData } from '../types/index.ts';
 
 const REFRESH_INTERVAL = 60000;
 
@@ -8,22 +9,33 @@ export function createTicker(): HTMLElement {
   const bar = createElement('div', { className: 'ticker-bar' });
 
   const statusBadge = createElement('div', { className: 'ticker-status' });
+  const cardsContainer = createElement('div', { className: 'ticker-cards' });
   const delayNote = createElement('span', { className: 'ticker-delay' });
-  const trackWrapper = createElement('div', { className: 'ticker-track-wrapper' });
-  const track1 = createElement('div', { className: 'ticker-track' });
-  const track2 = createElement('div', { className: 'ticker-track' });
-
-  trackWrapper.appendChild(track1);
-  trackWrapper.appendChild(track2);
 
   bar.appendChild(statusBadge);
+  bar.appendChild(cardsContainer);
   bar.appendChild(delayNote);
-  bar.appendChild(trackWrapper);
+
+  let sparklineData: SparklineData = {};
 
   async function update() {
     try {
       const data = await fetchTickerData();
-      renderTicker(data, statusBadge, delayNote, track1, track2);
+      renderTicker(data, sparklineData, statusBadge, cardsContainer, delayNote);
+
+      // Fetch sparklines for equity/ETF symbols (not crypto/forex which use different symbol formats)
+      const sparklineSymbols = data.items
+        .filter((item) => item.type === 'index' && !item.symbol.includes(':'))
+        .map((item) => item.symbol);
+
+      if (sparklineSymbols.length > 0) {
+        try {
+          sparklineData = await fetchSparklines(sparklineSymbols);
+          renderTicker(data, sparklineData, statusBadge, cardsContainer, delayNote);
+        } catch {
+          // Sparklines are optional, keep showing without them
+        }
+      }
     } catch {
       // Silently fail — keep showing last data
     }
@@ -37,10 +49,10 @@ export function createTicker(): HTMLElement {
 
 function renderTicker(
   data: TickerData,
+  sparklines: SparklineData,
   statusBadge: HTMLElement,
+  cardsContainer: HTMLElement,
   delayNote: HTMLElement,
-  track1: HTMLElement,
-  track2: HTMLElement,
 ) {
   // Market status badge
   const { isOpen, session } = data.marketStatus;
@@ -71,53 +83,61 @@ function renderTicker(
     delayNote.style.display = 'none';
   }
 
-  // Build ticker items
-  const itemsHtml = buildTickerItems(data.items);
-  track1.innerHTML = itemsHtml;
-  track2.innerHTML = itemsHtml;
-
-  // Fill tracks to cover viewport width (seamless scroll)
-  requestAnimationFrame(() => {
-    const wrapperWidth = track1.parentElement?.offsetWidth ?? 0;
-    const singleCopyWidth = track1.scrollWidth;
-
-    if (wrapperWidth > 0 && singleCopyWidth > 0) {
-      const copies = Math.ceil(wrapperWidth / singleCopyWidth) + 1;
-      if (copies > 1) {
-        const repeated = itemsHtml.repeat(copies);
-        track1.innerHTML = repeated;
-        track2.innerHTML = repeated;
-
-        const totalWidth = track1.scrollWidth;
-        const speed = (totalWidth / wrapperWidth) * 30;
-        const wrapper = track1.parentElement!;
-        wrapper.style.setProperty('--ticker-speed', `${speed}s`);
-        track1.style.animationDuration = `${speed}s`;
-        track2.style.animationDuration = `${speed}s`;
-      }
-    }
-  });
+  // Build static market cards
+  cardsContainer.textContent = '';
+  for (const item of data.items) {
+    cardsContainer.appendChild(createTickerCard(item, sparklines[item.symbol]));
+  }
 }
 
-function buildTickerItems(items: TickerItem[]): string {
-  return items.map((item) => {
-    const changeClass = item.changePercent >= 0 ? 'ticker-positive' : 'ticker-negative';
-    const sign = item.changePercent >= 0 ? '+' : '';
+function createTickerCard(item: TickerItem, sparklinePrices?: number[]): HTMLElement {
+  const card = createElement('div', { className: 'ticker-card' });
 
-    let priceStr: string;
-    if (item.type === 'forex') {
-      priceStr = item.price.toFixed(item.symbol.includes('JPY') ? 2 : 4);
-    } else if (item.type === 'crypto') {
-      priceStr = `$${item.price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-    } else {
-      priceStr = `$${item.price.toFixed(2)}`;
-    }
+  const info = createElement('div', { className: 'ticker-card-info' });
 
-    const changeStr = item.change !== 0 || item.changePercent !== 0
-      ? `<span class="${changeClass}">${sign}${item.changePercent.toFixed(2)}%</span>`
-      : '';
+  const labelEl = createElement('span', {
+    className: 'ticker-card-label',
+    textContent: item.label,
+  });
 
-    return `<span class="ticker-item"><span class="ticker-label">${item.label}</span> <span class="ticker-price">${priceStr}</span> ${changeStr}</span>`;
-  }).join('<span class="ticker-sep">\u00b7</span>')
-    + '<span class="ticker-sep">\u00b7</span>';
+  let priceStr: string;
+  if (item.type === 'forex') {
+    priceStr = item.price.toFixed(item.symbol.includes('JPY') ? 2 : 4);
+  } else if (item.type === 'crypto') {
+    priceStr = `$${item.price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  } else {
+    priceStr = `$${item.price.toFixed(2)}`;
+  }
+
+  const priceEl = createElement('span', {
+    className: 'ticker-card-price',
+    textContent: priceStr,
+  });
+
+  info.appendChild(labelEl);
+  info.appendChild(priceEl);
+
+  const changeClass = item.changePercent >= 0 ? 'ticker-positive' : 'ticker-negative';
+  const sign = item.changePercent >= 0 ? '+' : '';
+  const changeEl = createElement('span', {
+    className: `ticker-card-change ${changeClass}`,
+    textContent: item.change !== 0 || item.changePercent !== 0
+      ? `${sign}${item.changePercent.toFixed(2)}%`
+      : '',
+  });
+
+  card.appendChild(info);
+  card.appendChild(changeEl);
+
+  // Sparkline canvas
+  if (sparklinePrices && sparklinePrices.length >= 2) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'ticker-sparkline';
+    card.appendChild(canvas);
+    requestAnimationFrame(() => {
+      renderSparkline(canvas, sparklinePrices, { width: 60, height: 20 });
+    });
+  }
+
+  return card;
 }

@@ -22,6 +22,11 @@ export interface ForecastDay {
   low: number;
 }
 
+export interface HourlyForecast {
+  time: number;
+  temp: number;
+}
+
 export interface WeatherCurrent {
   temp: number;
   feelsLike: number;
@@ -33,12 +38,25 @@ export interface WeatherCurrent {
   sunset: number;
   humidity: number;
   windSpeed: number;
+  windDirection: number;
+  pressure: number;
+  visibility: number;
 }
 
 export interface WeatherData {
   current: WeatherCurrent;
   forecast: ForecastDay[];
+  hourly: HourlyForecast[];
   name: string;
+}
+
+// Sparkline data for ticker
+export interface SparklinePoint {
+  price: number;
+}
+
+export interface SparklineData {
+  [symbol: string]: number[];
 }
 
 export interface GeocodingResult {

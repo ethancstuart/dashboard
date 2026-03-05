@@ -4,9 +4,14 @@ import * as storage from './services/storage.ts';
 
 const STORAGE_KEY = 'dashview:panels';
 
+// Panels that go in the right sidebar
+const SIDEBAR_PANELS = new Set(['weather', 'stocks', 'settings']);
+
 export class App {
   private panels = new Map<string, Panel>();
   gridContainer: HTMLElement | null = null;
+  sidebarContainer: HTMLElement | null = null;
+  contentContainer: HTMLElement | null = null;
 
   async init(): Promise<void> {
     const state = storage.get<PanelState>(STORAGE_KEY, { panels: {} });
@@ -16,7 +21,16 @@ export class App {
       if (saved !== undefined) {
         panel.enabled = saved.enabled;
       }
-      await panel.init(this.gridContainer ?? undefined);
+
+      // Route panel to correct container
+      let container: HTMLElement | undefined;
+      if (SIDEBAR_PANELS.has(id)) {
+        container = this.sidebarContainer ?? this.gridContainer ?? undefined;
+      } else {
+        container = this.contentContainer ?? this.gridContainer ?? undefined;
+      }
+
+      await panel.init(container);
     }
   }
 

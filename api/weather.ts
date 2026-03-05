@@ -12,8 +12,6 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('ENV KEYS:', Object.keys(process.env).filter(k => k.includes('OPENWEATHER') || k.includes('WEATHER')));
-  console.log('API KEY VALUE:', process.env.OPENWEATHER_API_KEY);
   const action = req.query.action as string | undefined;
 
   const apiKey = process.env.OPENWEATHER_API_KEY;
@@ -91,9 +89,16 @@ async function handleWeather(req: VercelRequest, res: VercelResponse, apiKey: st
   const current = await currentRes.json();
   const forecastData = await forecastRes.json();
 
-  // Build 3-day forecast from 5-day/3-hour data
+  // Build 5-day forecast from 5-day/3-hour data
   const dailyMap = new Map<string, { highs: number[]; lows: number[]; icon: string }>();
   const todayDate = new Date().toDateString();
+
+  // Extract hourly data (next 12 data points = 36 hours of 3-hour intervals)
+  const hourly: { time: number; temp: number }[] = [];
+  for (const entry of forecastData.list) {
+    if (hourly.length >= 12) break;
+    hourly.push({ time: entry.dt, temp: Math.round(entry.main.temp) });
+  }
 
   for (const entry of forecastData.list) {
     const date = new Date(entry.dt * 1000);
@@ -114,7 +119,7 @@ async function handleWeather(req: VercelRequest, res: VercelResponse, apiKey: st
 
   const forecast: ForecastDay[] = [];
   for (const [dateStr, data] of dailyMap) {
-    if (forecast.length >= 3) break;
+    if (forecast.length >= 5) break;
     const date = new Date(dateStr);
     forecast.push({
       day: DAYS[date.getDay()],
@@ -137,7 +142,11 @@ async function handleWeather(req: VercelRequest, res: VercelResponse, apiKey: st
       sunset: current.sys.sunset,
       humidity: current.main.humidity,
       windSpeed: Math.round(current.wind.speed),
+      windDirection: current.wind.deg ?? 0,
+      pressure: current.main.pressure,
+      visibility: current.visibility ?? 10000,
     },
+    hourly,
     forecast,
   });
 }

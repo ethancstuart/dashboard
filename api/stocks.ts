@@ -25,6 +25,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'ticker') {
     return handleTicker(res, apiKey);
   }
+  if (action === 'sparklines') {
+    return handleSparklines(req, res, apiKey);
+  }
   if (action === 'candle') {
     return handleCandle(req, res, apiKey);
   }
@@ -172,6 +175,45 @@ async function handleTicker(res: VercelResponse, apiKey: string) {
     return res
       .setHeader('Cache-Control', 'max-age=30')
       .json({ items, marketStatus });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleSparklines(req: VercelRequest, res: VercelResponse, apiKey: string) {
+  const symbolsParam = req.query.symbols as string | undefined;
+  if (!symbolsParam) {
+    return res.status(400).json({ error: 'Missing symbols parameter' });
+  }
+
+  const symbols = symbolsParam.split(',').filter(Boolean);
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - 86400; // 24 hours ago
+
+  try {
+    const results = await Promise.allSettled(
+      symbols.map(async (symbol) => {
+        const response = await fetch(
+          `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=60&from=${from}&to=${now}&token=${apiKey}`,
+        );
+        if (!response.ok) return { symbol, prices: [] };
+        const data = await response.json();
+        if (data.s === 'no_data' || !data.c) return { symbol, prices: [] };
+        return { symbol, prices: data.c as number[] };
+      }),
+    );
+
+    const sparklines: Record<string, number[]> = {};
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) {
+        sparklines[r.value.symbol] = r.value.prices;
+      }
+    }
+
+    return res
+      .setHeader('Cache-Control', 'max-age=300')
+      .json({ sparklines });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(502).json({ error: message });
