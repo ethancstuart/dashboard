@@ -10,12 +10,6 @@ const NAMES_KEY = 'dashview-stock-names';
 const MAX_WATCHLIST = 10;
 const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
 
-const INDEX_LABELS: Record<string, string> = {
-  SPY: 'S&P 500',
-  DIA: 'Dow Jones',
-  QQQ: 'Nasdaq',
-};
-
 const DEFAULT_NAMES: Record<string, string> = {
   AAPL: 'Apple Inc',
   MSFT: 'Microsoft Corp',
@@ -47,7 +41,6 @@ export class StocksPanel extends Panel {
     this.watchlist = storage.get<string[]>(WATCHLIST_KEY, DEFAULT_WATCHLIST);
     this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, DEFAULT_WATCHLIST));
     this.nameCache = { ...DEFAULT_NAMES, ...storage.get<Record<string, string>>(NAMES_KEY, {}) };
-    this.container.classList.add('panel-wide');
   }
 
   async fetchData(): Promise<void> {
@@ -61,27 +54,6 @@ export class StocksPanel extends Panel {
 
     this.contentEl.textContent = '';
 
-    const layout = createElement('div', { className: 'stocks-layout' });
-
-    // Left: indices
-    const indicesCol = createElement('div', { className: 'stocks-indices' });
-    const indicesHeader = createElement('div', {
-      className: 'stocks-section-header',
-      textContent: 'US Markets',
-    });
-    indicesCol.appendChild(indicesHeader);
-    for (const q of d.indices) {
-      indicesCol.appendChild(this.createIndexCard(q));
-    }
-    layout.appendChild(indicesCol);
-
-    // Vertical divider
-    const divider = createElement('div', { className: 'stocks-divider' });
-    layout.appendChild(divider);
-
-    // Right: watchlist
-    const watchCol = createElement('div', { className: 'stocks-watchlist' });
-
     const watchHeader = createElement('div', { className: 'stocks-watchlist-header' });
     const watchTitle = createElement('span', {
       className: 'stocks-section-header',
@@ -93,75 +65,23 @@ export class StocksPanel extends Panel {
     });
     watchHeader.appendChild(watchTitle);
     watchHeader.appendChild(watchContext);
-    watchCol.appendChild(watchHeader);
+    this.contentEl.appendChild(watchHeader);
 
     for (const q of d.watchlist) {
-      watchCol.appendChild(this.createWatchlistRow(q));
+      this.contentEl.appendChild(this.createWatchlistRow(q));
     }
-    watchCol.appendChild(this.createSearchRow());
+    this.contentEl.appendChild(this.createSearchRow());
 
-    // Timestamp
     const updated = createElement('div', {
       className: 'stocks-updated',
       textContent: `Updated ${this.formatTime(d.timestamp)}`,
     });
-    watchCol.appendChild(updated);
-
-    layout.appendChild(watchCol);
-
-    this.contentEl.appendChild(layout);
+    this.contentEl.appendChild(updated);
   }
 
   private formatTime(ts: number): string {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  }
-
-  private createIndexCard(q: StockQuote): HTMLElement {
-    const card = createElement('div', { className: 'stocks-index-card' });
-    const label = INDEX_LABELS[q.symbol] ?? q.symbol;
-
-    const nameEl = createElement('div', {
-      className: 'stocks-index-label',
-      textContent: label,
-    });
-
-    const priceRow = createElement('div', { className: 'stocks-index-price-row' });
-    const priceEl = createElement('span', {
-      className: 'stocks-index-price',
-      textContent: `$${q.price.toFixed(2)}`,
-    });
-    priceRow.appendChild(priceEl);
-
-    const changeClass = q.changePercent >= 0 ? 'stocks-positive' : 'stocks-negative';
-    const sign = q.changePercent >= 0 ? '+' : '';
-
-    const changeRow = createElement('div', { className: `stocks-index-change ${changeClass}` });
-    changeRow.textContent = `${sign}${q.change.toFixed(2)} (${sign}${q.changePercent.toFixed(2)}%)`;
-
-    // Daily range bar
-    const rangeContainer = createElement('div', { className: 'stocks-range' });
-    const rangeBar = createElement('div', { className: 'stocks-range-bar' });
-    const rangeFill = createElement('div', { className: `stocks-range-fill ${changeClass}` });
-
-    const range = q.high - q.low;
-    if (range > 0) {
-      const position = ((q.price - q.low) / range) * 100;
-      rangeFill.style.width = `${position}%`;
-    }
-
-    const rangeLabels = createElement('div', { className: 'stocks-range-labels' });
-    rangeLabels.innerHTML = `<span>L $${q.low.toFixed(2)}</span><span>H $${q.high.toFixed(2)}</span>`;
-
-    rangeBar.appendChild(rangeFill);
-    rangeContainer.appendChild(rangeBar);
-    rangeContainer.appendChild(rangeLabels);
-
-    card.appendChild(nameEl);
-    card.appendChild(priceRow);
-    card.appendChild(changeRow);
-    card.appendChild(rangeContainer);
-    return card;
   }
 
   private createWatchlistRow(q: StockQuote): HTMLElement {

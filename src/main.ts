@@ -1,6 +1,7 @@
 import { applyTheme } from './config/theme.ts';
 import { App } from './App.ts';
 import { createHeader } from './ui/header.ts';
+import { createTicker } from './ui/ticker.ts';
 import { createLayout } from './ui/layout.ts';
 import { qs } from './utils/dom.ts';
 import { WeatherPanel } from './panels/WeatherPanel.ts';
@@ -16,6 +17,7 @@ app.registerPanel(new StocksPanel());
 app.registerPanel(new SettingsPanel(app));
 
 document.body.appendChild(createHeader(app));
+document.body.appendChild(createTicker());
 
 const layout = createLayout();
 document.body.appendChild(layout);

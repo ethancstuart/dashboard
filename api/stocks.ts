@@ -22,6 +22,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'search') {
     return handleSearch(req, res, apiKey);
   }
+  if (action === 'ticker') {
+    return handleTicker(res, apiKey);
+  }
 
   const symbols = (req.query.symbols as string | undefined)?.split(',').filter(Boolean);
   if (!symbols || symbols.length === 0) {
@@ -62,6 +65,107 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res
       .setHeader('Cache-Control', 'max-age=60')
       .json({ quotes, timestamp: Date.now() });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleTicker(res: VercelResponse, apiKey: string) {
+  const TICKER_SYMBOLS = [
+    { symbol: 'SPY', label: 'S&P 500', type: 'index' as const },
+    { symbol: 'DIA', label: 'Dow Jones', type: 'index' as const },
+    { symbol: 'QQQ', label: 'Nasdaq', type: 'index' as const },
+    { symbol: 'VIXY', label: 'VIX', type: 'index' as const },
+    { symbol: 'BINANCE:BTCUSDT', label: 'BTC', type: 'crypto' as const },
+    { symbol: 'BINANCE:ETHUSDT', label: 'ETH', type: 'crypto' as const },
+  ];
+
+  const FOREX_PAIRS = ['EUR', 'GBP', 'JPY'];
+
+  try {
+    const [quoteResults, forexResult, statusResult] = await Promise.allSettled([
+      Promise.allSettled(
+        TICKER_SYMBOLS.map(async (s) => {
+          const response = await fetch(
+            `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(s.symbol)}&token=${apiKey}`,
+          );
+          if (!response.ok) return null;
+          const data: FinnhubQuote = await response.json();
+          if (data.c === 0 || data.d === null) return null;
+          return {
+            symbol: s.symbol,
+            label: s.label,
+            price: data.c,
+            change: data.d,
+            changePercent: data.dp,
+            type: s.type,
+          };
+        }),
+      ),
+      fetch(`https://finnhub.io/api/v1/forex/rates?base=USD&token=${apiKey}`).then(r => r.json()),
+      fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`).then(r => r.json()),
+    ]);
+
+    const items: Array<{ symbol: string; label: string; price: number; change: number; changePercent: number; type: string }> = [];
+
+    // Process quotes
+    if (quoteResults.status === 'fulfilled') {
+      for (const r of quoteResults.value) {
+        if (r.status === 'fulfilled' && r.value) {
+          items.push(r.value);
+        }
+      }
+    }
+
+    // Process forex
+    if (forexResult.status === 'fulfilled' && forexResult.value?.quote) {
+      const rates = forexResult.value.quote;
+      for (const pair of FOREX_PAIRS) {
+        const rate = rates[pair];
+        if (rate) {
+          // For EUR, GBP: show as EUR/USD = 1/rate (Finnhub gives USD-based rates)
+          // For JPY: show as USD/JPY = rate
+          if (pair === 'JPY') {
+            items.push({
+              symbol: 'USD/JPY',
+              label: 'USD/JPY',
+              price: Math.round(rate * 100) / 100,
+              change: 0,
+              changePercent: 0,
+              type: 'forex',
+            });
+          } else {
+            items.push({
+              symbol: `${pair}/USD`,
+              label: `${pair}/USD`,
+              price: Math.round((1 / rate) * 10000) / 10000,
+              change: 0,
+              changePercent: 0,
+              type: 'forex',
+            });
+          }
+        }
+      }
+    }
+
+    // Process market status
+    let marketStatus = { isOpen: false, session: 'closed' };
+    if (statusResult.status === 'fulfilled' && statusResult.value) {
+      const s = statusResult.value;
+      const isOpen = s.isOpen === true;
+      let session = 'closed';
+      if (s.session) {
+        session = s.session;
+      } else if (isOpen) {
+        session = 'regular';
+      }
+      marketStatus = { isOpen, session };
+    }
+
+    return res
+      .setHeader('Cache-Control', 'max-age=30')
+      .json({ items, marketStatus });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(502).json({ error: message });

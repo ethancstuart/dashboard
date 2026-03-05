@@ -1,36 +1,12 @@
 import { fetchWithRetry } from '../utils/fetch.ts';
 import type { StockQuote, StocksData, SymbolSearchResult } from '../types/index.ts';
 
-const INDEX_SYMBOLS = ['SPY', 'DIA', 'QQQ'];
-
 export async function fetchStocks(watchlist: string[]): Promise<StocksData> {
-  const all = [...INDEX_SYMBOLS, ...watchlist];
-  const res = await fetchWithRetry(`/api/stocks?symbols=${all.join(',')}`);
+  const res = await fetchWithRetry(`/api/stocks?symbols=${watchlist.join(',')}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
 
-  const quotes: StockQuote[] = data.quotes;
-  return splitResponse(quotes, watchlist, data.timestamp);
-}
-
-function splitResponse(
-  quotes: StockQuote[],
-  watchlistSymbols: string[],
-  timestamp: number,
-): StocksData {
-  const watchSet = new Set(watchlistSymbols.map((s) => s.toUpperCase()));
-  const indices: StockQuote[] = [];
-  const watchlist: StockQuote[] = [];
-
-  for (const q of quotes) {
-    if (watchSet.has(q.symbol.toUpperCase())) {
-      watchlist.push(q);
-    } else {
-      indices.push(q);
-    }
-  }
-
-  return { indices, watchlist, timestamp };
+  return { indices: [], watchlist: data.quotes as StockQuote[], timestamp: data.timestamp };
 }
 
 export async function searchSymbols(query: string): Promise<SymbolSearchResult[]> {

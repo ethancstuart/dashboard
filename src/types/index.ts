@@ -71,3 +71,23 @@ export interface SymbolSearchResult {
   description: string;
   type: string;
 }
+
+// Ticker
+export interface TickerItem {
+  symbol: string;
+  label: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  type: 'index' | 'forex' | 'crypto';
+}
+
+export interface MarketStatus {
+  isOpen: boolean;
+  session: string;
+}
+
+export interface TickerData {
+  items: TickerItem[];
+  marketStatus: MarketStatus;
+}
