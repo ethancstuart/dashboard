@@ -91,3 +91,23 @@ export interface TickerData {
   items: TickerItem[];
   marketStatus: MarketStatus;
 }
+
+// News
+export type NewsCategory = 'world' | 'tech' | 'business' | 'science' | 'entertainment';
+
+export interface NewsArticle {
+  title: string;
+  link: string;
+  pubDate: string;
+  source: string;
+  description: string;
+  sourceCountry: string;
+  lat: number;
+  lon: number;
+}
+
+export interface NewsData {
+  articles: NewsArticle[];
+  category: NewsCategory;
+  fetchedAt: number;
+}
