@@ -47,3 +47,21 @@ export interface GeocodingResult {
   lon: number;
   country: string;
 }
+
+// Stocks
+export interface StockQuote {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  high: number;
+  low: number;
+  open: number;
+  prevClose: number;
+}
+
+export interface StocksData {
+  indices: StockQuote[];
+  watchlist: StockQuote[];
+  timestamp: number;
+}

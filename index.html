@@ -353,6 +353,161 @@
         font-size: 12px;
         color: var(--color-text-muted);
       }
+
+      /* Wide panel (2-column span) */
+      .panel-wide {
+        grid-column: span 2;
+      }
+
+      @media (max-width: 768px) {
+        .panel-wide {
+          grid-column: span 1;
+        }
+      }
+
+      /* Stocks panel */
+      .stocks-layout {
+        display: flex;
+        gap: 20px;
+      }
+
+      @media (max-width: 520px) {
+        .stocks-layout {
+          flex-direction: column;
+        }
+      }
+
+      .stocks-indices {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 140px;
+      }
+
+      .stocks-index-card {
+        padding: 8px 0;
+      }
+
+      .stocks-index-label {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        margin-bottom: 2px;
+      }
+
+      .stocks-index-price {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--color-text);
+        line-height: 1.2;
+      }
+
+      .stocks-index-change {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .stocks-positive {
+        color: var(--color-positive);
+      }
+
+      .stocks-negative {
+        color: var(--color-negative);
+      }
+
+      .stocks-watchlist {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .stocks-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 4px;
+        border-radius: 6px;
+      }
+
+      .stocks-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .stocks-row-symbol {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text);
+        min-width: 56px;
+      }
+
+      .stocks-row-price {
+        font-size: 13px;
+        color: var(--color-text);
+        flex: 1;
+        text-align: right;
+      }
+
+      .stocks-row-change {
+        font-size: 13px;
+        font-weight: 500;
+        min-width: 64px;
+        text-align: right;
+      }
+
+      .stocks-row-remove {
+        background: none;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        font-size: 16px;
+        padding: 0 4px;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+
+      .stocks-row:hover .stocks-row-remove {
+        opacity: 1;
+      }
+
+      .stocks-row-remove:hover {
+        color: var(--color-negative);
+      }
+
+      .stocks-add-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .stocks-add-input {
+        width: 80px;
+        background: #1a1a1a;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        color: var(--color-text);
+        font-family: inherit;
+        font-size: 13px;
+        text-transform: uppercase;
+        outline: none;
+      }
+
+      .stocks-add-input::placeholder {
+        color: var(--color-text-muted);
+        opacity: 0.6;
+        text-transform: none;
+      }
+
+      .stocks-add-input:focus {
+        border-color: var(--color-accent);
+      }
+
+      .stocks-add-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
