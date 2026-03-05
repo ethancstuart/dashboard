@@ -73,18 +73,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }),
   );
 
-  const articles = results
-    .filter((r): r is PromiseFulfilledResult<ReturnType<typeof Array.prototype.map>> => r.status === 'fulfilled')
-    .flatMap((r) => r.value)
-    .sort((a: { pubDate: string }, b: { pubDate: string }) => {
-      const da = new Date(a.pubDate).getTime() || 0;
-      const db = new Date(b.pubDate).getTime() || 0;
-      return db - da;
-    });
+  interface Article {
+    title: string;
+    link: string;
+    pubDate: string;
+    source: string;
+    description: string;
+    sourceCountry: string;
+    lat: number;
+    lon: number;
+  }
+
+  const articles: Article[] = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
+      articles.push(...r.value);
+    }
+  }
+  articles.sort((a, b) => {
+    const da = new Date(a.pubDate).getTime() || 0;
+    const db = new Date(b.pubDate).getTime() || 0;
+    return db - da;
+  });
 
   // Deduplicate by link
   const seen = new Set<string>();
-  const unique = articles.filter((a: { link: string }) => {
+  const unique = articles.filter((a) => {
     if (!a.link || seen.has(a.link)) return false;
     seen.add(a.link);
     return true;
