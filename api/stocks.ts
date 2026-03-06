@@ -34,6 +34,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (action === 'news') {
     return handleCompanyNews(req, res, apiKey);
   }
+  if (action === 'profile') {
+    return handleProfile(req, res, apiKey);
+  }
+  if (action === 'metrics') {
+    return handleMetrics(req, res, apiKey);
+  }
 
   const symbols = (req.query.symbols as string | undefined)?.split(',').filter(Boolean);
   if (!symbols || symbols.length === 0) {
@@ -298,6 +304,69 @@ async function handleCompanyNews(req: VercelRequest, res: VercelResponse, apiKey
     return res
       .setHeader('Cache-Control', 'max-age=600')
       .json({ news });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleProfile(req: VercelRequest, res: VercelResponse, apiKey: string) {
+  const symbol = req.query.symbol as string | undefined;
+  if (!symbol) {
+    return res.status(400).json({ error: 'Missing symbol parameter' });
+  }
+  try {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/profile2?symbol=${encodeURIComponent(symbol)}&token=${apiKey}`,
+    );
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Profile request failed' });
+    }
+    const data = await response.json();
+    return res
+      .setHeader('Cache-Control', 'max-age=86400')
+      .json({
+        profile: {
+          name: data.name || '',
+          ticker: data.ticker || symbol,
+          logo: data.logo || '',
+          industry: data.finnhubIndustry || '',
+          marketCap: data.marketCapitalization || 0,
+          weburl: data.weburl || '',
+        },
+      });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return res.status(502).json({ error: message });
+  }
+}
+
+async function handleMetrics(req: VercelRequest, res: VercelResponse, apiKey: string) {
+  const symbol = req.query.symbol as string | undefined;
+  if (!symbol) {
+    return res.status(400).json({ error: 'Missing symbol parameter' });
+  }
+  try {
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${apiKey}`,
+    );
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Metrics request failed' });
+    }
+    const data = await response.json();
+    const m = data.metric || {};
+    return res
+      .setHeader('Cache-Control', 'max-age=3600')
+      .json({
+        metrics: {
+          marketCap: m.marketCapitalization || 0,
+          peRatio: m.peNormalizedAnnual || m.peBasicExclExtraTTM || 0,
+          eps: m.epsNormalizedAnnual || m.epsBasicExclExtraItemsTTM || 0,
+          high52w: m['52WeekHigh'] || 0,
+          low52w: m['52WeekLow'] || 0,
+          beta: m.beta || 0,
+        },
+      });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return res.status(502).json({ error: message });

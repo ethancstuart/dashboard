@@ -8,20 +8,16 @@ const REFRESH_INTERVAL = 60000;
 export function createTicker(): HTMLElement {
   const bar = createElement('div', { className: 'ticker-bar' });
 
-  const statusBadge = createElement('div', { className: 'ticker-status' });
   const cardsContainer = createElement('div', { className: 'ticker-cards' });
-  const delayNote = createElement('span', { className: 'ticker-delay' });
 
-  bar.appendChild(statusBadge);
   bar.appendChild(cardsContainer);
-  bar.appendChild(delayNote);
 
   let sparklineData: SparklineData = {};
 
   async function update() {
     try {
       const data = await fetchTickerData();
-      renderTicker(data, sparklineData, statusBadge, cardsContainer, delayNote);
+      renderTicker(data, sparklineData, cardsContainer);
 
       // Fetch sparklines for equity/ETF symbols (not crypto/forex which use different symbol formats)
       const sparklineSymbols = data.items
@@ -31,7 +27,7 @@ export function createTicker(): HTMLElement {
       if (sparklineSymbols.length > 0) {
         try {
           sparklineData = await fetchSparklines(sparklineSymbols);
-          renderTicker(data, sparklineData, statusBadge, cardsContainer, delayNote);
+          renderTicker(data, sparklineData, cardsContainer);
         } catch {
           // Sparklines are optional, keep showing without them
         }
@@ -50,39 +46,8 @@ export function createTicker(): HTMLElement {
 function renderTicker(
   data: TickerData,
   sparklines: SparklineData,
-  statusBadge: HTMLElement,
   cardsContainer: HTMLElement,
-  delayNote: HTMLElement,
 ) {
-  // Market status badge
-  const { isOpen, session } = data.marketStatus;
-  let statusText = 'CLOSED';
-  let dotClass = 'ticker-dot-closed';
-  if (session === 'pre-market' || session === 'pre') {
-    statusText = 'PRE-MKT';
-    dotClass = 'ticker-dot-pre';
-  } else if (session === 'post-market' || session === 'post') {
-    statusText = 'AFTER-HRS';
-    dotClass = 'ticker-dot-pre';
-  } else if (isOpen || session === 'regular') {
-    statusText = 'OPEN';
-    dotClass = 'ticker-dot-open';
-  }
-
-  statusBadge.textContent = '';
-  const dot = createElement('span', { className: `ticker-dot ${dotClass}` });
-  const label = createElement('span', { textContent: statusText });
-  statusBadge.appendChild(dot);
-  statusBadge.appendChild(label);
-
-  // Delay indicator
-  if (isOpen || session === 'regular') {
-    delayNote.textContent = 'Delayed 15min';
-    delayNote.style.display = '';
-  } else {
-    delayNote.style.display = 'none';
-  }
-
   // Build static market cards
   cardsContainer.textContent = '';
   for (const item of data.items) {

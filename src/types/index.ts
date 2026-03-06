@@ -129,8 +129,26 @@ export interface CompanyNews {
   image: string;
 }
 
+export interface CompanyProfile {
+  name: string;
+  ticker: string;
+  logo: string;
+  industry: string;
+  marketCap: number;
+  weburl: string;
+}
+
+export interface KeyMetrics {
+  marketCap: number;
+  peRatio: number;
+  eps: number;
+  high52w: number;
+  low52w: number;
+  beta: number;
+}
+
 // News
-export type NewsCategory = 'world' | 'tech' | 'business' | 'science' | 'entertainment';
+export type NewsCategory = 'world' | 'tech' | 'business' | 'science' | 'entertainment' | 'x';
 
 export interface NewsArticle {
   title: string;
@@ -147,4 +165,24 @@ export interface NewsData {
   articles: NewsArticle[];
   category: NewsCategory;
   fetchedAt: number;
+}
+
+// Prediction markets
+export interface PredictionMarket {
+  id: string;
+  question: string;
+  probability: number;
+  volume: number;
+  source: 'polymarket' | 'kalshi';
+  url: string;
+}
+
+// Social / X feed
+export interface SocialPost {
+  id: string;
+  author: string;
+  handle: string;
+  text: string;
+  timestamp: string;
+  link: string;
 }

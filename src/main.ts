@@ -3,10 +3,10 @@ import { App } from './App.ts';
 import { createHeader } from './ui/header.ts';
 import { createTicker } from './ui/ticker.ts';
 import { createLayout } from './ui/layout.ts';
+import { initPredictionBanner } from './ui/predictionBanner.ts';
 import { WeatherPanel } from './panels/WeatherPanel.ts';
 import { StocksPanel } from './panels/StocksPanel.ts';
 import { NewsPanel } from './panels/NewsPanel.ts';
-import { SettingsPanel } from './panels/SettingsPanel.ts';
 import { showWelcome } from './ui/welcome.ts';
 
 applyTheme();
@@ -18,7 +18,6 @@ const newsPanel = new NewsPanel();
 app.registerPanel(new WeatherPanel());
 app.registerPanel(new StocksPanel());
 app.registerPanel(newsPanel);
-app.registerPanel(new SettingsPanel(app));
 
 document.body.appendChild(createHeader(app));
 document.body.appendChild(createTicker());
@@ -30,9 +29,12 @@ document.body.appendChild(layout.root);
 newsPanel.setMapContainer(layout.mapHero);
 
 // Route panels to correct layout areas:
-// - Sidebar: weather, stocks, settings
+// - Sidebar: weather, stocks
 // - Content: news (article list)
 app.sidebarContainer = layout.sidebar;
 app.contentContainer = layout.content;
 
 app.init();
+
+// Init prediction banner
+initPredictionBanner(layout.predictionBanner);

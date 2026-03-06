@@ -5,10 +5,15 @@ export interface LayoutContainers {
   mapHero: HTMLElement;
   sidebar: HTMLElement;
   content: HTMLElement;
+  predictionBanner: HTMLElement;
 }
 
 export function createLayout(): LayoutContainers {
   const root = createElement('div', { className: 'layout' });
+
+  const predictionBanner = createElement('div', { className: 'prediction-banner' });
+  root.appendChild(predictionBanner);
+
   const grid = createElement('div', { className: 'panel-grid' });
 
   const mapHero = createElement('div', { className: 'map-hero' });
@@ -21,5 +26,5 @@ export function createLayout(): LayoutContainers {
 
   root.appendChild(grid);
 
-  return { root, mapHero, sidebar, content };
+  return { root, mapHero, sidebar, content, predictionBanner };
 }

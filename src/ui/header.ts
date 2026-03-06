@@ -1,5 +1,16 @@
 import { createElement } from '../utils/dom.ts';
+import { WeatherPanel } from '../panels/WeatherPanel.ts';
+import { geocodeCity } from '../services/weather.ts';
+import * as storage from '../services/storage.ts';
 import type { App } from '../App.ts';
+
+const LOCATION_KEY = 'dashview-location';
+
+interface SavedLocation {
+  lat: number;
+  lon: number;
+  name?: string;
+}
 
 const GEAR_SVG = `<svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>`;
 
@@ -20,17 +31,15 @@ function formatClock(now: Date): string {
 
 function buildDropdown(dropdown: HTMLElement, app: App): void {
   dropdown.textContent = '';
+
+  // --- Panel toggles section ---
+  const panelTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Panels',
+  });
+  dropdown.appendChild(panelTitle);
+
   const panels = app.getPanels();
-
-  if (panels.length === 0) {
-    const msg = createElement('div', {
-      className: 'settings-empty',
-      textContent: 'No panels registered',
-    });
-    dropdown.appendChild(msg);
-    return;
-  }
-
   for (const panel of panels) {
     const label = createElement('label', { className: 'settings-item' });
     const checkbox = document.createElement('input');
@@ -43,6 +52,118 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
     label.appendChild(checkbox);
     label.appendChild(text);
     dropdown.appendChild(label);
+  }
+
+  // --- Divider ---
+  const divider = createElement('div', { className: 'settings-dropdown-divider' });
+  dropdown.appendChild(divider);
+
+  // --- Location section ---
+  const locTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Location',
+  });
+  dropdown.appendChild(locTitle);
+
+  const inputRow = createElement('div', { className: 'settings-input-row' });
+  inputRow.style.padding = '0 8px';
+
+  const input = createElement('input', {}) as HTMLInputElement;
+  input.type = 'text';
+  input.placeholder = 'Enter city name\u2026';
+  input.className = 'settings-text-input';
+
+  const searchBtn = createElement('button', {
+    className: 'settings-btn settings-btn-primary',
+    textContent: 'Go',
+  });
+
+  inputRow.appendChild(input);
+  inputRow.appendChild(searchBtn);
+  dropdown.appendChild(inputRow);
+
+  const locationDisplay = createElement('div', {
+    className: 'settings-location-display',
+  });
+  locationDisplay.style.padding = '4px 8px';
+  const saved = storage.get<SavedLocation | null>(LOCATION_KEY, null);
+  if (saved?.name) {
+    locationDisplay.textContent = saved.name;
+  } else if (saved) {
+    locationDisplay.textContent = `${saved.lat}, ${saved.lon}`;
+  } else {
+    locationDisplay.textContent = 'Auto-detected';
+  }
+  dropdown.appendChild(locationDisplay);
+
+  const detectBtn = createElement('button', {
+    className: 'settings-item',
+    textContent: '\uD83D\uDCCD Detect my location',
+  });
+  dropdown.appendChild(detectBtn);
+
+  // Search handler
+  const handleSearch = async () => {
+    const query = input.value.trim();
+    if (!query) return;
+    searchBtn.textContent = '\u2026';
+    searchBtn.setAttribute('disabled', '');
+    try {
+      const result = await geocodeCity(query);
+      const loc: SavedLocation = {
+        lat: result.lat,
+        lon: result.lon,
+        name: `${result.name}, ${result.country}`,
+      };
+      storage.set(LOCATION_KEY, loc);
+      input.value = '';
+      locationDisplay.textContent = loc.name!;
+      refreshWeather(app, loc.lat, loc.lon);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Geocoding failed';
+      locationDisplay.textContent = msg;
+      locationDisplay.style.color = 'var(--color-negative)';
+      setTimeout(() => {
+        locationDisplay.style.color = '';
+      }, 3000);
+    } finally {
+      searchBtn.textContent = 'Go';
+      searchBtn.removeAttribute('disabled');
+    }
+  };
+
+  searchBtn.addEventListener('click', () => void handleSearch());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') void handleSearch();
+  });
+  // Stop click from closing dropdown
+  input.addEventListener('click', (e) => e.stopPropagation());
+
+  detectBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!navigator.geolocation) return;
+    detectBtn.textContent = 'Detecting\u2026';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Math.round(pos.coords.latitude * 100) / 100;
+        const lon = Math.round(pos.coords.longitude * 100) / 100;
+        const loc: SavedLocation = { lat, lon };
+        storage.set(LOCATION_KEY, loc);
+        locationDisplay.textContent = `${lat}, ${lon}`;
+        refreshWeather(app, lat, lon);
+        detectBtn.textContent = '\uD83D\uDCCD Detect my location';
+      },
+      () => {
+        detectBtn.textContent = '\uD83D\uDCCD Detect my location';
+      },
+    );
+  });
+}
+
+function refreshWeather(app: App, lat: number, lon: number): void {
+  const weather = app.getPanel('weather');
+  if (weather instanceof WeatherPanel) {
+    weather.updateLocation(lat, lon);
   }
 }
 

@@ -1,9 +1,9 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { fetchStocks, searchSymbols, fetchCandles, fetchCompanyNews } from '../services/stocks.ts';
+import { fetchStocks, searchSymbols, fetchCandles, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
 import { renderChart } from '../ui/chart.ts';
 import * as storage from '../services/storage.ts';
-import type { StocksData, StockQuote, SymbolSearchResult, CandleData, CompanyNews } from '../types/index.ts';
+import type { StocksData, StockQuote, SymbolSearchResult, CandleData, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
 
 const WATCHLIST_KEY = 'dashview-watchlist';
 const FAVORITES_KEY = 'dashview-favorites';
@@ -24,6 +24,9 @@ const DEFAULT_NAMES: Record<string, string> = {
   V: 'Visa Inc',
 };
 
+const CHEVRON_DOWN = '\u25BE';
+const CHEVRON_UP = '\u25B4';
+
 export class StocksPanel extends Panel {
   private watchlist: string[];
   private favorites: Set<string>;
@@ -38,6 +41,8 @@ export class StocksPanel extends Panel {
   private detailCandles: CandleData | null = null;
   private detailNews: CompanyNews[] | null = null;
   private detailLoading: boolean = false;
+  private detailProfile: CompanyProfile | null = null;
+  private detailMetrics: KeyMetrics | null = null;
 
   constructor() {
     super({
@@ -105,24 +110,27 @@ export class StocksPanel extends Panel {
 
     // Click to toggle detail view
     row.addEventListener('click', (e) => {
-      // Don't toggle if clicking buttons or grip
       const target = e.target as HTMLElement;
       if (target.closest('.stocks-row-remove') || target.closest('.stocks-row-star') || target.closest('.stocks-row-grip')) return;
       if (this.selectedSymbol === q.symbol) {
         this.selectedSymbol = null;
         this.detailCandles = null;
         this.detailNews = null;
+        this.detailProfile = null;
+        this.detailMetrics = null;
       } else {
         this.selectedSymbol = q.symbol;
         this.selectedPeriod = '1M';
         this.detailCandles = null;
         this.detailNews = null;
+        this.detailProfile = null;
+        this.detailMetrics = null;
         void this.loadDetailData(q.symbol, '1M');
       }
       if (this.data) this.render(this.data);
     });
 
-    // Grip handle — drag initiator
+    // Grip handle
     const grip = createElement('span', {
       className: 'stocks-row-grip',
       textContent: '\u2630',
@@ -210,6 +218,12 @@ export class StocksPanel extends Panel {
     changeCol.appendChild(changePct);
     changeCol.appendChild(changeDollar);
 
+    // Chevron indicator
+    const chevron = createElement('span', {
+      className: 'stocks-row-chevron',
+      textContent: isSelected ? CHEVRON_UP : CHEVRON_DOWN,
+    });
+
     const removeBtn = createElement('button', {
       className: 'stocks-row-remove',
       textContent: '\u00d7',
@@ -223,6 +237,7 @@ export class StocksPanel extends Panel {
     row.appendChild(identCol);
     row.appendChild(priceEl);
     row.appendChild(changeCol);
+    row.appendChild(chevron);
     row.appendChild(removeBtn);
     return row;
   }
@@ -415,14 +430,17 @@ export class StocksPanel extends Panel {
     const fromDate = new Date(from * 1000).toISOString().split('T')[0];
 
     try {
-      const [candles, news] = await Promise.all([
+      const [candles, news, profile, metrics] = await Promise.all([
         fetchCandles(symbol, resolution, from, to),
         fetchCompanyNews(symbol, fromDate, toDate),
+        fetchProfile(symbol).catch(() => null),
+        fetchMetrics(symbol).catch(() => null),
       ]);
-      // Only update if still selected
       if (this.selectedSymbol === symbol) {
         this.detailCandles = candles;
         this.detailNews = news;
+        this.detailProfile = profile;
+        this.detailMetrics = metrics;
         this.detailLoading = false;
         if (this.data) this.render(this.data);
       }
@@ -436,8 +454,37 @@ export class StocksPanel extends Panel {
     }
   }
 
+  private formatMarketCap(cap: number): string {
+    if (cap >= 1000) return `$${(cap / 1000).toFixed(1)}T`;
+    if (cap >= 1) return `$${cap.toFixed(1)}B`;
+    return `$${(cap * 1000).toFixed(0)}M`;
+  }
+
   private createDetailPanel(symbol: string): HTMLElement {
-    const detail = createElement('div', { className: 'stocks-detail' });
+    const detail = createElement('div', { className: 'stocks-detail stocks-detail-slide' });
+
+    // Metrics grid (above chart)
+    if (this.detailMetrics && !this.detailLoading) {
+      const grid = createElement('div', { className: 'stocks-metrics-grid' });
+      const m = this.detailMetrics;
+      const items: [string, string][] = [
+        ['Mkt Cap', m.marketCap ? this.formatMarketCap(m.marketCap) : '--'],
+        ['P/E', m.peRatio ? m.peRatio.toFixed(1) : '--'],
+        ['EPS', m.eps ? `$${m.eps.toFixed(2)}` : '--'],
+        ['52W H', m.high52w ? `$${m.high52w.toFixed(2)}` : '--'],
+        ['52W L', m.low52w ? `$${m.low52w.toFixed(2)}` : '--'],
+        ['Beta', m.beta ? m.beta.toFixed(2) : '--'],
+      ];
+      for (const [label, value] of items) {
+        const cell = createElement('div', { className: 'stocks-metric-cell' });
+        const lbl = createElement('span', { className: 'stocks-metric-label', textContent: label });
+        const val = createElement('span', { className: 'stocks-metric-value', textContent: value });
+        cell.appendChild(lbl);
+        cell.appendChild(val);
+        grid.appendChild(cell);
+      }
+      detail.appendChild(grid);
+    }
 
     // Period buttons
     const periods = createElement('div', { className: 'stocks-detail-periods' });
@@ -501,7 +548,7 @@ export class StocksPanel extends Panel {
 
         const meta = createElement('div', { className: 'stocks-detail-meta' });
         const timeAgo = this.relativeTime(article.datetime);
-        meta.textContent = `${article.source}${timeAgo ? ' · ' + timeAgo : ''}`;
+        meta.textContent = `${article.source}${timeAgo ? ' \u00b7 ' + timeAgo : ''}`;
         row.appendChild(meta);
 
         newsList.appendChild(row);

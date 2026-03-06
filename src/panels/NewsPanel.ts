@@ -1,8 +1,9 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchNews } from '../services/news.ts';
+import { fetchSocialFeed } from '../services/social.ts';
 import * as storage from '../services/storage.ts';
-import type { NewsCategory, NewsData, NewsArticle } from '../types/index.ts';
+import type { NewsCategory, NewsData, NewsArticle, SocialPost } from '../types/index.ts';
 
 const CATEGORY_KEY = 'dashview-news-category';
 const CATEGORIES: { id: NewsCategory; label: string }[] = [
@@ -11,15 +12,18 @@ const CATEGORIES: { id: NewsCategory; label: string }[] = [
   { id: 'business', label: 'Biz' },
   { id: 'science', label: 'Sci' },
   { id: 'entertainment', label: 'Ent' },
+  { id: 'x', label: 'X' },
 ];
 
 export class NewsPanel extends Panel {
   private category: NewsCategory;
   private data: NewsData | null = null;
+  private socialPosts: SocialPost[] = [];
   private map: L.Map | null = null;
   private terminator: L.Polygon | null = null;
   private terminatorInterval: ReturnType<typeof setInterval> | null = null;
   private mapContainer: HTMLElement | null = null;
+  private mapboxToken: string | null = null;
 
   constructor() {
     super({
@@ -29,22 +33,38 @@ export class NewsPanel extends Panel {
       refreshInterval: 600000,
     });
     this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'world');
+    void this.loadMapboxToken();
   }
 
-  /** Call this before init to attach the map to the hero container */
   setMapContainer(el: HTMLElement): void {
     this.mapContainer = el;
   }
 
+  private async loadMapboxToken(): Promise<void> {
+    try {
+      const res = await fetch('/api/mapbox');
+      const data = await res.json();
+      if (data.token) this.mapboxToken = data.token;
+    } catch {
+      // Fall back to CartoDB tiles
+    }
+  }
+
   async fetchData(): Promise<void> {
+    if (this.category === 'x') {
+      try {
+        this.socialPosts = await fetchSocialFeed();
+      } catch {
+        this.socialPosts = [];
+      }
+      this.render(null);
+      return;
+    }
     this.data = await fetchNews(this.category);
     this.render(this.data);
   }
 
   render(data: unknown): void {
-    const d = data as NewsData;
-    if (!d) return;
-
     // Clean up previous map and terminator interval
     if (this.terminatorInterval) {
       clearInterval(this.terminatorInterval);
@@ -75,6 +95,16 @@ export class NewsPanel extends Panel {
     }
     this.contentEl.appendChild(tabs);
 
+    // X tab: render social posts
+    if (this.category === 'x') {
+      this.renderSocialFeed();
+      this.initHeroMap([]);
+      return;
+    }
+
+    const d = data as NewsData;
+    if (!d) return;
+
     if (d.articles.length === 0) {
       const empty = createElement('div', { className: 'news-empty', textContent: 'No articles available' });
       this.contentEl.appendChild(empty);
@@ -82,7 +112,7 @@ export class NewsPanel extends Panel {
       return;
     }
 
-    // Article list (inside the panel card in content row)
+    // Article list
     const list = createElement('div', { className: 'news-list news-panel-articles' });
     for (const article of d.articles) {
       list.appendChild(this.createArticleRow(article));
@@ -93,11 +123,68 @@ export class NewsPanel extends Panel {
     this.initHeroMap(d.articles);
   }
 
+  private renderSocialFeed(): void {
+    if (this.socialPosts.length === 0) {
+      const empty = createElement('div', { className: 'news-empty', textContent: 'No posts available' });
+      this.contentEl.appendChild(empty);
+      return;
+    }
+
+    const list = createElement('div', { className: 'news-list news-panel-articles' });
+    for (const post of this.socialPosts) {
+      list.appendChild(this.createSocialCard(post));
+    }
+    this.contentEl.appendChild(list);
+  }
+
+  private createSocialCard(post: SocialPost): HTMLElement {
+    const card = createElement('div', { className: 'social-post' });
+
+    const header = createElement('div', { className: 'social-post-header' });
+    const author = createElement('span', {
+      className: 'social-post-author',
+      textContent: post.author,
+    });
+    const handle = createElement('span', {
+      className: 'social-post-handle',
+      textContent: post.handle,
+    });
+    header.appendChild(author);
+    header.appendChild(handle);
+
+    if (post.timestamp) {
+      const time = this.relativeTime(post.timestamp);
+      if (time) {
+        const timeEl = createElement('span', {
+          className: 'social-post-time',
+          textContent: ` \u00b7 ${time}`,
+        });
+        header.appendChild(timeEl);
+      }
+    }
+
+    const text = createElement('div', {
+      className: 'social-post-text',
+      textContent: post.text,
+    });
+
+    const link = document.createElement('a');
+    link.href = post.link;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.className = 'social-post-link';
+    link.textContent = 'View on X';
+
+    card.appendChild(header);
+    card.appendChild(text);
+    card.appendChild(link);
+    return card;
+  }
+
   private initHeroMap(articles: NewsArticle[]): void {
     const container = this.mapContainer;
     if (!container || typeof L === 'undefined') return;
 
-    // Clear previous map content
     container.textContent = '';
 
     const mapWrap = createElement('div', { className: 'news-map-wrap' });
@@ -118,17 +205,30 @@ export class NewsPanel extends Panel {
       zoomControl: false,
       attributionControl: false,
       minZoom: 1,
-      maxZoom: 6,
+      maxZoom: 14,
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
     L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(this.map);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(this.map);
+    // Use Mapbox dark tiles if token available, else fall back to CartoDB
+    if (this.mapboxToken) {
+      L.tileLayer(
+        `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${this.mapboxToken}`,
+        {
+          attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+          tileSize: 512,
+          zoomOffset: -1,
+          maxZoom: 19,
+        },
+      ).addTo(this.map);
+    } else {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(this.map);
+    }
 
     // Group articles by location
     const groups = new Map<string, NewsArticle[]>();
@@ -142,18 +242,29 @@ export class NewsPanel extends Panel {
       }
     }
 
+    // Use marker clustering if available, otherwise standard markers
+    const markerTarget: L.Map | L.LayerGroup = this.tryCreateClusterGroup() || this.map;
+
     for (const [, group] of groups) {
       const { lat, lon } = group[0];
       const count = group.length;
 
       const icon = L.divIcon({
         className: '',
-        html: `<div class="news-marker">${count}</div>`,
+        html: `<div class="news-marker news-marker-pulse">${count}</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
 
-      const marker = L.marker([lat, lon], { icon }).addTo(this.map);
+      const marker = L.marker([lat, lon], { icon }).addTo(markerTarget);
+
+      // Hover tooltip
+      const tooltipText = group[0].source + (count > 1 ? ` +${count - 1}` : '');
+      marker.bindTooltip(tooltipText, {
+        className: 'news-tooltip',
+        direction: 'top',
+        offset: [0, -12],
+      });
 
       const popupLines = group.slice(0, 3).map(
         (a) => `<a href="${this.escapeHtml(a.link)}" target="_blank" rel="noopener">${this.escapeHtml(a.title)}</a>`
@@ -163,9 +274,22 @@ export class NewsPanel extends Panel {
       marker.bindPopup(popupHtml, { maxWidth: 250 });
     }
 
-    // Add day/night terminator
+    if (markerTarget !== this.map) {
+      (markerTarget as L.LayerGroup).addTo(this.map);
+    }
+
+    // Day/night terminator
     this.updateTerminator();
     this.terminatorInterval = setInterval(() => this.updateTerminator(), 60000);
+  }
+
+  private tryCreateClusterGroup(): L.LayerGroup | null {
+    // Check if Leaflet.markercluster is loaded
+    const MC = (L as unknown as Record<string, unknown>).markerClusterGroup;
+    if (typeof MC === 'function') {
+      return (MC as () => L.LayerGroup)();
+    }
+    return null;
   }
 
   private buildTerminatorCoords(): L.LatLngExpression[] {
@@ -174,17 +298,14 @@ export class NewsPanel extends Panel {
     const diff = now.getTime() - start.getTime();
     const dayOfYear = Math.floor(diff / 86400000);
 
-    // Solar declination (approximate)
     const declination = -23.44 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10));
     const decRad = declination * Math.PI / 180;
 
-    // Hour angle: how far the sun is from local noon
     const hours = now.getUTCHours() + now.getUTCMinutes() / 60;
-    const sunLon = (12 - hours) * 15; // degrees longitude where sun is overhead
+    const sunLon = (12 - hours) * 15;
 
     const points: L.LatLngExpression[] = [];
 
-    // Trace the terminator line
     for (let lon = -180; lon <= 180; lon += 1) {
       const lonRad = (lon - sunLon) * Math.PI / 180;
       const lat = Math.atan(-Math.cos(lonRad) / Math.tan(decRad)) * 180 / Math.PI;

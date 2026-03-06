@@ -1,5 +1,5 @@
 import { fetchWithRetry } from '../utils/fetch.ts';
-import type { StockQuote, StocksData, SymbolSearchResult, CandleData, CompanyNews } from '../types/index.ts';
+import type { StockQuote, StocksData, SymbolSearchResult, CandleData, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
 
 export async function fetchStocks(watchlist: string[]): Promise<StocksData> {
   const res = await fetchWithRetry(`/api/stocks?symbols=${watchlist.join(',')}`);
@@ -41,4 +41,22 @@ export async function fetchCompanyNews(
   const data = await res.json();
   if (data.error) throw new Error(data.error);
   return data.news as CompanyNews[];
+}
+
+export async function fetchProfile(symbol: string): Promise<CompanyProfile> {
+  const res = await fetchWithRetry(
+    `/api/stocks?action=profile&symbol=${encodeURIComponent(symbol)}`,
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.profile as CompanyProfile;
+}
+
+export async function fetchMetrics(symbol: string): Promise<KeyMetrics> {
+  const res = await fetchWithRetry(
+    `/api/stocks?action=metrics&symbol=${encodeURIComponent(symbol)}`,
+  );
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.metrics as KeyMetrics;
 }

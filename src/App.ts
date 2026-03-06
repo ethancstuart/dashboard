@@ -5,7 +5,7 @@ import * as storage from './services/storage.ts';
 const STORAGE_KEY = 'dashview:panels';
 
 // Panels that go in the right sidebar
-const SIDEBAR_PANELS = new Set(['weather', 'stocks', 'settings']);
+const SIDEBAR_PANELS = new Set(['weather', 'stocks']);
 
 export class App {
   private panels = new Map<string, Panel>();
