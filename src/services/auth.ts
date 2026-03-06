@@ -10,15 +10,13 @@ export async function checkSession(): Promise<User | null> {
   try {
     const res = await fetch('/api/auth/session');
     const data = await res.json();
-    console.log('[auth] session response:', JSON.stringify(data));
     cachedUser = data.user || null;
     if (cachedUser) {
       localStorage.setItem('dashview-user', JSON.stringify(cachedUser));
     } else {
       localStorage.removeItem('dashview-user');
     }
-  } catch (err) {
-    console.error('[auth] checkSession failed:', err);
+  } catch {
     cachedUser = null;
   }
   // Fallback to localStorage if API returned null
@@ -30,7 +28,6 @@ export async function checkSession(): Promise<User | null> {
   }
   checked = true;
   for (const cb of listeners) cb(cachedUser);
-  console.log('[auth] resolved user:', cachedUser?.name ?? 'null');
   return cachedUser;
 }
 
