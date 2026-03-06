@@ -36,12 +36,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const contentType = tileRes.headers.get('content-type') || 'application/octet-stream';
-    const buffer = Buffer.from(await tileRes.arrayBuffer());
+    const arrayBuf = await tileRes.arrayBuffer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const buf = (globalThis as any).Buffer.from(arrayBuf);
 
     return res
       .setHeader('Content-Type', contentType)
       .setHeader('Cache-Control', 'public, max-age=86400')
-      .send(buffer);
+      .send(buf);
   } catch {
     return res.status(502).end();
   }
