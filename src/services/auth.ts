@@ -11,6 +11,11 @@ export async function checkSession(): Promise<User | null> {
     const res = await fetch('/api/auth/session');
     const data = await res.json();
     cachedUser = data.user || null;
+    if (cachedUser) {
+      localStorage.setItem('dashview-user', JSON.stringify(cachedUser));
+    } else {
+      localStorage.removeItem('dashview-user');
+    }
   } catch {
     cachedUser = null;
   }
@@ -20,7 +25,12 @@ export async function checkSession(): Promise<User | null> {
 }
 
 export function getUser(): User | null {
-  return cachedUser;
+  if (cachedUser) return cachedUser;
+  try {
+    const stored = localStorage.getItem('dashview-user');
+    if (stored) return JSON.parse(stored) as User;
+  } catch { /* ignore */ }
+  return null;
 }
 
 export function isChecked(): boolean {
