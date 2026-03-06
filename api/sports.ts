@@ -70,8 +70,6 @@ function transformScoreboard(league: string, data: { events?: ESPNEvent[] }) {
     const comp = event.competitions[0];
     const home = comp.competitors.find((c) => c.homeAway === 'home')!;
     const away = comp.competitors.find((c) => c.homeAway === 'away')!;
-    const broadcasts = comp.broadcasts?.flatMap((b) => b.names) || [];
-
     return {
       id: event.id,
       league,
@@ -94,7 +92,6 @@ function transformScoreboard(league: string, data: { events?: ESPNEvent[] }) {
         score: away.score ? parseInt(away.score, 10) : null,
         record: away.records?.[0]?.summary,
       },
-      broadcast: undefined,
       venue: comp.venue?.fullName,
     };
   });
