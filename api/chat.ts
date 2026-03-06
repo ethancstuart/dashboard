@@ -132,7 +132,7 @@ export default async function handler(req: Request) {
     });
 
     if (!anthropicRes.ok) {
-      const err = await anthropicRes.text();
+      await anthropicRes.text();
       return new Response(JSON.stringify({ error: `Anthropic API error: ${anthropicRes.status}` }), {
         status: anthropicRes.status,
         headers: { 'Content-Type': 'application/json' },
