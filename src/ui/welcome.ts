@@ -5,15 +5,16 @@ const LAST_VISIT_KEY = 'dashview-last-visit';
 function getFirstName(): string {
   const user = getUser();
   if (user?.name) return user.name.split(' ')[0];
-  return 'Sir';
+  return '';
 }
 
 function getGreeting(): string {
   const hour = new Date().getHours();
   const name = getFirstName();
-  if (hour < 12) return `Good Morning, ${name}`;
-  if (hour < 17) return `Good Afternoon, ${name}`;
-  return `Good Evening, ${name}`;
+  const suffix = name ? `, ${name}` : '';
+  if (hour < 12) return `Good Morning${suffix}`;
+  if (hour < 17) return `Good Afternoon${suffix}`;
+  return `Good Evening${suffix}`;
 }
 
 function getSubtitle(): string {
