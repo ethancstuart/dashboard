@@ -36,7 +36,6 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
 
   app.sidebarContainer = layout.sidebar;
   app.contentContainer = layout.content;
-  app.sportsContainer = layout.sportsRow;
 
   app.init();
   initPredictionBanner(layout.predictionBanner);

@@ -5,7 +5,6 @@ export interface LayoutContainers {
   mapHero: HTMLElement;
   sidebar: HTMLElement;
   content: HTMLElement;
-  sportsRow: HTMLElement;
   predictionBanner: HTMLElement;
 }
 
@@ -19,15 +18,13 @@ export function createLayout(): LayoutContainers {
 
   const mapHero = createElement('div', { className: 'map-hero' });
   const sidebar = createElement('div', { className: 'sidebar-stack' });
-  const sportsRow = createElement('div', { className: 'sports-row' });
   const content = createElement('div', { className: 'content-row' });
 
   grid.appendChild(mapHero);
   grid.appendChild(sidebar);
-  grid.appendChild(sportsRow);
   grid.appendChild(content);
 
   root.appendChild(grid);
 
-  return { root, mapHero, sidebar, content, sportsRow, predictionBanner };
+  return { root, mapHero, sidebar, content, predictionBanner };
 }

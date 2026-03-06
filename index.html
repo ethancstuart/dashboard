@@ -140,10 +140,9 @@
       .panel-grid {
         display: grid;
         grid-template-columns: 3fr 1fr;
-        grid-template-rows: auto auto 1fr;
+        grid-template-rows: auto 1fr;
         grid-template-areas:
           "map      sidebar"
-          "sports   sidebar"
           "content  sidebar";
         gap: 16px;
         padding: 16px;
@@ -192,17 +191,12 @@
         overflow: hidden;
       }
 
-      .sports-row {
-        grid-area: sports;
-      }
-
       @media (max-width: 1200px) {
         .panel-grid {
           grid-template-columns: 1fr 1fr;
-          grid-template-rows: auto auto auto auto;
+          grid-template-rows: auto auto auto;
           grid-template-areas:
             "map      map"
-            "sports   sports"
             "content  content"
             "sidebar  sidebar";
         }
@@ -225,7 +219,6 @@
           grid-template-columns: 1fr;
           grid-template-areas:
             "map"
-            "sports"
             "content"
             "sidebar";
         }
