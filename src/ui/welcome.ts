@@ -1,16 +1,8 @@
-import { getUser } from '../services/auth.ts';
-
 const LAST_VISIT_KEY = 'dashview-last-visit';
 
-function getFirstName(): string {
-  const user = getUser();
-  if (user?.name) return user.name.split(' ')[0];
-  return '';
-}
-
-function getGreeting(): string {
+function getGreeting(userName?: string): string {
   const hour = new Date().getHours();
-  const name = getFirstName();
+  const name = userName?.split(' ')[0] || '';
   const suffix = name ? `, ${name}` : '';
   if (hour < 12) return `Good Morning${suffix}`;
   if (hour < 17) return `Good Afternoon${suffix}`;
@@ -23,9 +15,9 @@ function getSubtitle(): string {
   return lastVisit ? 'Welcome Back' : 'Welcome';
 }
 
-export function showWelcome(): Promise<void> {
+export function showWelcome(userName?: string): Promise<void> {
   return new Promise((resolve) => {
-    const greeting = getGreeting();
+    const greeting = getGreeting(userName);
     const subtitle = getSubtitle();
 
     const overlay = document.createElement('div');
