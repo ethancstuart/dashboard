@@ -1303,56 +1303,64 @@
 
       /* Prediction banner — scrolling card strip */
       .prediction-banner {
-        background: linear-gradient(90deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05));
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.04), rgba(139, 92, 246, 0.04));
         border-bottom: 1px solid var(--color-border);
         overflow: hidden;
-        height: 44px;
+        height: 80px;
         position: relative;
       }
 
       .prediction-track {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 14px;
         height: 100%;
         width: max-content;
         will-change: transform;
-        padding: 0 10px;
+        padding: 0 14px;
       }
 
       .prediction-card {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 5px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 16px;
         background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 10px;
         cursor: pointer;
         white-space: nowrap;
         flex-shrink: 0;
+        min-width: 200px;
+        max-width: 320px;
         transition: background 0.15s, border-color 0.15s;
       }
 
       .prediction-card:hover {
         background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.14);
       }
 
       .prediction-card-question {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--color-text);
         font-weight: 500;
-        max-width: 220px;
+        line-height: 1.3;
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
+      .prediction-card-bottom {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .prediction-card-prob {
-        font-size: 13px;
+        font-size: 16px;
         font-weight: 700;
-        padding: 1px 6px;
-        border-radius: 4px;
+        padding: 1px 8px;
+        border-radius: 5px;
         flex-shrink: 0;
       }
 
@@ -1372,18 +1380,18 @@
       }
 
       .prediction-card-source {
-        font-size: 9px;
+        font-size: 10px;
         color: var(--color-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.04em;
-        opacity: 0.6;
+        opacity: 0.5;
         flex-shrink: 0;
       }
 
       @media (max-width: 768px) {
-        .prediction-banner { height: 38px; }
-        .prediction-card { padding: 4px 8px; }
-        .prediction-card-question { max-width: 160px; font-size: 11px; }
+        .prediction-banner { height: 68px; }
+        .prediction-card { padding: 8px 12px; min-width: 170px; }
+        .prediction-card-question { font-size: 12px; }
       }
 
       /* Social posts (X tab) */

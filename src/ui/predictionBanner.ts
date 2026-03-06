@@ -3,7 +3,7 @@ import { fetchPredictions } from '../services/prediction.ts';
 import type { PredictionMarket } from '../types/index.ts';
 
 const REFRESH_INTERVAL = 300000;
-const SCROLL_SPEED = 0.5; // pixels per frame
+const SCROLL_SPEED = 0.25; // pixels per frame
 
 export function initPredictionBanner(container: HTMLElement): void {
   const track = createElement('div', { className: 'prediction-track' });
@@ -86,9 +86,10 @@ function createCard(m: PredictionMarket): HTMLElement {
   const question = createElement('span', {
     className: 'prediction-card-question',
   });
-  // Truncate long questions
-  const text = m.question.length > 60 ? m.question.slice(0, 57) + '\u2026' : m.question;
+  const text = m.question.length > 50 ? m.question.slice(0, 47) + '\u2026' : m.question;
   question.textContent = text;
+
+  const bottom = createElement('div', { className: 'prediction-card-bottom' });
 
   const prob = createElement('span', {
     className: `prediction-card-prob ${getProbClass(m.probability)}`,
@@ -97,12 +98,14 @@ function createCard(m: PredictionMarket): HTMLElement {
 
   const source = createElement('span', {
     className: 'prediction-card-source',
-    textContent: m.source === 'polymarket' ? 'PM' : 'KL',
+    textContent: m.source === 'polymarket' ? 'Polymarket' : 'Kalshi',
   });
 
+  bottom.appendChild(prob);
+  bottom.appendChild(source);
+
   card.appendChild(question);
-  card.appendChild(prob);
-  card.appendChild(source);
+  card.appendChild(bottom);
 
   card.addEventListener('click', () => {
     window.open(m.url, '_blank', 'noopener');
