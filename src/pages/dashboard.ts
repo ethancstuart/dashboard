@@ -7,6 +7,7 @@ import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { StocksPanel } from '../panels/StocksPanel.ts';
 import { NewsPanel } from '../panels/NewsPanel.ts';
 import { SportsPanel } from '../panels/SportsPanel.ts';
+import { ChatPanel } from '../panels/ChatPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { checkSession } from '../services/auth.ts';
 
@@ -23,6 +24,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.registerPanel(new StocksPanel());
   app.registerPanel(newsPanel);
   app.registerPanel(new SportsPanel());
+  app.registerPanel(new ChatPanel());
 
   root.appendChild(createHeader(app));
   root.appendChild(createTicker());

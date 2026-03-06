@@ -215,6 +215,20 @@ export interface SportsData {
   fetchedAt: number;
 }
 
+// Chat
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+export interface ChatSession {
+  id: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  title: string;
+}
+
 // Auth
 export type UserTier = 'guest' | 'free' | 'premium';
 
