@@ -38,11 +38,18 @@ async function exchangeGoogle(code: string, redirectUri: string): Promise<{ id: 
       grant_type: 'authorization_code',
     }),
   });
-  const tokens = (await tokenRes.json()) as TokenResponse;
+  const tokenData = await tokenRes.json();
+  if (!tokenRes.ok || !tokenData.access_token) {
+    throw new Error(`Google token exchange failed: ${JSON.stringify(tokenData)}`);
+  }
+  const tokens = tokenData as TokenResponse;
 
   const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
+  if (!userRes.ok) {
+    throw new Error(`Google userinfo failed: ${userRes.status}`);
+  }
   const user = (await userRes.json()) as GoogleUserInfo;
   return { id: `google:${user.sub}`, email: user.email, name: user.name, avatar: user.picture };
 }
@@ -57,7 +64,11 @@ async function exchangeGithub(code: string, _redirectUri: string): Promise<{ id:
       code,
     }),
   });
-  const tokens = (await tokenRes.json()) as TokenResponse;
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) {
+    throw new Error(`GitHub token exchange failed: ${JSON.stringify(tokenData)}`);
+  }
+  const tokens = tokenData as TokenResponse;
 
   const userRes = await fetch('https://api.github.com/user', {
     headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: 'application/json' },
@@ -136,18 +147,14 @@ export default async function handler(req: Request) {
     }
 
     // Set session cookie and redirect to dashboard
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: '/#/app',
-        'Set-Cookie': [
-          `session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
-          'oauth_state=; Path=/; Max-Age=0',
-        ].join(', '),
-      },
-    });
+    const headers = new Headers();
+    headers.set('Location', '/#/app');
+    headers.append('Set-Cookie', `session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+    headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0');
+    return new Response(null, { status: 302, headers });
   } catch (err) {
-    console.error('OAuth callback error:', err);
-    return new Response(null, { status: 302, headers: { Location: '/#/?error=auth_failed' } });
+    const message = err instanceof Error ? err.message : 'unknown';
+    console.error('OAuth callback error:', message, err);
+    return new Response(null, { status: 302, headers: { Location: `/#/?error=auth_failed&detail=${encodeURIComponent(message)}` } });
   }
 }
