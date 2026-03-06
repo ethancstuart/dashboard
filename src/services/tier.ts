@@ -9,6 +9,13 @@ export function getCurrentTier(): UserTier {
 }
 
 export function hasAccess(requiredTier: UserTier): boolean {
+  const user = getUser();
+  if (user?.isAdmin) return true;
   const currentTier = getCurrentTier();
   return TIER_HIERARCHY.indexOf(currentTier) >= TIER_HIERARCHY.indexOf(requiredTier);
+}
+
+export function isAdmin(): boolean {
+  const user = getUser();
+  return !!user?.isAdmin;
 }

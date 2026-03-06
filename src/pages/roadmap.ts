@@ -109,12 +109,12 @@ export function renderRoadmap(root: HTMLElement): void {
   const premiumCta = createElement('div', { className: 'roadmap-premium-cta' });
   const ctaText = createElement('p', {
     className: 'roadmap-cta-text',
-    textContent: 'Want premium features? Join the waitlist.',
+    textContent: 'Premium coming soon — stay tuned.',
   });
   const ctaBtn = document.createElement('a');
   ctaBtn.href = '#/';
   ctaBtn.className = 'landing-btn landing-btn-primary';
-  ctaBtn.textContent = 'Join Waitlist';
+  ctaBtn.textContent = 'Back to Dashboard';
   premiumCta.appendChild(ctaText);
   premiumCta.appendChild(ctaBtn);
   tierSection.appendChild(premiumCta);
@@ -130,7 +130,7 @@ export function renderRoadmap(root: HTMLElement): void {
     { status: 'shipped', label: 'Shipped', title: 'Core Dashboard', desc: 'Weather, stocks, news, map, predictions, ticker' },
     { status: 'shipped', label: 'Shipped', title: 'Sports Panel', desc: 'NBA, NFL, MLB, EPL live scores and headlines' },
     { status: 'shipped', label: 'Shipped', title: 'Landing Page & Roadmap', desc: 'Product pages, waitlist, feature comparison' },
-    { status: 'in-progress', label: 'In Progress', title: 'Auth & User Tiers', desc: 'Google/GitHub OAuth, free/premium tiers' },
+    { status: 'shipped', label: 'Shipped', title: 'Auth & User Tiers', desc: 'Google/GitHub OAuth, free/premium tiers' },
     { status: 'planned', label: 'Planned', title: 'AI Chat Panel', desc: 'Claude-powered chat with dashboard context' },
     { status: 'planned', label: 'Planned', title: 'Panel Bank & DnD Layout', desc: 'Drag-and-drop customization, 15+ data sources' },
     { status: 'planned', label: 'Planned', title: 'Calendar Integration', desc: 'Google Calendar sync for upcoming events' },

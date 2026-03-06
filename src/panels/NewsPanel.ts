@@ -208,9 +208,22 @@ export class NewsPanel extends Panel {
     // Filter to English-only articles
     const englishArticles = articles.filter((a) => !NON_LATIN_RE.test(a.title));
 
+    let center: L.LatLngExpression = [25, 0];
+    let zoom = 3;
+    try {
+      const locStr = localStorage.getItem('dashview-location');
+      if (locStr) {
+        const loc = JSON.parse(locStr) as { lat: number; lon: number };
+        if (loc.lat && loc.lon) {
+          center = [loc.lat, loc.lon];
+          zoom = 5;
+        }
+      }
+    } catch { /* ignore */ }
+
     this.map = L.map(container, {
-      center: [25, 0],
-      zoom: 3,
+      center,
+      zoom,
       zoomControl: false,
       attributionControl: false,
       minZoom: 2,

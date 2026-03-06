@@ -88,11 +88,17 @@ export abstract class Panel {
     const label = createElement('div', { className: 'panel-locked-label', textContent: 'Premium Feature' });
     const desc = createElement('div', {
       className: 'panel-locked-desc',
-      textContent: `Requires ${this.requiredTier} tier to access.`,
+      textContent: 'Unlock AI chat, calendar sync, custom layouts, and more with Premium.',
     });
+    const btn = createElement('a', {
+      className: 'panel-locked-btn',
+      textContent: 'Go Premium',
+    }) as HTMLAnchorElement;
+    btn.href = '#/roadmap';
     overlay.appendChild(icon);
     overlay.appendChild(label);
     overlay.appendChild(desc);
+    overlay.appendChild(btn);
     this.contentEl.appendChild(overlay);
   }
 

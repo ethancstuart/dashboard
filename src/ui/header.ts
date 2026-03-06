@@ -223,9 +223,11 @@ export function createHeader(app: App): HTMLElement {
       avatar.onerror = () => { avatar.style.display = 'none'; };
 
       const name = createElement('span', { className: 'header-username', textContent: user.name });
+      const tierLabel = user.isAdmin ? 'admin' : user.tier;
+      const tierClass = user.isAdmin ? 'admin' : user.tier;
       const tier = createElement('span', {
-        className: `header-tier header-tier-${user.tier}`,
-        textContent: user.tier,
+        className: `header-tier header-tier-${tierClass}`,
+        textContent: tierLabel,
       });
       const logoutBtn = createElement('button', { className: 'header-gear', textContent: 'Sign Out' });
       logoutBtn.style.fontSize = '12px';

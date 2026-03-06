@@ -120,13 +120,19 @@ export default async function handler(req: Request) {
 
     // Create session
     const sessionId = crypto.randomUUID();
+
+    const ADMIN_IDS = ['google:112686045684683437743'];
+    const ADMIN_EMAILS = ['ethan.c.stuart@gmail.com'];
+    const isOwner = ADMIN_IDS.includes(userInfo.id) || ADMIN_EMAILS.includes(userInfo.email);
+
     const user = {
       id: userInfo.id,
       email: userInfo.email,
       name: userInfo.name,
       avatar: userInfo.avatar,
       provider,
-      tier: 'free',
+      tier: isOwner ? 'premium' : 'free',
+      isAdmin: isOwner || undefined,
       createdAt: new Date().toISOString(),
     };
 

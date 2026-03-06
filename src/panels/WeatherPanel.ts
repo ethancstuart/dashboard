@@ -1,7 +1,6 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchWeather } from '../services/weather.ts';
-import { renderSparkline } from '../ui/chart.ts';
 import * as storage from '../services/storage.ts';
 import type { WeatherData } from '../types/index.ts';
 
@@ -137,57 +136,6 @@ export class WeatherPanel extends Panel {
 
     // Divider
     this.contentEl.appendChild(createElement('div', { className: 'weather-divider' }));
-
-    // Hourly sparkline
-    if (w.hourly && w.hourly.length >= 2) {
-      const temps = w.hourly.map((h) => h.temp);
-      const lo = Math.round(Math.min(...temps));
-      const hi = Math.round(Math.max(...temps));
-
-      const sparklineLabel = createElement('div', { className: 'weather-sparkline-label' });
-      const labelLeft = createElement('span', { textContent: 'Next 36h' });
-      const labelRight = createElement('span', {
-        className: 'weather-sparkline-range',
-        textContent: `${lo}\u00B0 \u2014 ${hi}\u00B0`,
-      });
-      sparklineLabel.appendChild(labelLeft);
-      sparklineLabel.appendChild(labelRight);
-      this.contentEl.appendChild(sparklineLabel);
-
-      const sparklineWrap = createElement('div', { className: 'weather-sparkline-wrap' });
-      const hourlyCanvas = document.createElement('canvas');
-      hourlyCanvas.className = 'weather-hourly';
-      sparklineWrap.appendChild(hourlyCanvas);
-
-      // Hour labels row
-      const hourLabels = createElement('div', { className: 'weather-hour-labels' });
-      const labelCount = 6;
-      const step = Math.max(1, Math.floor((w.hourly.length - 1) / (labelCount - 1)));
-      for (let j = 0; j < labelCount; j++) {
-        const i = Math.min(j * step, w.hourly.length - 1);
-        const h = new Date(w.hourly[i].time * 1000);
-        const hrs = h.getHours();
-        const label = createElement('span', {
-          textContent: hrs === 0 ? '12a' :
-            hrs < 12 ? `${hrs}a` :
-            hrs === 12 ? '12p' : `${hrs - 12}p`,
-        });
-        hourLabels.appendChild(label);
-      }
-      sparklineWrap.appendChild(hourLabels);
-
-      this.contentEl.appendChild(sparklineWrap);
-      requestAnimationFrame(() => {
-        renderSparkline(hourlyCanvas, temps, {
-          color: '#3b82f6',
-          width: hourlyCanvas.offsetWidth || 200,
-          height: 72,
-          showDots: true,
-        });
-      });
-
-      this.contentEl.appendChild(createElement('div', { className: 'weather-divider' }));
-    }
 
     // Atmospheric stats grid
     const stats = createElement('div', { className: 'weather-stats' });
