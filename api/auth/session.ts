@@ -2,7 +2,7 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('session='));
+  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('__Host-session=') || c.startsWith('session='));
   const sessionId = sessionCookie?.split('=')[1];
 
   if (!sessionId) {
@@ -37,8 +37,8 @@ export default async function handler(req: Request) {
     if (typeof user === 'string') user = JSON.parse(user);
 
     // Re-derive admin status (self-healing for existing sessions)
-    const ADMIN_IDS = ['google:112686045684683437743'];
-    const ADMIN_EMAILS = ['ethan.c.stuart@gmail.com'];
+    const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
     if (user && (ADMIN_IDS.includes(user.id) || ADMIN_EMAILS.includes(user.email))) {
       user.isAdmin = true;
       user.tier = 'premium';

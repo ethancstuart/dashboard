@@ -2,8 +2,33 @@ export const config = { runtime: 'edge' };
 
 function getSessionId(req: Request): string | null {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('session='));
+  const sessionCookie = cookies
+    .split(';')
+    .map((c) => c.trim())
+    .find((c) => c.startsWith('__Host-session=') || c.startsWith('session='));
   return sessionCookie?.split('=')[1] || null;
+}
+
+async function decryptKey(ciphertext: string, secret: string): Promise<string> {
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    'PBKDF2',
+    false,
+    ['deriveKey'],
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: new TextEncoder().encode('dashview-api-keys'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt'],
+  );
+  const combined = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
+  const iv = combined.slice(0, 12);
+  const data = combined.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+  return new TextDecoder().decode(decrypted);
 }
 
 export default async function handler(req: Request) {
@@ -24,8 +49,9 @@ export default async function handler(req: Request) {
 
   const kvUrl = process.env.KV_REST_API_URL;
   const kvToken = process.env.KV_REST_API_TOKEN;
+  const authSecret = process.env.AUTH_SECRET;
 
-  if (!kvUrl || !kvToken) {
+  if (!kvUrl || !kvToken || !authSecret) {
     return new Response(JSON.stringify({ error: 'Storage not configured' }), {
       status: 503,
       headers: { 'Content-Type': 'application/json' },
@@ -68,7 +94,7 @@ export default async function handler(req: Request) {
     });
     const keyData = (await keyRes.json()) as { result: string | null };
     if (keyData.result) {
-      apiKey = atob(keyData.result);
+      apiKey = await decryptKey(keyData.result, authSecret);
     }
   } catch {
     // Key fetch failed

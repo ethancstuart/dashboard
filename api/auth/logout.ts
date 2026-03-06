@@ -2,7 +2,7 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('session='));
+  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('__Host-session=') || c.startsWith('session='));
   const sessionId = sessionCookie?.split('=')[1];
 
   // Delete session from KV if available
@@ -21,11 +21,9 @@ export default async function handler(req: Request) {
     }
   }
 
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: '/#/',
-      'Set-Cookie': 'session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-    },
-  });
+  const headers = new Headers();
+  headers.set('Location', '/#/');
+  headers.append('Set-Cookie', '__Host-session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  headers.append('Set-Cookie', 'session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  return new Response(null, { status: 302, headers });
 }

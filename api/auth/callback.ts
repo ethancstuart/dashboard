@@ -121,8 +121,8 @@ export default async function handler(req: Request) {
     // Create session
     const sessionId = crypto.randomUUID();
 
-    const ADMIN_IDS = ['google:112686045684683437743'];
-    const ADMIN_EMAILS = ['ethan.c.stuart@gmail.com'];
+    const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
     const isOwner = ADMIN_IDS.includes(userInfo.id) || ADMIN_EMAILS.includes(userInfo.email);
 
     const user = {
@@ -155,7 +155,9 @@ export default async function handler(req: Request) {
     // Set session cookie and redirect to dashboard
     const headers = new Headers();
     headers.set('Location', '/#/app');
-    headers.append('Set-Cookie', `session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+    headers.append('Set-Cookie', `__Host-session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+    // Clear legacy cookie if present
+    headers.append('Set-Cookie', 'session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0');
     return new Response(null, { status: 302, headers });
   } catch (err) {
