@@ -134,11 +134,24 @@ export class WeatherPanel extends Panel {
 
     // Hourly sparkline
     if (w.hourly && w.hourly.length >= 2) {
+      const temps = w.hourly.map((h) => h.temp);
+      const lo = Math.round(Math.min(...temps));
+      const hi = Math.round(Math.max(...temps));
+
+      const sparklineLabel = createElement('div', { className: 'weather-sparkline-label' });
+      const labelLeft = createElement('span', { textContent: 'Next 24h' });
+      const labelRight = createElement('span', {
+        className: 'weather-sparkline-range',
+        textContent: `${lo}\u00B0 \u2014 ${hi}\u00B0`,
+      });
+      sparklineLabel.appendChild(labelLeft);
+      sparklineLabel.appendChild(labelRight);
+      this.contentEl.appendChild(sparklineLabel);
+
       const hourlyCanvas = document.createElement('canvas');
       hourlyCanvas.className = 'weather-hourly';
       this.contentEl.appendChild(hourlyCanvas);
       requestAnimationFrame(() => {
-        const temps = w.hourly.map((h) => h.temp);
         renderSparkline(hourlyCanvas, temps, {
           color: '#3b82f6',
           width: hourlyCanvas.offsetWidth || 200,

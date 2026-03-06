@@ -204,8 +204,10 @@ export class NewsPanel extends Panel {
       zoom: 2,
       zoomControl: false,
       attributionControl: false,
-      minZoom: 1,
+      minZoom: 2,
       maxZoom: 14,
+      maxBounds: L.latLngBounds([[-85, -180], [85, 180]]),
+      maxBoundsViscosity: 1.0,
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
@@ -218,12 +220,14 @@ export class NewsPanel extends Panel {
         tileSize: 512,
         zoomOffset: -1,
         maxZoom: 19,
+        noWrap: true,
       }).addTo(this.map);
     } else {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 19,
+        noWrap: true,
       }).addTo(this.map);
     }
 
@@ -249,8 +253,8 @@ export class NewsPanel extends Panel {
       const icon = L.divIcon({
         className: '',
         html: `<div class="news-marker news-marker-pulse">${count}</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
       });
 
       const marker = L.marker([lat, lon], { icon }).addTo(markerTarget);
@@ -260,15 +264,22 @@ export class NewsPanel extends Panel {
       marker.bindTooltip(tooltipText, {
         className: 'news-tooltip',
         direction: 'top',
-        offset: [0, -12],
+        offset: [0, -14],
       });
 
       const popupLines = group.slice(0, 3).map(
         (a) => `<a href="${this.escapeHtml(a.link)}" target="_blank" rel="noopener">${this.escapeHtml(a.title)}</a>`
+        + (a.description ? `<br><span style="font-size:11px;color:var(--color-text-muted)">${this.escapeHtml(a.description.slice(0, 100))}</span>` : '')
       );
       const sourceName = group[0].source;
       const popupHtml = `<strong>${this.escapeHtml(sourceName)}</strong>${count > 1 ? ` +${count - 1}` : ''}<br>${popupLines.join('<br>')}`;
-      marker.bindPopup(popupHtml, { maxWidth: 250 });
+      marker.bindPopup(popupHtml, { maxWidth: 300 });
+
+      // Fly to location on click
+      const mapRef = this.map;
+      marker.on('click', () => {
+        mapRef.flyTo([lat, lon], 5, { duration: 1.2 });
+      });
     }
 
     if (markerTarget !== this.map) {

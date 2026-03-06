@@ -1,9 +1,8 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { fetchStocks, searchSymbols, fetchCandles, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
-import { renderChart } from '../ui/chart.ts';
+import { fetchStocks, searchSymbols, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
 import * as storage from '../services/storage.ts';
-import type { StocksData, StockQuote, SymbolSearchResult, CandleData, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
+import type { StocksData, StockQuote, SymbolSearchResult, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
 
 const WATCHLIST_KEY = 'dashview-watchlist';
 const FAVORITES_KEY = 'dashview-favorites';
@@ -37,8 +36,6 @@ export class StocksPanel extends Panel {
   private dragOverIndex: number = -1;
   private gripActive: boolean = false;
   private selectedSymbol: string | null = null;
-  private selectedPeriod: string = '1M';
-  private detailCandles: CandleData | null = null;
   private detailNews: CompanyNews[] | null = null;
   private detailLoading: boolean = false;
   private detailProfile: CompanyProfile | null = null;
@@ -115,18 +112,15 @@ export class StocksPanel extends Panel {
       if (target.closest('.stocks-row-remove') || target.closest('.stocks-row-star') || target.closest('.stocks-row-grip')) return;
       if (this.selectedSymbol === q.symbol) {
         this.selectedSymbol = null;
-        this.detailCandles = null;
         this.detailNews = null;
         this.detailProfile = null;
         this.detailMetrics = null;
       } else {
         this.selectedSymbol = q.symbol;
-        this.selectedPeriod = '1M';
-        this.detailCandles = null;
         this.detailNews = null;
         this.detailProfile = null;
         this.detailMetrics = null;
-        void this.loadDetailData(q.symbol, '1M');
+        void this.loadDetailData(q.symbol);
       }
       if (this.data) this.render(this.data);
     });
@@ -407,48 +401,22 @@ export class StocksPanel extends Panel {
     this.gripActive = false;
   }
 
-  private static readonly PERIODS: { key: string; label: string; resolution: string; daysBack: number | 'ytd' }[] = [
-    { key: '1D', label: '1D', resolution: '5', daysBack: 1 },
-    { key: '7D', label: '7D', resolution: '15', daysBack: 7 },
-    { key: '1M', label: '1M', resolution: 'D', daysBack: 30 },
-    { key: '6M', label: '6M', resolution: 'D', daysBack: 180 },
-    { key: '1Y', label: '1Y', resolution: 'D', daysBack: 365 },
-    { key: 'YTD', label: 'YTD', resolution: 'D', daysBack: 'ytd' },
-    { key: 'Max', label: 'Max', resolution: 'W', daysBack: 1825 },
-  ];
-
-  private getPeriodParams(periodKey: string): { resolution: string; from: number; to: number } {
-    const period = StocksPanel.PERIODS.find((p) => p.key === periodKey) ?? StocksPanel.PERIODS[2];
-    const now = Math.floor(Date.now() / 1000);
-    let from: number;
-    if (period.daysBack === 'ytd') {
-      from = Math.floor(new Date(new Date().getFullYear(), 0, 1).getTime() / 1000);
-    } else {
-      from = now - period.daysBack * 86400;
-    }
-    return { resolution: period.resolution, from, to: now };
-  }
-
-  private async loadDetailData(symbol: string, periodKey: string): Promise<void> {
+  private async loadDetailData(symbol: string): Promise<void> {
     this.detailLoading = true;
     if (this.data) this.render(this.data);
 
-    const { resolution, from, to } = this.getPeriodParams(periodKey);
-    const toDate = new Date().toISOString().split('T')[0];
-    const fromDate = new Date(from * 1000).toISOString().split('T')[0];
+    const now = new Date();
+    const toDate = now.toISOString().split('T')[0];
+    const from = new Date(now.getTime() - 30 * 86400000);
+    const fromDate = from.toISOString().split('T')[0];
 
-    // Fetch all independently so one failure doesn't kill the rest
-    const [candleResult, newsResult, profileResult, metricsResult] = await Promise.allSettled([
-      fetchCandles(symbol, resolution, from, to),
+    const [newsResult, profileResult, metricsResult] = await Promise.allSettled([
       fetchCompanyNews(symbol, fromDate, toDate),
       fetchProfile(symbol),
       fetchMetrics(symbol),
     ]);
 
     if (this.selectedSymbol === symbol) {
-      this.detailCandles = candleResult.status === 'fulfilled'
-        ? candleResult.value
-        : { t: [], c: [], h: [], l: [], o: [], v: [] };
       this.detailNews = newsResult.status === 'fulfilled' ? newsResult.value : [];
       this.detailProfile = profileResult.status === 'fulfilled' ? profileResult.value : null;
       this.detailMetrics = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
@@ -539,38 +507,6 @@ export class StocksPanel extends Panel {
         profileRow.appendChild(webLink);
       }
       detail.appendChild(profileRow);
-    }
-
-    // Period buttons + chart (only show if candle data is available)
-    const hasChart = this.detailCandles && this.detailCandles.t.length > 1;
-
-    const periods = createElement('div', { className: 'stocks-detail-periods' });
-    for (const p of StocksPanel.PERIODS) {
-      const btn = createElement('button', {
-        className: `stocks-detail-period ${p.key === this.selectedPeriod ? 'stocks-detail-period-active' : ''}`,
-        textContent: p.label,
-      });
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.selectedPeriod = p.key;
-        this.detailCandles = null;
-        this.detailNews = null;
-        void this.loadDetailData(symbol, p.key);
-      });
-      periods.appendChild(btn);
-    }
-    detail.appendChild(periods);
-
-    if (hasChart) {
-      const canvas = document.createElement('canvas');
-      canvas.className = 'stocks-detail-chart';
-      detail.appendChild(canvas);
-      requestAnimationFrame(() => {
-        renderChart(canvas, {
-          timestamps: this.detailCandles!.t,
-          prices: this.detailCandles!.c,
-        });
-      });
     }
 
     // Company news

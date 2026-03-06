@@ -85,11 +85,10 @@ function createCard(m: PredictionMarket): HTMLElement {
 
   const question = createElement('span', {
     className: 'prediction-card-question',
+    textContent: m.question,
   });
-  const text = m.question.length > 50 ? m.question.slice(0, 47) + '\u2026' : m.question;
-  question.textContent = text;
 
-  const bottom = createElement('div', { className: 'prediction-card-bottom' });
+  const right = createElement('div', { className: 'prediction-card-right' });
 
   const prob = createElement('span', {
     className: `prediction-card-prob ${getProbClass(m.probability)}`,
@@ -101,11 +100,11 @@ function createCard(m: PredictionMarket): HTMLElement {
     textContent: m.source === 'polymarket' ? 'Polymarket' : 'Kalshi',
   });
 
-  bottom.appendChild(prob);
-  bottom.appendChild(source);
+  right.appendChild(prob);
+  right.appendChild(source);
 
   card.appendChild(question);
-  card.appendChild(bottom);
+  card.appendChild(right);
 
   card.addEventListener('click', () => {
     window.open(m.url, '_blank', 'noopener');

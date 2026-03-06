@@ -27,8 +27,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid tile coordinates' });
   }
 
+  const ALLOWED_STYLES = new Set(['dark-v11', 'navigation-night-v1', 'satellite-streets-v12']);
+  const styleParam = req.query.style as string | undefined;
+  const style = (styleParam && ALLOWED_STYLES.has(styleParam)) ? styleParam : 'navigation-night-v1';
+
   try {
-    const tileUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/${z}/${x}/${y}?access_token=${token}`;
+    const tileUrl = `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/${z}/${x}/${y}?access_token=${token}`;
     const tileRes = await fetch(tileUrl);
 
     if (!tileRes.ok) {
