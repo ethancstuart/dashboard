@@ -429,28 +429,23 @@ export class StocksPanel extends Panel {
     const toDate = new Date().toISOString().split('T')[0];
     const fromDate = new Date(from * 1000).toISOString().split('T')[0];
 
-    try {
-      const [candles, news, profile, metrics] = await Promise.all([
-        fetchCandles(symbol, resolution, from, to),
-        fetchCompanyNews(symbol, fromDate, toDate),
-        fetchProfile(symbol).catch(() => null),
-        fetchMetrics(symbol).catch(() => null),
-      ]);
-      if (this.selectedSymbol === symbol) {
-        this.detailCandles = candles;
-        this.detailNews = news;
-        this.detailProfile = profile;
-        this.detailMetrics = metrics;
-        this.detailLoading = false;
-        if (this.data) this.render(this.data);
-      }
-    } catch {
-      if (this.selectedSymbol === symbol) {
-        this.detailLoading = false;
-        this.detailCandles = { t: [], c: [], h: [], l: [], o: [], v: [] };
-        this.detailNews = [];
-        if (this.data) this.render(this.data);
-      }
+    // Fetch all independently so one failure doesn't kill the rest
+    const [candleResult, newsResult, profileResult, metricsResult] = await Promise.allSettled([
+      fetchCandles(symbol, resolution, from, to),
+      fetchCompanyNews(symbol, fromDate, toDate),
+      fetchProfile(symbol),
+      fetchMetrics(symbol),
+    ]);
+
+    if (this.selectedSymbol === symbol) {
+      this.detailCandles = candleResult.status === 'fulfilled'
+        ? candleResult.value
+        : { t: [], c: [], h: [], l: [], o: [], v: [] };
+      this.detailNews = newsResult.status === 'fulfilled' ? newsResult.value : [];
+      this.detailProfile = profileResult.status === 'fulfilled' ? profileResult.value : null;
+      this.detailMetrics = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
+      this.detailLoading = false;
+      if (this.data) this.render(this.data);
     }
   }
 
@@ -463,16 +458,47 @@ export class StocksPanel extends Panel {
   private createDetailPanel(symbol: string): HTMLElement {
     const detail = createElement('div', { className: 'stocks-detail stocks-detail-slide' });
 
-    // Metrics grid (above chart)
-    if (this.detailMetrics && !this.detailLoading) {
+    // Find the quote for this symbol to get day stats
+    const quote = this.data?.watchlist.find((q) => q.symbol === symbol);
+
+    if (this.detailLoading) {
+      const loading = createElement('div', { className: 'stocks-detail-loading' });
+      const dot = createElement('div', { className: 'panel-loading-dot' });
+      loading.appendChild(dot);
+      detail.appendChild(loading);
+      return detail;
+    }
+
+    // Day stats row (from the live quote — always available)
+    if (quote) {
+      const dayGrid = createElement('div', { className: 'stocks-metrics-grid' });
+      const dayItems: [string, string][] = [
+        ['Open', `$${quote.open.toFixed(2)}`],
+        ['Day High', `$${quote.high.toFixed(2)}`],
+        ['Day Low', `$${quote.low.toFixed(2)}`],
+        ['Prev Close', `$${quote.prevClose.toFixed(2)}`],
+      ];
+      for (const [label, value] of dayItems) {
+        const cell = createElement('div', { className: 'stocks-metric-cell' });
+        const lbl = createElement('span', { className: 'stocks-metric-label', textContent: label });
+        const val = createElement('span', { className: 'stocks-metric-value', textContent: value });
+        cell.appendChild(lbl);
+        cell.appendChild(val);
+        dayGrid.appendChild(cell);
+      }
+      detail.appendChild(dayGrid);
+    }
+
+    // Key metrics grid (from Finnhub metrics endpoint)
+    if (this.detailMetrics) {
       const grid = createElement('div', { className: 'stocks-metrics-grid' });
       const m = this.detailMetrics;
       const items: [string, string][] = [
         ['Mkt Cap', m.marketCap ? this.formatMarketCap(m.marketCap) : '--'],
         ['P/E', m.peRatio ? m.peRatio.toFixed(1) : '--'],
         ['EPS', m.eps ? `$${m.eps.toFixed(2)}` : '--'],
-        ['52W H', m.high52w ? `$${m.high52w.toFixed(2)}` : '--'],
-        ['52W L', m.low52w ? `$${m.low52w.toFixed(2)}` : '--'],
+        ['52W High', m.high52w ? `$${m.high52w.toFixed(2)}` : '--'],
+        ['52W Low', m.low52w ? `$${m.low52w.toFixed(2)}` : '--'],
         ['Beta', m.beta ? m.beta.toFixed(2) : '--'],
       ];
       for (const [label, value] of items) {
@@ -486,7 +512,30 @@ export class StocksPanel extends Panel {
       detail.appendChild(grid);
     }
 
-    // Period buttons
+    // Profile info (industry + link)
+    if (this.detailProfile && this.detailProfile.industry) {
+      const profileRow = createElement('div', { className: 'stocks-detail-profile' });
+      const industry = createElement('span', {
+        className: 'stocks-detail-industry',
+        textContent: this.detailProfile.industry,
+      });
+      profileRow.appendChild(industry);
+      if (this.detailProfile.weburl) {
+        const webLink = document.createElement('a');
+        webLink.href = this.detailProfile.weburl;
+        webLink.target = '_blank';
+        webLink.rel = 'noopener';
+        webLink.className = 'stocks-detail-weblink';
+        webLink.textContent = this.detailProfile.weburl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+        webLink.addEventListener('click', (e) => e.stopPropagation());
+        profileRow.appendChild(webLink);
+      }
+      detail.appendChild(profileRow);
+    }
+
+    // Period buttons + chart (only show if candle data is available)
+    const hasChart = this.detailCandles && this.detailCandles.t.length > 1;
+
     const periods = createElement('div', { className: 'stocks-detail-periods' });
     for (const p of StocksPanel.PERIODS) {
       const btn = createElement('button', {
@@ -504,16 +553,7 @@ export class StocksPanel extends Panel {
     }
     detail.appendChild(periods);
 
-    if (this.detailLoading) {
-      const loading = createElement('div', { className: 'stocks-detail-loading' });
-      const dot = createElement('div', { className: 'panel-loading-dot' });
-      loading.appendChild(dot);
-      detail.appendChild(loading);
-      return detail;
-    }
-
-    // Chart
-    if (this.detailCandles && this.detailCandles.t.length > 1) {
+    if (hasChart) {
       const canvas = document.createElement('canvas');
       canvas.className = 'stocks-detail-chart';
       detail.appendChild(canvas);
@@ -523,12 +563,6 @@ export class StocksPanel extends Panel {
           prices: this.detailCandles!.c,
         });
       });
-    } else if (this.detailCandles) {
-      const empty = createElement('div', {
-        className: 'stocks-detail-empty',
-        textContent: 'No chart data available',
-      });
-      detail.appendChild(empty);
     }
 
     // Company news

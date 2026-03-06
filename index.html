@@ -1218,6 +1218,35 @@
         padding: 12px 0;
       }
 
+      .stocks-detail-profile {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+        margin-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+
+      .stocks-detail-industry {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+
+      .stocks-detail-weblink {
+        font-size: 11px;
+        color: var(--color-accent);
+        text-decoration: none;
+        opacity: 0.8;
+      }
+
+      .stocks-detail-weblink:hover {
+        text-decoration: underline;
+        opacity: 1;
+      }
+
       /* Stock detail slide animation */
       .stocks-detail-slide {
         animation: slideDown 0.2s ease-out;
@@ -1241,12 +1270,16 @@
       /* Stocks metrics grid */
       .stocks-metrics-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
         gap: 6px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         padding: 8px;
         background: rgba(255, 255, 255, 0.02);
         border-radius: 6px;
+      }
+
+      .stocks-metrics-grid + .stocks-metrics-grid {
+        margin-top: -4px;
       }
 
       .stocks-metric-cell {
