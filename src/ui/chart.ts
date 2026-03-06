@@ -18,8 +18,11 @@ export function renderSparkline(
   const isUp = prices[prices.length - 1] >= prices[0];
   const lineColor = opts?.color ?? (isUp ? '#22c55e' : '#ef4444');
 
-  const min = Math.min(...prices);
-  const max = Math.max(...prices);
+  let min = prices[0], max = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i] < min) min = prices[i];
+    if (prices[i] > max) max = prices[i];
+  }
   const range = max - min || 1;
   const pad = 2;
 
@@ -83,8 +86,11 @@ export function renderChart(
   const plotW = w - padding.left - padding.right;
   const plotH = h - padding.top - padding.bottom;
 
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+  let minPrice = prices[0], maxPrice = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i] < minPrice) minPrice = prices[i];
+    if (prices[i] > maxPrice) maxPrice = prices[i];
+  }
   const range = maxPrice - minPrice || 1;
   const yPad = range * 0.08;
   const yMin = minPrice - yPad;

@@ -2,12 +2,47 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export const config = { runtime: 'nodejs' };
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+// Proxy Mapbox tile requests server-side so the token never reaches the client.
+// Client requests: /api/mapbox?z=2&x=1&y=1
+// Server fetches the tile from Mapbox with the secret token and pipes it back.
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = process.env.MAPBOX_TOKEN;
   if (!token) {
     return res.status(500).json({ error: 'Mapbox token not configured' });
   }
-  return res
-    .setHeader('Cache-Control', 'max-age=3600')
-    .json({ token });
+
+  const z = req.query.z as string | undefined;
+  const x = req.query.x as string | undefined;
+  const y = req.query.y as string | undefined;
+
+  if (!z || !x || !y) {
+    // Return a flag that Mapbox is available (no token exposed)
+    return res
+      .setHeader('Cache-Control', 'max-age=3600')
+      .json({ available: true });
+  }
+
+  // Validate tile coordinates are integers
+  if (!/^\d+$/.test(z) || !/^\d+$/.test(x) || !/^\d+$/.test(y)) {
+    return res.status(400).json({ error: 'Invalid tile coordinates' });
+  }
+
+  try {
+    const tileUrl = `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/${z}/${x}/${y}?access_token=${token}`;
+    const tileRes = await fetch(tileUrl);
+
+    if (!tileRes.ok) {
+      return res.status(tileRes.status).end();
+    }
+
+    const contentType = tileRes.headers.get('content-type') || 'application/octet-stream';
+    const buffer = Buffer.from(await tileRes.arrayBuffer());
+
+    return res
+      .setHeader('Content-Type', contentType)
+      .setHeader('Cache-Control', 'public, max-age=86400')
+      .send(buffer);
+  } catch {
+    return res.status(502).end();
+  }
 }

@@ -43,6 +43,7 @@ export class StocksPanel extends Panel {
   private detailLoading: boolean = false;
   private detailProfile: CompanyProfile | null = null;
   private detailMetrics: KeyMetrics | null = null;
+  private searchOutsideHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor() {
     super({
@@ -274,11 +275,18 @@ export class StocksPanel extends Panel {
       }
     });
 
-    document.addEventListener('click', (e) => {
+    // Use a single handler reference so we don't leak listeners on re-render
+    const outsideClickHandler = (e: MouseEvent) => {
       if (!wrapper.contains(e.target as Node)) {
         dropdown.style.display = 'none';
       }
-    });
+    };
+    // Clean up previous listener if any
+    if (this.searchOutsideHandler) {
+      document.removeEventListener('click', this.searchOutsideHandler);
+    }
+    this.searchOutsideHandler = outsideClickHandler;
+    document.addEventListener('click', outsideClickHandler);
 
     wrapper.appendChild(input);
     wrapper.appendChild(dropdown);

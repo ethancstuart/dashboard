@@ -236,6 +236,17 @@ async function handleCandle(req: VercelRequest, res: VercelResponse, apiKey: str
     return res.status(400).json({ error: 'Missing required parameters: symbol, resolution, from, to' });
   }
 
+  // Validate from/to are numeric timestamps
+  if (!/^\d+$/.test(from) || !/^\d+$/.test(to)) {
+    return res.status(400).json({ error: 'from and to must be unix timestamps' });
+  }
+
+  // Validate resolution is one of Finnhub's allowed values
+  const VALID_RESOLUTIONS = new Set(['1', '5', '15', '30', '60', 'D', 'W', 'M']);
+  if (!VALID_RESOLUTIONS.has(resolution)) {
+    return res.status(400).json({ error: 'Invalid resolution' });
+  }
+
   try {
     const response = await fetch(
       `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=${encodeURIComponent(resolution)}&from=${from}&to=${to}&token=${apiKey}`,

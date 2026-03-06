@@ -23,7 +23,7 @@ export class NewsPanel extends Panel {
   private terminator: L.Polygon | null = null;
   private terminatorInterval: ReturnType<typeof setInterval> | null = null;
   private mapContainer: HTMLElement | null = null;
-  private mapboxToken: string | null = null;
+  private mapboxAvailable: boolean | null = null;
 
   constructor() {
     super({
@@ -33,20 +33,20 @@ export class NewsPanel extends Panel {
       refreshInterval: 600000,
     });
     this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'world');
-    void this.loadMapboxToken();
+    void this.checkMapboxAvailable();
   }
 
   setMapContainer(el: HTMLElement): void {
     this.mapContainer = el;
   }
 
-  private async loadMapboxToken(): Promise<void> {
+  private async checkMapboxAvailable(): Promise<void> {
     try {
       const res = await fetch('/api/mapbox');
       const data = await res.json();
-      if (data.token) this.mapboxToken = data.token;
+      this.mapboxAvailable = !!data.available;
     } catch {
-      // Fall back to CartoDB tiles
+      this.mapboxAvailable = false;
     }
   }
 
@@ -211,17 +211,14 @@ export class NewsPanel extends Panel {
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
     L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(this.map);
 
-    // Use Mapbox dark tiles if token available, else fall back to CartoDB
-    if (this.mapboxToken) {
-      L.tileLayer(
-        `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${this.mapboxToken}`,
-        {
-          attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
-          tileSize: 512,
-          zoomOffset: -1,
-          maxZoom: 19,
-        },
-      ).addTo(this.map);
+    // Use Mapbox tiles proxied through our edge function (token stays server-side)
+    if (this.mapboxAvailable) {
+      L.tileLayer('/api/mapbox?z={z}&x={x}&y={y}', {
+        attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+        tileSize: 512,
+        zoomOffset: -1,
+        maxZoom: 19,
+      }).addTo(this.map);
     } else {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>',

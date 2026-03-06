@@ -69,6 +69,12 @@ async function handleWeather(req: VercelRequest, res: VercelResponse, apiKey: st
   if (!lat || !lon) {
     return res.status(400).json({ error: 'Missing lat/lon parameters' });
   }
+  // Validate numeric range
+  const latNum = parseFloat(lat);
+  const lonNum = parseFloat(lon);
+  if (isNaN(latNum) || isNaN(lonNum) || latNum < -90 || latNum > 90 || lonNum < -180 || lonNum > 180) {
+    return res.status(400).json({ error: 'Invalid lat/lon values' });
+  }
 
   const [currentRes, forecastRes] = await Promise.all([
     fetch(

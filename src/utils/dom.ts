@@ -1,7 +1,6 @@
 interface CreateElementOptions {
   className?: string;
   textContent?: string;
-  innerHTML?: string;
 }
 
 export function createElement<K extends keyof HTMLElementTagNameMap>(
@@ -11,7 +10,6 @@ export function createElement<K extends keyof HTMLElementTagNameMap>(
   const el = document.createElement(tag);
   if (options?.className) el.className = options.className;
   if (options?.textContent) el.textContent = options.textContent;
-  if (options?.innerHTML) el.innerHTML = options.innerHTML;
   return el;
 }
 
