@@ -12,6 +12,15 @@ interface FeedSource {
 }
 
 const FEEDS: Record<string, FeedSource[]> = {
+  us: [
+    { name: 'AP News', url: 'https://rsshub.app/apnews/topics/apf-topnews', country: 'US', lat: 40.76, lon: -73.98 },
+    { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml', country: 'US', lat: 38.89, lon: -77.01 },
+    { name: 'CNN', url: 'https://rss.cnn.com/rss/cnn_topstories.rss', country: 'US', lat: 33.75, lon: -84.39 },
+    { name: 'NYT', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml', country: 'US', lat: 40.76, lon: -73.98 },
+    { name: 'USA Today', url: 'https://rssfeeds.usatoday.com/usatoday-NewsTopStories', country: 'US', lat: 38.89, lon: -77.01 },
+    { name: 'Washington Post', url: 'https://feeds.washingtonpost.com/rss/national', country: 'US', lat: 38.89, lon: -77.01 },
+    { name: 'PBS NewsHour', url: 'https://pbs.org/newshour/feeds/rss/headlines', country: 'US', lat: 38.89, lon: -77.01 },
+  ],
   world: [
     { name: 'BBC World', url: 'https://feeds.bbci.co.uk/news/world/rss.xml', country: 'GB', lat: 51.51, lon: -0.13 },
     { name: 'AP News', url: 'https://rsshub.app/apnews/topics/apf-topnews', country: 'US', lat: 40.76, lon: -73.98 },
@@ -32,14 +41,12 @@ const FEEDS: Record<string, FeedSource[]> = {
     { name: 'Wired', url: 'https://www.wired.com/feed/rss', country: 'US', lat: 37.77, lon: -122.42 },
     { name: 'Hacker News', url: 'https://hnrss.org/frontpage', country: 'US', lat: 37.77, lon: -122.42 },
   ],
-  business: [
+  markets: [
     { name: 'CNBC', url: 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114', country: 'US', lat: 40.72, lon: -74.0 },
     { name: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', country: 'US', lat: 40.71, lon: -74.01 },
-    { name: 'Financial Times', url: 'https://www.ft.com/?format=rss', country: 'GB', lat: 51.51, lon: -0.11 },
     { name: 'Bloomberg', url: 'https://feeds.bloomberg.com/markets/news.rss', country: 'US', lat: 40.76, lon: -73.98 },
-    { name: 'Nikkei Asia', url: 'https://asia.nikkei.com/rss', country: 'JP', lat: 35.68, lon: 139.76 },
-    { name: 'Economic Times', url: 'https://economictimes.indiatimes.com/rssfeedsdefault.cms', country: 'IN', lat: 19.08, lon: 72.88 },
-    { name: 'Arab News', url: 'https://www.arabnews.com/rss.xml', country: 'SA', lat: 21.49, lon: 39.19 },
+    { name: 'WSJ Markets', url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml', country: 'US', lat: 40.71, lon: -74.01 },
+    { name: 'Yahoo Finance', url: 'https://finance.yahoo.com/news/rssindex', country: 'US', lat: 37.42, lon: -122.08 },
   ],
   science: [
     { name: 'Nature', url: 'https://www.nature.com/nature.rss', country: 'GB', lat: 51.53, lon: -0.13 },

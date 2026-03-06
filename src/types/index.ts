@@ -148,7 +148,7 @@ export interface KeyMetrics {
 }
 
 // News
-export type NewsCategory = 'world' | 'tech' | 'business' | 'science' | 'entertainment' | 'x';
+export type NewsCategory = 'us' | 'world' | 'markets' | 'tech' | 'science' | 'entertainment' | 'x';
 
 export interface NewsArticle {
   title: string;

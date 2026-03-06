@@ -10,9 +10,10 @@ const NON_LATIN_RE = /[\u3000-\u9FFF\uAC00-\uD7AF\u0600-\u06FF\u0400-\u04FF\u110
 
 const CATEGORY_KEY = 'dashview-news-category';
 const CATEGORIES: { id: NewsCategory; label: string }[] = [
+  { id: 'us', label: 'US' },
   { id: 'world', label: 'World' },
+  { id: 'markets', label: 'Markets' },
   { id: 'tech', label: 'Tech' },
-  { id: 'business', label: 'Biz' },
   { id: 'science', label: 'Sci' },
   { id: 'entertainment', label: 'Ent' },
   { id: 'x', label: 'X' },
@@ -35,7 +36,12 @@ export class NewsPanel extends Panel {
       enabled: true,
       refreshInterval: 600000,
     });
-    this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'world');
+    this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'us');
+    // Migrate old 'business' category to 'markets'
+    if ((this.category as string) === 'business') {
+      this.category = 'markets';
+      storage.set(CATEGORY_KEY, this.category);
+    }
     void this.checkMapboxAvailable();
   }
 
