@@ -32,7 +32,9 @@ export default async function handler(req: Request) {
       });
     }
 
-    const user = JSON.parse(data.result);
+    let user = JSON.parse(data.result);
+    // Handle legacy double-stringified sessions
+    if (typeof user === 'string') user = JSON.parse(user);
     return new Response(JSON.stringify({ user }), {
       headers: {
         'Content-Type': 'application/json',

@@ -137,7 +137,7 @@ export default async function handler(req: Request) {
       await fetch(`${kvUrl}/set/session:${sessionId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${kvToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(JSON.stringify(user)),
+        body: JSON.stringify(user),
       });
       // Set TTL to 7 days
       await fetch(`${kvUrl}/expire/session:${sessionId}/604800`, {
