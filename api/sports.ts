@@ -111,7 +111,7 @@ function transformHeadlines(data: { articles?: ESPNArticle[] }) {
   }));
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, _res: VercelResponse) {
   const url = new URL(req.url!, 'https://localhost');
   const league = url.searchParams.get('league') || 'nba';
   const action = url.searchParams.get('action') || 'scoreboard';
