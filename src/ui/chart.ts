@@ -1,7 +1,7 @@
 export function renderSparkline(
   canvas: HTMLCanvasElement,
   prices: number[],
-  opts?: { color?: string; width?: number; height?: number },
+  opts?: { color?: string; width?: number; height?: number; showDots?: boolean },
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx || prices.length < 2) return;
@@ -19,12 +19,13 @@ export function renderSparkline(
   const lineColor = opts?.color ?? (isUp ? '#22c55e' : '#ef4444');
 
   let min = prices[0], max = prices[0];
+  let minIdx = 0, maxIdx = 0;
   for (let i = 1; i < prices.length; i++) {
-    if (prices[i] < min) min = prices[i];
-    if (prices[i] > max) max = prices[i];
+    if (prices[i] < min) { min = prices[i]; minIdx = i; }
+    if (prices[i] > max) { max = prices[i]; maxIdx = i; }
   }
   const range = max - min || 1;
-  const pad = 2;
+  const pad = opts?.showDots ? 8 : 2;
 
   const toX = (i: number) => (i / (prices.length - 1)) * w;
   const toY = (p: number) => pad + (1 - (p - min) / range) * (h - pad * 2);
@@ -50,6 +51,24 @@ export function renderSparkline(
   ctx.closePath();
   ctx.fillStyle = gradient;
   ctx.fill();
+
+  // Min/max dots
+  if (opts?.showDots) {
+    for (const [idx, color] of [[maxIdx, '#22c55e'], [minIdx, '#3b82f6']] as [number, string][]) {
+      const x = toX(idx);
+      const y = toY(prices[idx]);
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      // Temperature label near dot
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.textAlign = 'center';
+      const label = `${Math.round(prices[idx])}°`;
+      ctx.fillText(label, x, idx === maxIdx ? y - 6 : y + 12);
+    }
+  }
 }
 
 export function renderChart(

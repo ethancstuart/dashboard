@@ -18,7 +18,7 @@ const FEEDS: Record<string, FeedSource[]> = {
     { name: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=political-general&post_type=best', country: 'GB', lat: 51.51, lon: -0.13 },
     { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', country: 'QA', lat: 25.29, lon: 51.53 },
     { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml', country: 'US', lat: 38.89, lon: -77.01 },
-    { name: 'NHK World', url: 'https://www3.nhk.or.jp/rss/news/cat0.xml', country: 'JP', lat: 35.68, lon: 139.69 },
+    { name: 'NHK World', url: 'https://www3.nhk.or.jp/nhkworld/en/news/feeds/', country: 'JP', lat: 35.68, lon: 139.69 },
     { name: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', country: 'HK', lat: 22.28, lon: 114.16 },
     { name: 'The Hindu', url: 'https://www.thehindu.com/news/international/feeder/default.rss', country: 'IN', lat: 13.08, lon: 80.27 },
     { name: 'France24', url: 'https://www.france24.com/en/rss', country: 'FR', lat: 48.86, lon: 2.35 },

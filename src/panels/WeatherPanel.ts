@@ -71,6 +71,12 @@ export class WeatherPanel extends Panel {
         name: saved?.name ?? this.data.name,
       });
     }
+    // Cache weather data for map overlay
+    storage.set('dashview-weather-cache', {
+      temp: this.data.current.temp,
+      condition: this.data.current.condition,
+      icon: this.data.current.icon,
+    });
     this.render(this.data);
   }
 
@@ -148,14 +154,36 @@ export class WeatherPanel extends Panel {
       sparklineLabel.appendChild(labelRight);
       this.contentEl.appendChild(sparklineLabel);
 
+      const sparklineWrap = createElement('div', { className: 'weather-sparkline-wrap' });
       const hourlyCanvas = document.createElement('canvas');
       hourlyCanvas.className = 'weather-hourly';
-      this.contentEl.appendChild(hourlyCanvas);
+      sparklineWrap.appendChild(hourlyCanvas);
+
+      // Hour labels row
+      const hourLabels = createElement('div', { className: 'weather-hour-labels' });
+      const now = new Date();
+      const labelCount = 6;
+      const step = Math.max(1, Math.floor((w.hourly.length - 1) / (labelCount - 1)));
+      for (let j = 0; j < labelCount; j++) {
+        const i = Math.min(j * step, w.hourly.length - 1);
+        const h = new Date(now.getTime() + i * 3600000);
+        const hrs = h.getHours();
+        const label = createElement('span', {
+          textContent: hrs === 0 ? '12a' :
+            hrs < 12 ? `${hrs}a` :
+            hrs === 12 ? '12p' : `${hrs - 12}p`,
+        });
+        hourLabels.appendChild(label);
+      }
+      sparklineWrap.appendChild(hourLabels);
+
+      this.contentEl.appendChild(sparklineWrap);
       requestAnimationFrame(() => {
         renderSparkline(hourlyCanvas, temps, {
           color: '#3b82f6',
           width: hourlyCanvas.offsetWidth || 200,
-          height: 48,
+          height: 56,
+          showDots: true,
         });
       });
 

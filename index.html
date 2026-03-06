@@ -152,9 +152,10 @@
         grid-area: map;
         border-radius: 12px;
         overflow: hidden;
-        min-height: 500px;
+        min-height: 550px;
         position: relative;
         border: 1px solid var(--color-border);
+        box-shadow: 0 0 40px rgba(59, 130, 246, 0.04);
       }
 
       .map-hero .leaflet-container {
@@ -367,10 +368,32 @@
         opacity: 0.7;
       }
 
+      .weather-sparkline-wrap {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        padding: 8px 8px 4px;
+        position: relative;
+      }
+
       .weather-hourly {
-        height: 48px;
+        height: 56px;
         width: 100%;
         display: block;
+      }
+
+      .weather-hour-labels {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        height: 14px;
+        margin-top: 2px;
+      }
+
+      .weather-hour-labels span {
+        font-size: 9px;
+        color: var(--color-text-muted);
+        opacity: 0.5;
       }
 
       .weather-stats {
@@ -1010,24 +1033,83 @@
         text-decoration: underline !important;
       }
 
-      .news-marker {
+      /* Callout-style map markers */
+      .news-callout-wrap {
+        overflow: visible !important;
+      }
+
+      .news-callout {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        position: relative;
+        white-space: nowrap;
+      }
+
+      .news-callout-pin {
+        width: 26px;
+        height: 26px;
         background: var(--color-accent, #3b82f6);
         color: #fff;
         border-radius: 50%;
-        width: 28px;
-        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 11px;
-        font-weight: 600;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-        transition: box-shadow 0.2s;
+        font-weight: 700;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        z-index: 2;
+        transition: transform 0.15s, box-shadow 0.15s;
+        flex-shrink: 0;
       }
 
-      .news-marker:hover {
-        box-shadow: 0 0 12px rgba(59, 130, 246, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+      .news-callout:hover .news-callout-pin {
+        transform: scale(1.15);
+        box-shadow: 0 0 14px rgba(59, 130, 246, 0.5), 0 2px 8px rgba(0, 0, 0, 0.5);
+      }
+
+      .news-callout-label {
+        background: rgba(10, 10, 10, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 10px;
+        font-weight: 500;
+        padding: 2px 8px 2px 6px;
+        border-radius: 0 4px 4px 0;
+        margin-left: -2px;
+        letter-spacing: 0.02em;
+        z-index: 1;
+        backdrop-filter: blur(4px);
+      }
+
+      /* Weather overlay on map */
+      .weather-map-overlay {
+        overflow: visible !important;
+      }
+
+      .weather-map-pin {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(10, 10, 10, 0.8);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 20px;
+        padding: 4px 10px;
+        backdrop-filter: blur(4px);
+        white-space: nowrap;
+      }
+
+      .weather-map-temp {
+        font-size: 14px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .weather-map-cond {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: capitalize;
       }
 
       .news-empty {
@@ -1285,7 +1367,7 @@
         background: linear-gradient(90deg, rgba(59, 130, 246, 0.04), rgba(139, 92, 246, 0.04));
         border-bottom: 1px solid var(--color-border);
         overflow: hidden;
-        height: 80px;
+        height: 72px;
         position: relative;
       }
 
@@ -1429,29 +1511,45 @@
         text-decoration: underline;
       }
 
-      /* News marker pulse animation */
-      .news-marker-pulse {
-        animation: markerPulse 2s ease-in-out infinite;
+      /* News callout pin pulse animation */
+      .news-callout-pin {
+        animation: pinPulse 3s ease-in-out infinite;
       }
 
-      @keyframes markerPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
-        50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+      @keyframes pinPulse {
+        0%, 100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5); }
+        50% { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.5); }
       }
 
       /* News map tooltip */
       .news-tooltip {
-        background: var(--color-surface, #1a1a1a) !important;
+        background: rgba(10, 10, 10, 0.9) !important;
         color: var(--color-text, #fafafa) !important;
-        border: 1px solid var(--color-border, #2a2a2a) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
         border-radius: 6px !important;
-        padding: 4px 8px !important;
-        font-size: 11px !important;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(8px) !important;
+        max-width: 250px !important;
+        white-space: normal !important;
+        line-height: 1.3 !important;
       }
 
       .news-tooltip::before {
-        border-top-color: var(--color-border, #2a2a2a) !important;
+        border-top-color: rgba(255, 255, 255, 0.12) !important;
+      }
+
+      .news-popup-header {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--color-accent, #3b82f6);
+        margin-bottom: 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
     </style>
   </head>

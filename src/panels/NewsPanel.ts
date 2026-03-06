@@ -5,6 +5,9 @@ import { fetchSocialFeed } from '../services/social.ts';
 import * as storage from '../services/storage.ts';
 import type { NewsCategory, NewsData, NewsArticle, SocialPost } from '../types/index.ts';
 
+// Detect non-Latin scripts (CJK, Arabic, Cyrillic, etc.)
+const NON_LATIN_RE = /[\u3000-\u9FFF\uAC00-\uD7AF\u0600-\u06FF\u0400-\u04FF\u1100-\u11FF\uFE30-\uFE4F]/;
+
 const CATEGORY_KEY = 'dashview-news-category';
 const CATEGORIES: { id: NewsCategory; label: string }[] = [
   { id: 'world', label: 'World' },
@@ -105,7 +108,10 @@ export class NewsPanel extends Panel {
     const d = data as NewsData;
     if (!d) return;
 
-    if (d.articles.length === 0) {
+    // Filter to English-only articles
+    const englishArticles = d.articles.filter((a) => !NON_LATIN_RE.test(a.title));
+
+    if (englishArticles.length === 0) {
       const empty = createElement('div', { className: 'news-empty', textContent: 'No articles available' });
       this.contentEl.appendChild(empty);
       this.initHeroMap([]);
@@ -114,13 +120,13 @@ export class NewsPanel extends Panel {
 
     // Article list
     const list = createElement('div', { className: 'news-list news-panel-articles' });
-    for (const article of d.articles) {
+    for (const article of englishArticles) {
       list.appendChild(this.createArticleRow(article));
     }
     this.contentEl.appendChild(list);
 
     // Init hero map
-    this.initHeroMap(d.articles);
+    this.initHeroMap(englishArticles);
   }
 
   private renderSocialFeed(): void {
@@ -199,15 +205,17 @@ export class NewsPanel extends Panel {
   private initMap(container: HTMLElement, articles: NewsArticle[]): void {
     if (typeof L === 'undefined') return;
 
+    // Filter to English-only articles
+    const englishArticles = articles.filter((a) => !NON_LATIN_RE.test(a.title));
+
     this.map = L.map(container, {
-      center: [20, 0],
-      zoom: 2,
+      center: [25, 0],
+      zoom: 3,
       zoomControl: false,
       attributionControl: false,
       minZoom: 2,
       maxZoom: 14,
-      maxBounds: L.latLngBounds([[-85, -180], [85, 180]]),
-      maxBoundsViscosity: 1.0,
+      worldCopyJump: true,
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
@@ -220,20 +228,18 @@ export class NewsPanel extends Panel {
         tileSize: 512,
         zoomOffset: -1,
         maxZoom: 19,
-        noWrap: true,
       }).addTo(this.map);
     } else {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 19,
-        noWrap: true,
       }).addTo(this.map);
     }
 
     // Group articles by location
     const groups = new Map<string, NewsArticle[]>();
-    for (const a of articles) {
+    for (const a of englishArticles) {
       const key = `${a.lat},${a.lon}`;
       const group = groups.get(key);
       if (group) {
@@ -249,31 +255,36 @@ export class NewsPanel extends Panel {
     for (const [, group] of groups) {
       const { lat, lon } = group[0];
       const count = group.length;
+      const headline = group[0].title.length > 40
+        ? group[0].title.slice(0, 38) + '\u2026'
+        : group[0].title;
 
+      // Callout-style marker: pin + label
       const icon = L.divIcon({
-        className: '',
-        html: `<div class="news-marker news-marker-pulse">${count}</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
+        className: 'news-callout-wrap',
+        html: `<div class="news-callout">
+          <div class="news-callout-pin">${count}</div>
+          <div class="news-callout-label">${this.escapeHtml(group[0].source)}${count > 1 ? ` +${count - 1}` : ''}</div>
+        </div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 28],
       });
 
       const marker = L.marker([lat, lon], { icon }).addTo(markerTarget);
 
-      // Hover tooltip
-      const tooltipText = group[0].source + (count > 1 ? ` +${count - 1}` : '');
-      marker.bindTooltip(tooltipText, {
+      // Hover tooltip with headline
+      marker.bindTooltip(headline, {
         className: 'news-tooltip',
         direction: 'top',
-        offset: [0, -14],
+        offset: [0, -30],
       });
 
       const popupLines = group.slice(0, 3).map(
         (a) => `<a href="${this.escapeHtml(a.link)}" target="_blank" rel="noopener">${this.escapeHtml(a.title)}</a>`
-        + (a.description ? `<br><span style="font-size:11px;color:var(--color-text-muted)">${this.escapeHtml(a.description.slice(0, 100))}</span>` : '')
+        + (a.description ? `<br><span style="font-size:11px;opacity:0.6">${this.escapeHtml(a.description.slice(0, 100))}</span>` : '')
       );
-      const sourceName = group[0].source;
-      const popupHtml = `<strong>${this.escapeHtml(sourceName)}</strong>${count > 1 ? ` +${count - 1}` : ''}<br>${popupLines.join('<br>')}`;
-      marker.bindPopup(popupHtml, { maxWidth: 300 });
+      const popupHtml = `<div class="news-popup-header">${this.escapeHtml(group[0].source)}</div>${popupLines.join('<hr style="border:0;border-top:1px solid rgba(255,255,255,0.08);margin:6px 0">')}`;
+      marker.bindPopup(popupHtml, { maxWidth: 300, className: 'news-popup-dark' });
 
       // Fly to location on click
       const mapRef = this.map;
@@ -286,9 +297,43 @@ export class NewsPanel extends Panel {
       (markerTarget as L.LayerGroup).addTo(this.map);
     }
 
+    // Add weather overlay on map if available
+    this.addWeatherOverlay();
+
     // Day/night terminator
     this.updateTerminator();
     this.terminatorInterval = setInterval(() => this.updateTerminator(), 60000);
+  }
+
+  private addWeatherOverlay(): void {
+    if (!this.map) return;
+    try {
+      const locStr = localStorage.getItem('dashview-location');
+      if (!locStr) return;
+      const loc = JSON.parse(locStr) as { lat: number; lon: number; name?: string };
+      if (!loc.lat || !loc.lon) return;
+
+      const weatherStr = localStorage.getItem('dashview-weather-cache');
+      if (!weatherStr) return;
+      const w = JSON.parse(weatherStr) as { temp: number; condition: string; icon: string };
+      if (w?.temp === undefined) return;
+
+      const temp = Math.round(w.temp);
+      const condition = w.condition;
+      const icon = L.divIcon({
+        className: 'weather-map-overlay',
+        html: `<div class="weather-map-pin">
+          <span class="weather-map-temp">${temp}°</span>
+          <span class="weather-map-cond">${condition}</span>
+        </div>`,
+        iconSize: [0, 0],
+        iconAnchor: [0, 20],
+      });
+
+      L.marker([loc.lat, loc.lon], { icon, interactive: false }).addTo(this.map);
+    } catch {
+      // No weather data available yet
+    }
   }
 
   private tryCreateClusterGroup(): L.LayerGroup | null {

@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const style = (styleParam && ALLOWED_STYLES.has(styleParam)) ? styleParam : 'navigation-night-v1';
 
   try {
-    const tileUrl = `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/${z}/${x}/${y}?access_token=${token}`;
+    const tileUrl = `https://api.mapbox.com/styles/v1/mapbox/${style}/tiles/512/${z}/${x}/${y}@2x?access_token=${token}`;
     const tileRes = await fetch(tileUrl);
 
     if (!tileRes.ok) {

@@ -80,12 +80,22 @@ export function initPredictionBanner(container: HTMLElement): void {
   setInterval(() => void loadData(), REFRESH_INTERVAL);
 }
 
+function cleanQuestion(q: string): string {
+  // Strip leading "Yes" / "No" / "Yes:" / "No:" prefixes from Kalshi-style titles
+  let cleaned = q.replace(/^(Yes|No)\s*[:\-]?\s*/i, '').trim();
+  // Capitalize first letter after stripping
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return cleaned;
+}
+
 function createCard(m: PredictionMarket): HTMLElement {
   const card = createElement('div', { className: 'prediction-card' });
 
   const question = createElement('span', {
     className: 'prediction-card-question',
-    textContent: m.question,
+    textContent: cleanQuestion(m.question),
   });
 
   const right = createElement('div', { className: 'prediction-card-right' });
