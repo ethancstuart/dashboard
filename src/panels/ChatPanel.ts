@@ -1,6 +1,6 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { sendMessage, storeApiKey } from '../services/chat.ts';
+import { sendMessage, storeApiKey, hasApiKey } from '../services/chat.ts';
 import * as storage from '../services/storage.ts';
 import type { ChatMessage } from '../types/index.ts';
 
@@ -23,6 +23,14 @@ export class ChatPanel extends Panel {
 
   async fetchData(): Promise<void> {
     this.render(null);
+
+    // Proactively show API key form if no key is stored
+    if (this.messages.length === 0) {
+      const keyExists = await hasApiKey();
+      if (!keyExists) {
+        this.showApiKeyForm();
+      }
+    }
   }
 
   render(_data: unknown): void {

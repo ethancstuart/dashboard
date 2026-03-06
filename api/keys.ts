@@ -6,6 +6,20 @@ function getSessionId(req: Request): string | null {
   return sessionCookie?.split('=')[1] || null;
 }
 
+async function getUserId(sessionId: string, kvUrl: string, kvToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${kvUrl}/get/session:${sessionId}`, {
+      headers: { Authorization: `Bearer ${kvToken}` },
+    });
+    const data = (await res.json()) as { result: string | null };
+    if (!data.result) return null;
+    const user = JSON.parse(data.result);
+    return user.id || null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req: Request) {
   const sessionId = getSessionId(req);
   if (!sessionId) {
@@ -24,6 +38,14 @@ export default async function handler(req: Request) {
     });
   }
 
+  const userId = await getUserId(sessionId, kvUrl, kvToken);
+  if (!userId) {
+    return new Response(JSON.stringify({ error: 'Invalid session' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const url = new URL(req.url);
 
   if (req.method === 'POST') {
@@ -38,7 +60,7 @@ export default async function handler(req: Request) {
 
     // Store encrypted (base64 encode for now — real encryption would use AUTH_SECRET)
     const encoded = btoa(keyValue);
-    await fetch(`${kvUrl}/set/apikey:${sessionId}:${keyName}`, {
+    await fetch(`${kvUrl}/set/apikey:${userId}:${keyName}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${kvToken}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(encoded),
@@ -52,11 +74,11 @@ export default async function handler(req: Request) {
   if (req.method === 'GET') {
     // List stored key names (not values)
     try {
-      const res = await fetch(`${kvUrl}/keys/apikey:${sessionId}:*`, {
+      const res = await fetch(`${kvUrl}/keys/apikey:${userId}:*`, {
         headers: { Authorization: `Bearer ${kvToken}` },
       });
       const data = (await res.json()) as { result: string[] };
-      const keyNames = (data.result || []).map((k: string) => k.replace(`apikey:${sessionId}:`, ''));
+      const keyNames = (data.result || []).map((k: string) => k.replace(`apikey:${userId}:`, ''));
       return new Response(JSON.stringify({ keys: keyNames }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -76,7 +98,7 @@ export default async function handler(req: Request) {
       });
     }
 
-    await fetch(`${kvUrl}/del/apikey:${sessionId}:${keyName}`, {
+    await fetch(`${kvUrl}/del/apikey:${userId}:${keyName}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${kvToken}` },
     });

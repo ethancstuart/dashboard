@@ -33,6 +33,7 @@ export default async function handler(req: Request) {
   }
 
   // Verify session exists and user is premium
+  let userId: string;
   try {
     const sessionRes = await fetch(`${kvUrl}/get/session:${sessionId}`, {
       headers: { Authorization: `Bearer ${kvToken}` },
@@ -51,6 +52,7 @@ export default async function handler(req: Request) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+    userId = user.id;
   } catch {
     return new Response(JSON.stringify({ error: 'Session check failed' }), {
       status: 500,
@@ -61,7 +63,7 @@ export default async function handler(req: Request) {
   // Get user's Anthropic API key from KV
   let apiKey: string | null = null;
   try {
-    const keyRes = await fetch(`${kvUrl}/get/apikey:${sessionId}:anthropic`, {
+    const keyRes = await fetch(`${kvUrl}/get/apikey:${userId}:anthropic`, {
       headers: { Authorization: `Bearer ${kvToken}` },
     });
     const keyData = (await keyRes.json()) as { result: string | null };

@@ -5,6 +5,7 @@ import * as storage from '../services/storage.ts';
 import type { SportsLeague, SportsData, SportsGame, SportsHeadline } from '../types/index.ts';
 
 const LEAGUE_KEY = 'dashview-sports-league';
+const FAVORITES_KEY = 'dashview-sports-favorites';
 
 const LEAGUES: { id: SportsLeague; label: string }[] = [
   { id: 'nba', label: 'NBA' },
@@ -16,6 +17,7 @@ const LEAGUES: { id: SportsLeague; label: string }[] = [
 export class SportsPanel extends Panel {
   private league: SportsLeague;
   private data: SportsData | null = null;
+  private favorites: Set<string>;
 
   constructor() {
     super({
@@ -25,6 +27,17 @@ export class SportsPanel extends Panel {
       refreshInterval: 60000,
     });
     this.league = storage.get<SportsLeague>(LEAGUE_KEY, 'nba');
+    this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, []));
+  }
+
+  private toggleFavorite(abbreviation: string): void {
+    if (this.favorites.has(abbreviation)) {
+      this.favorites.delete(abbreviation);
+    } else {
+      this.favorites.add(abbreviation);
+    }
+    storage.set(FAVORITES_KEY, [...this.favorites]);
+    this.render(this.data);
   }
 
   async fetchData(): Promise<void> {
@@ -57,9 +70,29 @@ export class SportsPanel extends Panel {
     // Scoreboard
     if (this.data.games.length > 0) {
       const scoreboard = createElement('div', { className: 'sports-scoreboard' });
-      for (const game of this.data.games) {
-        scoreboard.appendChild(this.createGameRow(game));
+
+      if (this.favorites.size > 0) {
+        const favGames = this.data.games.filter(
+          (g) => this.favorites.has(g.homeTeam.abbreviation) || this.favorites.has(g.awayTeam.abbreviation),
+        );
+        const otherGames = this.data.games.filter(
+          (g) => !this.favorites.has(g.homeTeam.abbreviation) && !this.favorites.has(g.awayTeam.abbreviation),
+        );
+
+        if (favGames.length > 0) {
+          scoreboard.appendChild(createElement('div', { className: 'sports-section-label', textContent: 'FAVORITES' }));
+          for (const game of favGames) scoreboard.appendChild(this.createGameRow(game));
+        }
+        if (otherGames.length > 0) {
+          scoreboard.appendChild(createElement('div', { className: 'sports-section-label', textContent: 'ALL GAMES' }));
+          for (const game of otherGames) scoreboard.appendChild(this.createGameRow(game));
+        }
+      } else {
+        for (const game of this.data.games) {
+          scoreboard.appendChild(this.createGameRow(game));
+        }
       }
+
       this.contentEl.appendChild(scoreboard);
     } else {
       const empty = createElement('div', { className: 'news-empty', textContent: 'No games scheduled' });
@@ -111,6 +144,17 @@ export class SportsPanel extends Panel {
 
   private createTeamRow(team: { name: string; abbreviation: string; logo: string; score: number | null; record?: string }, isLive: boolean): HTMLElement {
     const row = createElement('div', { className: 'sports-team-row' });
+
+    const isFav = this.favorites.has(team.abbreviation);
+    const star = createElement('button', {
+      className: `sports-fav-btn ${isFav ? 'active' : ''}`,
+      textContent: isFav ? '\u2605' : '\u2606',
+    });
+    star.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleFavorite(team.abbreviation);
+    });
+    row.appendChild(star);
 
     const logo = document.createElement('img');
     logo.src = team.logo;

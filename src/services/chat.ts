@@ -29,6 +29,16 @@ export async function sendMessage(
   return data.response || 'No response';
 }
 
+export async function hasApiKey(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/keys');
+    const data = await res.json();
+    return Array.isArray(data.keys) && data.keys.includes('anthropic');
+  } catch {
+    return false;
+  }
+}
+
 export async function storeApiKey(keyValue: string): Promise<void> {
   const res = await fetch('/api/keys', {
     method: 'POST',

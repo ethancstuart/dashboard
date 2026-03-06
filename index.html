@@ -1717,6 +1717,38 @@
         white-space: nowrap;
       }
 
+      .sports-fav-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 0;
+        line-height: 1;
+        opacity: 0.3;
+        color: var(--color-text-muted);
+        transition: opacity 0.15s, color 0.15s;
+        flex-shrink: 0;
+      }
+
+      .sports-fav-btn:hover {
+        opacity: 0.7;
+      }
+
+      .sports-fav-btn.active {
+        opacity: 1;
+        color: #f5c542;
+      }
+
+      .sports-section-label {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--color-text-muted);
+        opacity: 0.5;
+        padding: 8px 8px 2px;
+      }
+
       @media (max-width: 768px) {
         .sports-status-col { min-width: 70px; }
         .sports-game { padding: 6px 4px; gap: 8px; }
