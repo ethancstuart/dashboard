@@ -7,6 +7,7 @@ import { initPredictionBanner } from './ui/predictionBanner.ts';
 import { WeatherPanel } from './panels/WeatherPanel.ts';
 import { StocksPanel } from './panels/StocksPanel.ts';
 import { NewsPanel } from './panels/NewsPanel.ts';
+import { SportsPanel } from './panels/SportsPanel.ts';
 import { showWelcome } from './ui/welcome.ts';
 
 applyTheme();
@@ -18,6 +19,7 @@ const newsPanel = new NewsPanel();
 app.registerPanel(new WeatherPanel());
 app.registerPanel(new StocksPanel());
 app.registerPanel(newsPanel);
+app.registerPanel(new SportsPanel());
 
 document.body.appendChild(createHeader(app));
 document.body.appendChild(createTicker());
@@ -33,6 +35,7 @@ newsPanel.setMapContainer(layout.mapHero);
 // - Content: news (article list)
 app.sidebarContainer = layout.sidebar;
 app.contentContainer = layout.content;
+app.sportsContainer = layout.sportsRow;
 
 app.init();
 

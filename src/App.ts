@@ -6,12 +6,14 @@ const STORAGE_KEY = 'dashview:panels';
 
 // Panels that go in the right sidebar
 const SIDEBAR_PANELS = new Set(['weather', 'stocks']);
+const SPORTS_PANELS = new Set(['sports']);
 
 export class App {
   private panels = new Map<string, Panel>();
   gridContainer: HTMLElement | null = null;
   sidebarContainer: HTMLElement | null = null;
   contentContainer: HTMLElement | null = null;
+  sportsContainer: HTMLElement | null = null;
 
   async init(): Promise<void> {
     const state = storage.get<PanelState>(STORAGE_KEY, { panels: {} });
@@ -26,6 +28,8 @@ export class App {
       let container: HTMLElement | undefined;
       if (SIDEBAR_PANELS.has(id)) {
         container = this.sidebarContainer ?? this.gridContainer ?? undefined;
+      } else if (SPORTS_PANELS.has(id)) {
+        container = this.sportsContainer ?? this.contentContainer ?? this.gridContainer ?? undefined;
       } else {
         container = this.contentContainer ?? this.gridContainer ?? undefined;
       }

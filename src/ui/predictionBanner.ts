@@ -65,7 +65,9 @@ export function initPredictionBanner(container: HTMLElement): void {
 
   async function loadData() {
     try {
-      const markets = await fetchPredictions();
+      const allMarkets = await fetchPredictions();
+      // Filter out predictions with overly long questions
+      const markets = allMarkets.filter((m) => cleanQuestion(m.question).length <= 100);
       if (markets.length > 0) {
         renderCards(markets);
       } else {
@@ -93,9 +95,13 @@ function cleanQuestion(q: string): string {
 function createCard(m: PredictionMarket): HTMLElement {
   const card = createElement('div', { className: 'prediction-card' });
 
+  let questionText = cleanQuestion(m.question);
+  if (questionText.length > 90) {
+    questionText = questionText.slice(0, 87) + '\u2026';
+  }
   const question = createElement('span', {
     className: 'prediction-card-question',
-    textContent: cleanQuestion(m.question),
+    textContent: questionText,
   });
 
   const right = createElement('div', { className: 'prediction-card-right' });

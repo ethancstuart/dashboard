@@ -140,9 +140,10 @@
       .panel-grid {
         display: grid;
         grid-template-columns: 3fr 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto auto 1fr;
         grid-template-areas:
           "map      sidebar"
+          "sports   sidebar"
           "content  sidebar";
         gap: 16px;
         padding: 16px;
@@ -191,12 +192,17 @@
         overflow: hidden;
       }
 
+      .sports-row {
+        grid-area: sports;
+      }
+
       @media (max-width: 1200px) {
         .panel-grid {
           grid-template-columns: 1fr 1fr;
-          grid-template-rows: auto auto auto;
+          grid-template-rows: auto auto auto auto;
           grid-template-areas:
             "map      map"
+            "sports   sports"
             "content  content"
             "sidebar  sidebar";
         }
@@ -219,6 +225,7 @@
           grid-template-columns: 1fr;
           grid-template-areas:
             "map"
+            "sports"
             "content"
             "sidebar";
         }
@@ -1070,11 +1077,12 @@
       }
 
       .news-callout-label {
-        background: rgba(10, 10, 10, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: rgba(255, 255, 255, 0.85);
+        background: linear-gradient(135deg, rgba(99, 51, 204, 0.85), rgba(59, 130, 246, 0.85));
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        color: rgba(255, 255, 255, 0.95);
         font-size: 10px;
-        font-weight: 500;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         padding: 2px 8px 2px 6px;
         border-radius: 0 4px 4px 0;
         margin-left: -2px;
@@ -1092,12 +1100,13 @@
         display: flex;
         align-items: center;
         gap: 6px;
-        background: rgba(10, 10, 10, 0.8);
-        border: 1px solid rgba(59, 130, 246, 0.3);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(139, 92, 246, 0.8));
+        border: 1px solid rgba(139, 92, 246, 0.5);
         border-radius: 20px;
         padding: 4px 10px;
         backdrop-filter: blur(4px);
         white-space: nowrap;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
       }
 
       .weather-map-temp {
@@ -1550,6 +1559,172 @@
         margin-bottom: 6px;
         padding-bottom: 4px;
         border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      /* Sports panel */
+      .sports-scoreboard {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-bottom: 12px;
+      }
+
+      .sports-game {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px;
+        border-radius: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        transition: background 0.15s;
+      }
+
+      .sports-game:hover {
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .sports-game:last-child {
+        border-bottom: none;
+      }
+
+      .sports-status-col {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        min-width: 90px;
+        flex-shrink: 0;
+      }
+
+      .sports-status {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+      }
+
+      .sports-status-live {
+        color: var(--color-positive);
+        font-weight: 600;
+      }
+
+      .sports-status-final {
+        opacity: 0.6;
+      }
+
+      .sports-live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--color-positive);
+        flex-shrink: 0;
+        animation: livePulse 1.5s ease-in-out infinite;
+      }
+
+      @keyframes livePulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+        50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+      }
+
+      .sports-matchup {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .sports-team-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 2px 0;
+      }
+
+      .sports-team-logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        flex-shrink: 0;
+        border-radius: 4px;
+      }
+
+      .sports-team-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text);
+        min-width: 40px;
+      }
+
+      .sports-team-record {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        opacity: 0.6;
+      }
+
+      .sports-team-spacer {
+        flex: 1;
+      }
+
+      .sports-score {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--color-text);
+        min-width: 28px;
+        text-align: right;
+      }
+
+      .sports-score-live {
+        color: var(--color-positive);
+      }
+
+      .sports-broadcast {
+        font-size: 10px;
+        color: var(--color-text-muted);
+        opacity: 0.5;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        flex-shrink: 0;
+      }
+
+      .sports-headlines {
+        border-top: 1px solid var(--color-border);
+        padding-top: 8px;
+        margin-top: 4px;
+      }
+
+      .sports-headline {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 4px 0;
+      }
+
+      .sports-headline-link {
+        font-size: 13px;
+        color: var(--color-accent);
+        text-decoration: none;
+        line-height: 1.4;
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .sports-headline-link:hover {
+        text-decoration: underline;
+      }
+
+      .sports-headline-time {
+        font-size: 11px;
+        color: var(--color-text-muted);
+        opacity: 0.5;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 768px) {
+        .sports-status-col { min-width: 70px; }
+        .sports-game { padding: 6px 4px; gap: 8px; }
       }
     </style>
   </head>

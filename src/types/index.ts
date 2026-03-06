@@ -177,6 +177,44 @@ export interface PredictionMarket {
   url: string;
 }
 
+// Sports
+export type SportsLeague = 'nba' | 'nfl' | 'mlb' | 'epl';
+
+export interface SportsGame {
+  id: string;
+  league: SportsLeague;
+  status: 'scheduled' | 'in_progress' | 'final';
+  statusDetail: string;
+  startTime: string;
+  homeTeam: SportsTeamScore;
+  awayTeam: SportsTeamScore;
+  broadcast?: string;
+  venue?: string;
+}
+
+export interface SportsTeamScore {
+  id: string;
+  name: string;
+  abbreviation: string;
+  logo: string;
+  score: number | null;
+  record?: string;
+}
+
+export interface SportsHeadline {
+  title: string;
+  link: string;
+  source: string;
+  published: string;
+}
+
+export interface SportsData {
+  league: SportsLeague;
+  games: SportsGame[];
+  headlines: SportsHeadline[];
+  fetchedAt: number;
+}
+
 // Social / X feed
 export interface SocialPost {
   id: string;
