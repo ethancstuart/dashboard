@@ -145,7 +145,7 @@ export class WeatherPanel extends Panel {
       const hi = Math.round(Math.max(...temps));
 
       const sparklineLabel = createElement('div', { className: 'weather-sparkline-label' });
-      const labelLeft = createElement('span', { textContent: 'Next 24h' });
+      const labelLeft = createElement('span', { textContent: 'Next 36h' });
       const labelRight = createElement('span', {
         className: 'weather-sparkline-range',
         textContent: `${lo}\u00B0 \u2014 ${hi}\u00B0`,
@@ -161,12 +161,11 @@ export class WeatherPanel extends Panel {
 
       // Hour labels row
       const hourLabels = createElement('div', { className: 'weather-hour-labels' });
-      const now = new Date();
       const labelCount = 6;
       const step = Math.max(1, Math.floor((w.hourly.length - 1) / (labelCount - 1)));
       for (let j = 0; j < labelCount; j++) {
         const i = Math.min(j * step, w.hourly.length - 1);
-        const h = new Date(now.getTime() + i * 3600000);
+        const h = new Date(w.hourly[i].time * 1000);
         const hrs = h.getHours();
         const label = createElement('span', {
           textContent: hrs === 0 ? '12a' :
