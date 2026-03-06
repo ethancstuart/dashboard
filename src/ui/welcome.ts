@@ -35,7 +35,7 @@ export function showWelcome(): Promise<void> {
 
     const brand = document.createElement('div');
     brand.className = 'welcome-brand';
-    brand.textContent = 'J.A.R.V.I.S.';
+    brand.textContent = 'DashPulse';
 
     const greetingEl = document.createElement('div');
     greetingEl.className = 'welcome-greeting';

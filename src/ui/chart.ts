@@ -25,7 +25,7 @@ export function renderSparkline(
     if (prices[i] > max) { max = prices[i]; maxIdx = i; }
   }
   const range = max - min || 1;
-  const pad = opts?.showDots ? 8 : 2;
+  const pad = opts?.showDots ? 14 : 2;
 
   const toX = (i: number) => (i / (prices.length - 1)) * w;
   const toY = (p: number) => pad + (1 - (p - min) / range) * (h - pad * 2);
@@ -62,8 +62,8 @@ export function renderSparkline(
       ctx.fillStyle = color;
       ctx.fill();
       // Temperature label near dot
-      ctx.font = '10px Inter, sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,1)';
       ctx.textAlign = 'center';
       const label = `${Math.round(prices[idx])}°`;
       ctx.fillText(label, x, idx === maxIdx ? y - 6 : y + 12);

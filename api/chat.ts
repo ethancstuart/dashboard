@@ -113,7 +113,7 @@ export default async function handler(req: Request) {
   const body = (await req.json()) as { messages: { role: string; content: string }[]; context?: string };
   const systemMessage = body.context
     ? `You are a helpful AI assistant integrated into a real-time intelligence dashboard. Here is the current dashboard context:\n${body.context}\n\nUse this context to provide relevant, data-aware responses.`
-    : 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called J.A.R.V.I.S.';
+    : 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called DashPulse';
 
   try {
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {

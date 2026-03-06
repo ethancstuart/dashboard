@@ -173,7 +173,7 @@ export function createHeader(app: App): HTMLElement {
 
   const title = createElement('span', {
     className: 'header-title',
-    textContent: 'J.A.R.V.I.S.',
+    textContent: 'DashPulse',
   });
 
   const right = createElement('div', { className: 'header-right' });
@@ -220,6 +220,7 @@ export function createHeader(app: App): HTMLElement {
       avatar.className = 'header-avatar';
       avatar.width = 28;
       avatar.height = 28;
+      avatar.onerror = () => { avatar.style.display = 'none'; };
 
       const name = createElement('span', { className: 'header-username', textContent: user.name });
       const tier = createElement('span', {

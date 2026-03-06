@@ -8,7 +8,7 @@ export function renderLanding(root: HTMLElement): void {
 
   // Nav
   const nav = createElement('nav', { className: 'landing-nav' });
-  const navBrand = createElement('span', { className: 'landing-nav-brand', textContent: 'J.A.R.V.I.S.' });
+  const navBrand = createElement('span', { className: 'landing-nav-brand', textContent: 'DashPulse' });
   const navLinks = createElement('div', { className: 'landing-nav-links' });
 
   const roadmapLink = document.createElement('a');
@@ -74,7 +74,7 @@ export function renderLanding(root: HTMLElement): void {
   const heroGlow = createElement('div', { className: 'landing-hero-glow' });
   hero.appendChild(heroGlow);
 
-  const heroTitle = createElement('h1', { className: 'landing-hero-title', textContent: 'J.A.R.V.I.S.' });
+  const heroTitle = createElement('h1', { className: 'landing-hero-title', textContent: 'DashPulse' });
   const heroTagline = createElement('p', {
     className: 'landing-hero-tagline',
     textContent: 'Your real-time intelligence dashboard. Weather, markets, news, sports \u2014 all in one futuristic command center.',
@@ -209,7 +209,7 @@ export function renderLanding(root: HTMLElement): void {
 
   const footerCopy = createElement('span', {
     className: 'landing-footer-copy',
-    textContent: '\u00A9 2026 J.A.R.V.I.S. \u2014 Built by Ethan Stuart',
+    textContent: '\u00A9 2026 DashPulse \u2014 Built by Ethan Stuart',
   });
 
   footerLinks.appendChild(footerRoadmap);

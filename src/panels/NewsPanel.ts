@@ -216,6 +216,12 @@ export class NewsPanel extends Panel {
       minZoom: 2,
       maxZoom: 14,
       worldCopyJump: true,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+      boxZoom: false,
+      keyboard: false,
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);

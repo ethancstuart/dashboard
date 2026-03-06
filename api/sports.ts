@@ -94,7 +94,7 @@ function transformScoreboard(league: string, data: { events?: ESPNEvent[] }) {
         score: away.score ? parseInt(away.score, 10) : null,
         record: away.records?.[0]?.summary,
       },
-      broadcast: broadcasts[0] || undefined,
+      broadcast: undefined,
       venue: comp.venue?.fullName,
     };
   });

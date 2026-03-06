@@ -10,7 +10,7 @@ export function renderRoadmap(root: HTMLElement): void {
   const navBrand = document.createElement('a');
   navBrand.href = '#/';
   navBrand.className = 'landing-nav-brand';
-  navBrand.textContent = 'J.A.R.V.I.S.';
+  navBrand.textContent = 'DashPulse';
   navBrand.style.textDecoration = 'none';
   navBrand.style.color = 'inherit';
 

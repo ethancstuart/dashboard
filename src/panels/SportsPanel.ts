@@ -106,15 +106,6 @@ export class SportsPanel extends Panel {
     matchup.appendChild(this.createTeamRow(game.homeTeam, isLive));
     row.appendChild(matchup);
 
-    // Broadcast info
-    if (game.broadcast) {
-      const broadcast = createElement('div', {
-        className: 'sports-broadcast',
-        textContent: game.broadcast,
-      });
-      row.appendChild(broadcast);
-    }
-
     return row;
   }
 

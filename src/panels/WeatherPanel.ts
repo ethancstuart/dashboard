@@ -182,7 +182,7 @@ export class WeatherPanel extends Panel {
         renderSparkline(hourlyCanvas, temps, {
           color: '#3b82f6',
           width: hourlyCanvas.offsetWidth || 200,
-          height: 56,
+          height: 72,
           showDots: true,
         });
       });

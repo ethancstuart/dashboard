@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""></script>
-    <title>J.A.R.V.I.S.</title>
+    <title>DashPulse</title>
     <style>
       *, *::before, *::after {
         margin: 0;
@@ -312,6 +312,7 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 4px;
+        justify-content: center;
       }
 
       .weather-temp {
@@ -1670,6 +1671,7 @@
       }
 
       .sports-broadcast {
+        display: none;
         font-size: 10px;
         color: var(--color-text-muted);
         opacity: 0.5;
@@ -2269,6 +2271,8 @@
         height: 28px;
         border-radius: 50%;
         border: 1px solid var(--color-border);
+        display: block;
+        object-fit: cover;
       }
 
       .header-username {
