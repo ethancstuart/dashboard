@@ -121,8 +121,8 @@ export default async function handler(req: Request) {
     // Create session
     const sessionId = crypto.randomUUID();
 
-    const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((s: string) => s.trim()).filter(Boolean);
     const isOwner = ADMIN_IDS.includes(userInfo.id) || ADMIN_EMAILS.includes(userInfo.email);
 
     const user = {

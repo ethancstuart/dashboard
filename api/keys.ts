@@ -65,15 +65,6 @@ async function encrypt(plaintext: string, secret: string): Promise<string> {
   return btoa(String.fromCharCode(...combined));
 }
 
-async function decrypt(ciphertext: string, secret: string): Promise<string> {
-  const key = await deriveKey(secret);
-  const combined = Uint8Array.from(atob(ciphertext), (c) => c.charCodeAt(0));
-  const iv = combined.slice(0, 12);
-  const data = combined.slice(12);
-  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
-  return new TextDecoder().decode(decrypted);
-}
-
 // --- Audit logging ---
 
 async function auditLog(
