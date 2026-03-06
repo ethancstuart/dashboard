@@ -1,10 +1,19 @@
+import { getUser } from '../services/auth.ts';
+
 const LAST_VISIT_KEY = 'dashview-last-visit';
+
+function getFirstName(): string {
+  const user = getUser();
+  if (user?.name) return user.name.split(' ')[0];
+  return 'Sir';
+}
 
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning, Sir';
-  if (hour < 17) return 'Good Afternoon, Sir';
-  return 'Good Evening, Sir';
+  const name = getFirstName();
+  if (hour < 12) return `Good Morning, ${name}`;
+  if (hour < 17) return `Good Afternoon, ${name}`;
+  return `Good Evening, ${name}`;
 }
 
 function getSubtitle(): string {

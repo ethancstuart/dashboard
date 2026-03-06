@@ -13,9 +13,9 @@ import { checkSession } from '../services/auth.ts';
 
 export async function renderDashboard(root: HTMLElement): Promise<void> {
   root.textContent = '';
+  // Check auth session before welcome so greeting can use the user's name
+  await checkSession();
   await showWelcome();
-  // Check auth session (non-blocking — dashboard works without auth)
-  void checkSession();
 
   const app = new App();
 
