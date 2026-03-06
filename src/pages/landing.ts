@@ -1,4 +1,5 @@
 import { createElement } from '../utils/dom.ts';
+import { login, checkSession } from '../services/auth.ts';
 
 export function renderLanding(root: HTMLElement): void {
   root.textContent = '';
@@ -22,8 +23,48 @@ export function renderLanding(root: HTMLElement): void {
   githubLink.className = 'landing-nav-link';
   githubLink.textContent = 'GitHub';
 
+  // Sign In button with provider dropdown
+  const signInWrap = createElement('div', { className: 'landing-sign-in-wrap' });
+  const signInBtn = createElement('button', { className: 'landing-btn landing-btn-outline landing-sign-in-btn', textContent: 'Sign In' });
+  const dropdown = createElement('div', { className: 'landing-sign-in-dropdown' });
+  const googleBtn = createElement('button', { className: 'landing-sign-in-option', textContent: 'Google' });
+  const githubBtn = createElement('button', { className: 'landing-sign-in-option', textContent: 'GitHub' });
+  googleBtn.addEventListener('click', () => login('google'));
+  githubBtn.addEventListener('click', () => login('github'));
+  dropdown.appendChild(googleBtn);
+  dropdown.appendChild(githubBtn);
+  signInWrap.appendChild(signInBtn);
+  signInWrap.appendChild(dropdown);
+  signInBtn.addEventListener('click', () => dropdown.classList.toggle('open'));
+  document.addEventListener('click', (e) => {
+    if (!signInWrap.contains(e.target as Node)) dropdown.classList.remove('open');
+  });
+
+  // Check if already logged in — show avatar instead
+  void checkSession().then((user) => {
+    if (user) {
+      signInWrap.textContent = '';
+      const avatar = document.createElement('a');
+      avatar.href = '#/app';
+      avatar.className = 'landing-user-avatar';
+      if (user.avatar) {
+        const img = document.createElement('img');
+        img.src = user.avatar;
+        img.alt = user.name;
+        img.width = 32;
+        img.height = 32;
+        img.style.borderRadius = '50%';
+        avatar.appendChild(img);
+      }
+      const name = createElement('span', { className: 'landing-nav-link', textContent: user.name });
+      avatar.appendChild(name);
+      signInWrap.appendChild(avatar);
+    }
+  });
+
   navLinks.appendChild(roadmapLink);
   navLinks.appendChild(githubLink);
+  navLinks.appendChild(signInWrap);
   nav.appendChild(navBrand);
   nav.appendChild(navLinks);
   page.appendChild(nav);
