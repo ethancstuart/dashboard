@@ -8,10 +8,13 @@ import { StocksPanel } from '../panels/StocksPanel.ts';
 import { NewsPanel } from '../panels/NewsPanel.ts';
 import { SportsPanel } from '../panels/SportsPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
+import { checkSession } from '../services/auth.ts';
 
 export async function renderDashboard(root: HTMLElement): Promise<void> {
   root.textContent = '';
   await showWelcome();
+  // Check auth session (non-blocking — dashboard works without auth)
+  void checkSession();
 
   const app = new App();
 

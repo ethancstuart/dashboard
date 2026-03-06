@@ -2,6 +2,7 @@ import { createElement } from '../utils/dom.ts';
 import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { geocodeCity } from '../services/weather.ts';
 import * as storage from '../services/storage.ts';
+import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
 import type { App } from '../App.ts';
 
 const LOCATION_KEY = 'dashview-location';
@@ -207,7 +208,59 @@ export function createHeader(app: App): HTMLElement {
   settingsWrap.appendChild(gearBtn);
   settingsWrap.appendChild(dropdown);
 
+  // Auth section
+  const authWrap = createElement('div', { className: 'header-auth' });
+  function updateAuthUI() {
+    authWrap.textContent = '';
+    const user = getUser();
+    if (user) {
+      const avatar = document.createElement('img');
+      avatar.src = user.avatar;
+      avatar.alt = user.name;
+      avatar.className = 'header-avatar';
+      avatar.width = 28;
+      avatar.height = 28;
+
+      const name = createElement('span', { className: 'header-username', textContent: user.name });
+      const tier = createElement('span', {
+        className: `header-tier header-tier-${user.tier}`,
+        textContent: user.tier,
+      });
+      const logoutBtn = createElement('button', { className: 'header-gear', textContent: 'Sign Out' });
+      logoutBtn.style.fontSize = '12px';
+      logoutBtn.addEventListener('click', () => logout());
+
+      authWrap.appendChild(avatar);
+      authWrap.appendChild(name);
+      authWrap.appendChild(tier);
+      authWrap.appendChild(logoutBtn);
+    } else {
+      const signInBtn = createElement('button', { className: 'header-sign-in', textContent: 'Sign In' });
+      const authDropdown = createElement('div', { className: 'header-auth-dropdown' });
+      authDropdown.style.display = 'none';
+
+      const googleBtn = createElement('button', { className: 'settings-item', textContent: 'Google' });
+      googleBtn.addEventListener('click', () => login('google'));
+      const githubBtn = createElement('button', { className: 'settings-item', textContent: 'GitHub' });
+      githubBtn.addEventListener('click', () => login('github'));
+
+      authDropdown.appendChild(googleBtn);
+      authDropdown.appendChild(githubBtn);
+
+      signInBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        authDropdown.style.display = authDropdown.style.display === 'none' ? '' : 'none';
+      });
+
+      authWrap.appendChild(signInBtn);
+      authWrap.appendChild(authDropdown);
+    }
+  }
+  updateAuthUI();
+  onAuthChange(() => updateAuthUI());
+
   right.appendChild(clock);
+  right.appendChild(authWrap);
   right.appendChild(settingsWrap);
 
   header.appendChild(title);

@@ -215,6 +215,19 @@ export interface SportsData {
   fetchedAt: number;
 }
 
+// Auth
+export type UserTier = 'guest' | 'free' | 'premium';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar: string;
+  provider: 'google' | 'github';
+  tier: UserTier;
+  createdAt: string;
+}
+
 // Social / X feed
 export interface SocialPost {
   id: string;

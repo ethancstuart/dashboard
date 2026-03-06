@@ -1,21 +1,24 @@
-import type { PanelConfig } from '../types/index.ts';
+import type { PanelConfig, UserTier } from '../types/index.ts';
 import { createElement, qs } from '../utils/dom.ts';
+import { hasAccess } from '../services/tier.ts';
 
 export abstract class Panel {
   readonly id: string;
   readonly title: string;
   enabled: boolean;
   refreshInterval: number;
+  readonly requiredTier: UserTier;
   container: HTMLElement;
   protected contentEl: HTMLElement;
   protected errorEl: HTMLElement;
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
-  constructor(config: PanelConfig) {
+  constructor(config: PanelConfig & { requiredTier?: UserTier }) {
     this.id = config.id;
     this.title = config.title;
     this.enabled = config.enabled;
     this.refreshInterval = config.refreshInterval;
+    this.requiredTier = config.requiredTier || 'guest';
     this.container = this.createContainer();
     this.contentEl = qs<HTMLElement>('.panel-content', this.container)!;
     this.errorEl = qs<HTMLElement>('.panel-error', this.container)!;
@@ -68,8 +71,29 @@ export abstract class Panel {
       return;
     }
 
+    // Check tier access
+    if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) {
+      this.showLocked();
+      return;
+    }
+
     await this.refresh();
     this.startInterval();
+  }
+
+  private showLocked(): void {
+    this.contentEl.innerHTML = '';
+    const overlay = createElement('div', { className: 'panel-locked' });
+    const icon = createElement('div', { className: 'panel-locked-icon', textContent: '\uD83D\uDD12' });
+    const label = createElement('div', { className: 'panel-locked-label', textContent: 'Premium Feature' });
+    const desc = createElement('div', {
+      className: 'panel-locked-desc',
+      textContent: `Requires ${this.requiredTier} tier to access.`,
+    });
+    overlay.appendChild(icon);
+    overlay.appendChild(label);
+    overlay.appendChild(desc);
+    this.contentEl.appendChild(overlay);
   }
 
   toggle(enabled: boolean): void {
