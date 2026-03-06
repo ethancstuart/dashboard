@@ -1268,94 +1268,89 @@
         color: var(--color-text);
       }
 
-      /* Prediction banner */
+      /* Prediction banner — scrolling card strip */
       .prediction-banner {
-        background: linear-gradient(90deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+        background: linear-gradient(90deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05));
         border-bottom: 1px solid var(--color-border);
-        padding: 8px 24px;
         overflow: hidden;
-        min-height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        height: 44px;
+        position: relative;
       }
 
       .prediction-track {
         display: flex;
         align-items: center;
-        gap: 12px;
-        justify-content: center;
+        gap: 10px;
+        height: 100%;
+        width: max-content;
+        will-change: transform;
+        padding: 0 10px;
+      }
+
+      .prediction-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 8px;
+        cursor: pointer;
         white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.15s, border-color 0.15s;
       }
 
-      .prediction-slide-in {
-        animation: predSlide 0.4s ease-out;
+      .prediction-card:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.12);
       }
 
-      @keyframes predSlide {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-
-      .prediction-question {
-        font-size: 13px;
+      .prediction-card-question {
+        font-size: 12px;
         color: var(--color-text);
         font-weight: 500;
-        max-width: 500px;
+        max-width: 220px;
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
-      .prediction-prob {
-        font-size: 15px;
+      .prediction-card-prob {
+        font-size: 13px;
         font-weight: 700;
-        padding: 2px 8px;
-        border-radius: 6px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        flex-shrink: 0;
       }
 
       .prediction-prob-high {
         color: var(--color-positive);
-        background: rgba(34, 197, 94, 0.1);
+        background: rgba(34, 197, 94, 0.12);
       }
 
       .prediction-prob-mid {
         color: #f59e0b;
-        background: rgba(245, 158, 11, 0.1);
+        background: rgba(245, 158, 11, 0.12);
       }
 
       .prediction-prob-low {
         color: var(--color-negative);
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(239, 68, 68, 0.12);
       }
 
-      .prediction-source {
-        font-size: 10px;
+      .prediction-card-source {
+        font-size: 9px;
         color: var(--color-text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.03em;
-      }
-
-      .prediction-dots {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-      }
-
-      .prediction-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--color-border);
-        transition: background 0.2s;
-      }
-
-      .prediction-dot-active {
-        background: var(--color-accent);
+        letter-spacing: 0.04em;
+        opacity: 0.6;
+        flex-shrink: 0;
       }
 
       @media (max-width: 768px) {
-        .prediction-question { max-width: 250px; font-size: 12px; }
-        .prediction-banner { padding: 6px 12px; }
+        .prediction-banner { height: 38px; }
+        .prediction-card { padding: 4px 8px; }
+        .prediction-card-question { max-width: 160px; font-size: 11px; }
       }
 
       /* Social posts (X tab) */
