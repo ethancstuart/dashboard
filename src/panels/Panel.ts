@@ -8,6 +8,7 @@ export abstract class Panel {
   enabled: boolean;
   refreshInterval: number;
   readonly requiredTier: UserTier;
+  collapsed: boolean;
   container: HTMLElement;
   protected contentEl: HTMLElement;
   protected errorEl: HTMLElement;
@@ -19,6 +20,7 @@ export abstract class Panel {
     this.enabled = config.enabled;
     this.refreshInterval = config.refreshInterval;
     this.requiredTier = config.requiredTier || 'guest';
+    this.collapsed = false;
     this.container = this.createContainer();
     this.contentEl = qs<HTMLElement>('.panel-content', this.container)!;
     this.errorEl = qs<HTMLElement>('.panel-error', this.container)!;
@@ -34,15 +36,15 @@ export abstract class Panel {
       className: 'panel-title',
       textContent: this.title,
     });
-    const toggleBtn = createElement('button', {
-      className: 'panel-toggle',
-      textContent: '\u2212',
+    const collapseBtn = createElement('button', {
+      className: 'panel-collapse-btn',
+      textContent: '\u25B4',
     });
-    toggleBtn.addEventListener('click', () => {
-      this.toggle(!this.enabled);
+    header.addEventListener('click', () => {
+      this.setCollapsed(!this.collapsed);
     });
     header.appendChild(titleEl);
-    header.appendChild(toggleBtn);
+    header.appendChild(collapseBtn);
 
     // Content
     const content = createElement('div', { className: 'panel-content' });
@@ -100,6 +102,14 @@ export abstract class Panel {
     overlay.appendChild(desc);
     overlay.appendChild(btn);
     this.contentEl.appendChild(overlay);
+  }
+
+  setCollapsed(collapsed: boolean): void {
+    this.collapsed = collapsed;
+    this.container.classList.toggle('panel-collapsed', collapsed);
+    const btn = this.container.querySelector('.panel-collapse-btn');
+    if (btn) btn.textContent = collapsed ? '\u25BE' : '\u25B4';
+    this.container.dispatchEvent(new CustomEvent('panel:statechange', { bubbles: true }));
   }
 
   toggle(enabled: boolean): void {

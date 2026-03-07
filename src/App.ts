@@ -22,6 +22,7 @@ export class App {
       const saved = state.panels[id];
       if (saved !== undefined) {
         panel.enabled = saved.enabled;
+        if (saved.collapsed) panel.collapsed = true;
       }
 
       // Route panel to correct container
@@ -33,6 +34,8 @@ export class App {
       }
 
       await panel.init(container);
+      if (panel.collapsed) panel.setCollapsed(true);
+      panel.container.addEventListener('panel:statechange', () => this.savePreferences());
     }
   }
 
@@ -58,7 +61,7 @@ export class App {
   savePreferences(): void {
     const state: PanelState = { panels: {} };
     for (const [id, panel] of this.panels) {
-      state.panels[id] = { enabled: panel.enabled };
+      state.panels[id] = { enabled: panel.enabled, collapsed: panel.collapsed };
     }
     storage.set(STORAGE_KEY, state);
   }
