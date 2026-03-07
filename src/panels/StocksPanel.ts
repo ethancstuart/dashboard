@@ -80,6 +80,12 @@ export class StocksPanel extends Panel {
     watchHeader.appendChild(watchContext);
     this.contentEl.appendChild(watchHeader);
 
+    if (d.watchlist.length === 0) {
+      const empty = createElement('div', { className: 'panel-empty-state' });
+      empty.textContent = 'Add stocks to your watchlist';
+      this.contentEl.appendChild(empty);
+    }
+
     for (let i = 0; i < d.watchlist.length; i++) {
       this.contentEl.appendChild(this.createWatchlistRow(d.watchlist[i], i));
       if (d.watchlist[i].symbol === this.selectedSymbol) {

@@ -82,7 +82,10 @@ export class WeatherPanel extends Panel {
 
   render(data: unknown): void {
     const w = data as WeatherData;
-    if (!w) return;
+    if (!w) {
+      this.contentEl.innerHTML = '<div class="panel-empty-state"><div class="panel-empty-pulse"></div><div>Detecting your location...</div></div>';
+      return;
+    }
 
     this.contentEl.textContent = '';
 

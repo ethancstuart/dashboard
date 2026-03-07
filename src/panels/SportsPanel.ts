@@ -96,7 +96,7 @@ export class SportsPanel extends Panel {
 
       this.contentEl.appendChild(scoreboard);
     } else {
-      const empty = createElement('div', { className: 'news-empty', textContent: 'No games scheduled' });
+      const empty = createElement('div', { className: 'panel-empty-state', textContent: 'No games scheduled today.' });
       this.contentEl.appendChild(empty);
     }
 

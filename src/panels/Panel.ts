@@ -10,6 +10,7 @@ export abstract class Panel {
   readonly requiredTier: UserTier;
   readonly priority: number;
   collapsed: boolean;
+  lastUpdated: number | null = null;
   container: HTMLElement;
   protected contentEl: HTMLElement;
   protected errorEl: HTMLElement;
@@ -147,7 +148,15 @@ export abstract class Panel {
   }
 
   showError(message: string): void {
-    this.errorEl.textContent = message;
+    this.errorEl.textContent = '';
+    const msg = createElement('span', { textContent: message });
+    const retryBtn = createElement('button', { className: 'panel-retry-btn', textContent: 'Retry' });
+    retryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      void this.refresh();
+    });
+    this.errorEl.appendChild(msg);
+    this.errorEl.appendChild(retryBtn);
     this.errorEl.style.display = '';
     this.contentEl.style.display = 'none';
   }
@@ -163,14 +172,36 @@ export abstract class Panel {
     this.container.remove();
   }
 
-  private async refresh(): Promise<void> {
+  async refresh(): Promise<void> {
     try {
       this.showLoading();
       await this.fetchData();
+      this.lastUpdated = Date.now();
+      this.renderLastUpdated();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load data';
       this.showError(msg);
     }
+  }
+
+  protected renderLastUpdated(): void {
+    if (!this.lastUpdated) return;
+    let badge = this.container.querySelector('.panel-last-updated') as HTMLElement;
+    if (!badge) {
+      badge = createElement('div', { className: 'panel-last-updated' });
+      this.contentEl.appendChild(badge);
+    }
+    const ago = this.formatTimeAgo(this.lastUpdated);
+    badge.textContent = `Updated ${ago}`;
+  }
+
+  private formatTimeAgo(ts: number): string {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    return `${hours}h ago`;
   }
 
   private startInterval(): void {
