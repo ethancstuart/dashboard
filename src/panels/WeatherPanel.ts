@@ -26,6 +26,7 @@ export class WeatherPanel extends Panel {
       title: 'Weather',
       enabled: true,
       refreshInterval: 1800000,
+      priority: 0,
     });
 
     const saved = storage.get<SavedLocation | null>(LOCATION_KEY, null);

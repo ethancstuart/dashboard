@@ -8,6 +8,7 @@ export abstract class Panel {
   enabled: boolean;
   refreshInterval: number;
   readonly requiredTier: UserTier;
+  readonly priority: number;
   collapsed: boolean;
   container: HTMLElement;
   protected contentEl: HTMLElement;
@@ -20,6 +21,7 @@ export abstract class Panel {
     this.enabled = config.enabled;
     this.refreshInterval = config.refreshInterval;
     this.requiredTier = config.requiredTier || 'guest';
+    this.priority = config.priority ?? 1;
     this.collapsed = false;
     this.container = this.createContainer();
     this.contentEl = qs<HTMLElement>('.panel-content', this.container)!;
@@ -69,7 +71,7 @@ export abstract class Panel {
   abstract fetchData(): Promise<void>;
   abstract render(data: unknown): void;
 
-  async init(parent?: HTMLElement): Promise<void> {
+  attachToDOM(parent?: HTMLElement): void {
     const root = parent ?? document.getElementById('app');
     if (!root) return;
     root.appendChild(this.container);
@@ -79,14 +81,24 @@ export abstract class Panel {
       return;
     }
 
-    // Check tier access
     if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) {
       this.showLocked();
       return;
     }
 
+    this.showLoading();
+  }
+
+  async startDataCycle(): Promise<void> {
+    if (!this.enabled) return;
+    if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) return;
     await this.refresh();
     this.startInterval();
+  }
+
+  async init(parent?: HTMLElement): Promise<void> {
+    this.attachToDOM(parent);
+    await this.startDataCycle();
   }
 
   private showLocked(): void {

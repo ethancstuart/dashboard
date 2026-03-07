@@ -25,6 +25,7 @@ export class SportsPanel extends Panel {
       title: 'Sports',
       enabled: true,
       refreshInterval: 60000,
+      priority: 2,
     });
     this.league = storage.get<SportsLeague>(LEAGUE_KEY, 'nba');
     this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, []));

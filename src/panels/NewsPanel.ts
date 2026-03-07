@@ -37,6 +37,7 @@ export class NewsPanel extends Panel {
       title: 'World News',
       enabled: true,
       refreshInterval: 600000,
+      priority: 1,
     });
     this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'us');
     // Migrate old 'business' category to 'markets'

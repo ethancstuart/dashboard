@@ -48,6 +48,7 @@ export class StocksPanel extends Panel {
       title: 'Markets',
       enabled: true,
       refreshInterval: 300000,
+      priority: 1,
     });
 
     this.watchlist = storage.get<string[]>(WATCHLIST_KEY, DEFAULT_WATCHLIST);

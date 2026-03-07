@@ -18,6 +18,7 @@ export class App {
   async init(): Promise<void> {
     const state = storage.get<PanelState>(STORAGE_KEY, { panels: {} });
 
+    // Phase 1: Attach all panels to DOM (no data fetching yet)
     for (const [id, panel] of this.panels) {
       const saved = state.panels[id];
       if (saved !== undefined) {
@@ -25,7 +26,6 @@ export class App {
         if (saved.collapsed) panel.collapsed = true;
       }
 
-      // Route panel to correct container
       let container: HTMLElement | undefined;
       if (SIDEBAR_PANELS.has(id)) {
         container = this.sidebarContainer ?? this.gridContainer ?? undefined;
@@ -33,9 +33,24 @@ export class App {
         container = this.contentContainer ?? this.gridContainer ?? undefined;
       }
 
-      await panel.init(container);
+      panel.attachToDOM(container);
       if (panel.collapsed) panel.setCollapsed(true);
       panel.container.addEventListener('panel:statechange', () => this.savePreferences());
+    }
+
+    // Phase 2: Fetch data in priority order
+    const panels = Array.from(this.panels.values()).filter((p) => p.enabled);
+    const byPriority = new Map<number, Panel[]>();
+    for (const p of panels) {
+      const group = byPriority.get(p.priority) ?? [];
+      group.push(p);
+      byPriority.set(p.priority, group);
+    }
+
+    const priorities = Array.from(byPriority.keys()).sort((a, b) => a - b);
+    for (const priority of priorities) {
+      const group = byPriority.get(priority)!;
+      await Promise.all(group.map((p) => p.startDataCycle()));
     }
   }
 

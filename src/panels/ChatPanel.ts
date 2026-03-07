@@ -16,6 +16,7 @@ export class ChatPanel extends Panel {
       title: 'AI Chat',
       enabled: true,
       refreshInterval: 0,
+      priority: 2,
       requiredTier: 'premium',
     });
     this.messages = storage.get<ChatMessage[]>(CHAT_KEY, []);

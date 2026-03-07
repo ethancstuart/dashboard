@@ -3,6 +3,7 @@ export interface PanelConfig {
   title: string;
   enabled: boolean;
   refreshInterval: number;
+  priority?: number;
 }
 
 export interface PanelSettings {
