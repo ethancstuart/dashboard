@@ -14,6 +14,18 @@
       integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
       crossorigin=""></script>
     <title>DashPulse</title>
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="DashPulse" />
+    <meta property="og:description" content="Your real-time intelligence dashboard. Weather, markets, news, sports, predictions, and AI chat — all in one browser tab." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:url" content="https://dashpulse.app" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DashPulse" />
+    <meta name="twitter:description" content="Your real-time intelligence dashboard. Weather, markets, news, sports, predictions, and AI chat — all in one browser tab." />
+    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="description" content="Your real-time intelligence dashboard. Weather, markets, news, sports, predictions, and AI chat — all in one browser tab. Open source, built with Claude Code." />
     <style>
       *, *::before, *::after {
         margin: 0;
@@ -2234,6 +2246,12 @@
         box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
       }
 
+      .roadmap-dot-active {
+        background: var(--color-accent);
+        border-color: var(--color-accent);
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+      }
+
       .roadmap-dot-planned {
         background: var(--color-surface);
         border-color: var(--color-border);
@@ -2260,6 +2278,11 @@
       }
 
       .roadmap-badge-in-progress {
+        background: rgba(59, 130, 246, 0.12);
+        color: var(--color-accent);
+      }
+
+      .roadmap-badge-active {
         background: rgba(59, 130, 246, 0.12);
         color: var(--color-accent);
       }

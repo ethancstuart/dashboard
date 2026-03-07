@@ -1,33 +1,78 @@
-# dashview
+# DashPulse
 
-Open-source real-time intelligence dashboard. Built with Vite + TypeScript. No framework.
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Deployed on Vercel](https://img.shields.io/badge/deployed%20on-Vercel-black.svg)](https://dashpulse.app)
+[![Built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-blueviolet.svg)](https://claude.ai/claude-code)
+
+**Your real-time intelligence dashboard.** Weather, markets, news, sports, predictions, and AI chat -- all in one browser tab. No framework, no bloat, just live data.
+
+Built entirely with [Claude Code](https://claude.ai/claude-code).
+
+## What's Live
+
+- **Weather** -- Hyperlocal forecasts, hourly sparklines, conditions on an interactive world map
+- **Markets** -- 10-stock watchlist with real-time quotes, detail views, and sparklines (Finnhub)
+- **News** -- 7 categories with headlines mapped to their origin on an interactive Mapbox map with day/night terminator
+- **Sports** -- NBA, NFL, MLB, EPL live scores with team favorites
+- **AI Chat** -- Multi-provider (Anthropic, OpenAI, Google, xAI), bring your own API key
+- **Predictions** -- Live odds from Polymarket and Kalshi
+- **Market Ticker** -- Scrolling real-time market data
+- **Auth** -- Google/GitHub OAuth with guest, free, and premium tiers
 
 ## Quick Start
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/dashview.git
-cd dashview
+git clone https://github.com/ethancstuart/Dashboard.git
+cd Dashboard
 cp .env.example .env.local
 # Add your API keys to .env.local
 npm install
 npm run dev
 ```
 
-## API Keys Needed
+Open [localhost:5173](http://localhost:5173) to see the dashboard.
 
-- **OpenWeatherMap** (free): https://openweathermap.org/api
-- **Finnhub** (free, coming in Phase 2): https://finnhub.io
+## API Keys
+
+| Service | Tier | Purpose |
+|---------|------|---------|
+| [OpenWeatherMap](https://openweathermap.org/api) | Free | Weather data |
+| [Finnhub](https://finnhub.io) | Free (60 calls/min) | Stock quotes |
+| [Mapbox](https://www.mapbox.com) | Free tier | News map |
+
+Optional (BYO key for AI Chat): Anthropic, OpenAI, Google AI, xAI
 
 ## Architecture
 
-Panel-based — every data source is a self-contained class with its own refresh cycle. No backend database. User preferences stored in localStorage. API keys proxied through Vercel Edge Functions.
+Panel-based -- every data source is a self-contained TypeScript class with its own refresh cycle. No React, no framework. DOM updates are direct. API keys are proxied through Vercel Edge Functions (never exposed client-side).
 
-See [ROADMAP.md](ROADMAP.md) for what's shipped and what's coming.
+- **Panels:** `src/panels/` -- WeatherPanel, StocksPanel, NewsPanel, SportsPanel, ChatPanel
+- **Services:** `src/services/` -- API clients, auth, storage
+- **Edge Functions:** `api/` -- server-side API proxies
+- **Pages:** `src/pages/` -- landing, roadmap, dashboard
 
-## Built With
+User preferences persist in localStorage (no backend database for core features). Circuit breaker pattern on all fetches -- 3 failures trigger 5-minute backoff.
 
-- [Vite](https://vitejs.dev) + TypeScript
+## Commands
+
+```bash
+npm run dev        # Dev server (localhost:5173)
+npm run build      # Production build
+npm run preview    # Preview production build
+vercel             # Deploy to Vercel
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, PR guidelines, and architecture overview.
+
+## Tech Stack
+
+- [Vite](https://vitejs.dev) + TypeScript (strict mode)
+- Vanilla DOM (no framework)
+- CSS custom properties for theming
 - [Vercel](https://vercel.com) Edge Functions
-- [Claude Code](https://docs.anthropic.com) — built entirely through AI-assisted development
+- [Leaflet](https://leafletjs.com) + [Mapbox](https://www.mapbox.com) for maps
 
 ## License
 

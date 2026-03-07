@@ -29,7 +29,7 @@ export function renderRoadmap(root: HTMLElement): void {
   const title = createElement('h1', { className: 'roadmap-title', textContent: 'Roadmap' });
   const subtitle = createElement('p', {
     className: 'roadmap-subtitle',
-    textContent: 'Where we are, where we\'re going, and how you can be part of it.',
+    textContent: 'Everything you check, in one place. Here\'s what\'s shipped and what\'s next.',
   });
   header.appendChild(title);
   header.appendChild(subtitle);
@@ -42,9 +42,9 @@ export function renderRoadmap(root: HTMLElement): void {
 
   const steps = createElement('div', { className: 'roadmap-steps' });
   const stepItems = [
-    { num: '1', title: 'Visit', desc: 'Open the dashboard \u2014 no account needed. All core panels load instantly.' },
-    { num: '2', title: 'Explore', desc: 'Browse weather, markets, news, and sports from sources around the world.' },
-    { num: '3', title: 'Customize', desc: 'Sign in to save preferences, unlock premium features, and make it yours.' },
+    { num: '1', title: 'Visit', desc: 'Open the dashboard \u2014 no account needed. All core panels load instantly with live data.' },
+    { num: '2', title: 'Explore', desc: 'Browse weather, markets, news, sports, predictions, and AI chat from one command center.' },
+    { num: '3', title: 'Customize', desc: 'Sign in to save preferences, sync across devices, and unlock premium features.' },
   ];
   for (const s of stepItems) {
     const step = createElement('div', { className: 'roadmap-step' });
@@ -69,7 +69,7 @@ export function renderRoadmap(root: HTMLElement): void {
 
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  for (const h of ['Feature', 'Guest (Free)', 'Free (Login)', 'Premium']) {
+  for (const h of ['Feature', 'Guest', 'Free (Login)', 'Premium ($5/mo)']) {
     const th = document.createElement('th');
     th.textContent = h;
     headRow.appendChild(th);
@@ -79,16 +79,25 @@ export function renderRoadmap(root: HTMLElement): void {
 
   const tbody = document.createElement('tbody');
   const rows = [
-    ['Weather, Stocks, News, Sports', '\u2713', '\u2713', '\u2713'],
-    ['Prediction Markets & Map', '\u2713', '\u2713', '\u2713'],
+    ['Weather, Markets, News, Sports', '\u2713', '\u2713', '\u2713'],
+    ['Predictions, Map & Ticker', '\u2713', '\u2713', '\u2713'],
+    ['AI Chat (BYO Key)', '\u2713', '\u2713', '\u2713'],
     ['Saved Preferences & Sync', '\u2014', '\u2713', '\u2713'],
-    ['Favorite Teams & Stocks', '\u2014', '\u2713', '\u2713'],
-    ['AI Chat (BYO Key)', '\u2014', '\u2014', '\u2713'],
-    ['Calendar Integration', '\u2014', '\u2014', '\u2713'],
-    ['Drag-and-Drop Layout', '\u2014', '\u2014', '\u2713'],
-    ['Panel Bank (15+ sources)', '\u2014', '\u2014', '\u2713'],
-    ['Faster Refresh Rates', '\u2014', '\u2014', '\u2713'],
+    ['Cross-Device Sync', '\u2014', '\u2713', '\u2713'],
+    ['Custom News Sources', '\u2014', '\u2713', '\u2713'],
+    ['Up to 3 Weather Locations', '\u2014', '\u2713', '\u2713'],
+    ['Theme Presets (Dark/Light/OLED)', '\u2014', '\u2713', '\u2713'],
+    ['Dashboard Sharing', '\u2014', '\u2713', '\u2713'],
+    ['Hosted AI Chat (No Key Needed)', '\u2014', '\u2014', '\u2713'],
+    ['Daily AI Briefing', '\u2014', '\u2014', '\u2713'],
     ['Custom Alerts', '\u2014', '\u2014', '\u2713'],
+    ['Faster Refresh Rates', '\u2014', '\u2014', '\u2713'],
+    ['Drag-and-Drop Layout', '\u2014', '\u2014', '\u2713'],
+    ['Calendar Integration', '\u2014', '\u2014', '\u2713'],
+    ['Notes & To-Do Panel', '\u2014', '\u2014', '\u2713'],
+    ['25-Stock Watchlist', '\u2014', '\u2014', '\u2713'],
+    ['Unlimited Weather Locations', '\u2014', '\u2014', '\u2713'],
+    ['Multiple Dashboards', '\u2014', '\u2014', '\u2713'],
   ];
   for (const r of rows) {
     const tr = document.createElement('tr');
@@ -109,12 +118,12 @@ export function renderRoadmap(root: HTMLElement): void {
   const premiumCta = createElement('div', { className: 'roadmap-premium-cta' });
   const ctaText = createElement('p', {
     className: 'roadmap-cta-text',
-    textContent: 'Premium coming soon — stay tuned.',
+    textContent: 'Premium coming soon \u2014 everything stays free until then. Founding members lock in $3/mo for life.',
   });
   const ctaBtn = document.createElement('a');
-  ctaBtn.href = '#/';
+  ctaBtn.href = '#/app';
   ctaBtn.className = 'landing-btn landing-btn-primary';
-  ctaBtn.textContent = 'Back to Dashboard';
+  ctaBtn.textContent = 'Try the Dashboard';
   premiumCta.appendChild(ctaText);
   premiumCta.appendChild(ctaBtn);
   tierSection.appendChild(premiumCta);
@@ -126,14 +135,18 @@ export function renderRoadmap(root: HTMLElement): void {
   timelineSection.appendChild(timelineTitle);
 
   const timeline = createElement('div', { className: 'roadmap-timeline' });
-  const milestones = [
-    { status: 'shipped', label: 'Shipped', title: 'Core Dashboard', desc: 'Weather, stocks, news, map, predictions, ticker' },
-    { status: 'shipped', label: 'Shipped', title: 'Sports Panel', desc: 'NBA, NFL, MLB, EPL live scores and headlines' },
-    { status: 'shipped', label: 'Shipped', title: 'Landing Page & Roadmap', desc: 'Product pages, waitlist, feature comparison' },
-    { status: 'shipped', label: 'Shipped', title: 'Auth & User Tiers', desc: 'Google/GitHub OAuth, free/premium tiers' },
-    { status: 'planned', label: 'Planned', title: 'AI Chat Panel', desc: 'Claude-powered chat with dashboard context' },
-    { status: 'planned', label: 'Planned', title: 'Panel Bank & DnD Layout', desc: 'Drag-and-drop customization, 15+ data sources' },
-    { status: 'planned', label: 'Planned', title: 'Calendar Integration', desc: 'Google Calendar sync for upcoming events' },
+  const milestones: Array<{ status: string; label: string; title: string; desc: string }> = [
+    { status: 'shipped', label: 'Shipped', title: 'Core Dashboard', desc: 'Weather, markets (10-stock watchlist with detail views), news (7 categories), interactive map with day/night terminator, market ticker' },
+    { status: 'shipped', label: 'Shipped', title: 'Sports Panel', desc: 'NBA, NFL, MLB, EPL live scores, team favorites, and game status' },
+    { status: 'shipped', label: 'Shipped', title: 'AI Chat', desc: 'Multi-provider chat (Anthropic, OpenAI, Google, xAI) with BYO key support' },
+    { status: 'shipped', label: 'Shipped', title: 'Prediction Markets', desc: 'Live odds from Polymarket and Kalshi' },
+    { status: 'shipped', label: 'Shipped', title: 'Auth & Tiers', desc: 'Google/GitHub OAuth, 3-tier system (guest/free/premium)' },
+    { status: 'shipped', label: 'Shipped', title: 'Landing & Waitlist', desc: 'Product page, waitlist signup, roadmap, feature comparison' },
+    { status: 'active', label: 'Phase 1', title: 'Foundation Hardening', desc: 'Onboarding flow, hero panel, themes (dark/light/OLED), mobile layout, keyboard shortcuts, accessibility, performance' },
+    { status: 'planned', label: 'Phase 2', title: 'Sign-In Value', desc: 'Cross-device sync, custom news sources, multiple weather locations, notes panel, dashboard sharing' },
+    { status: 'planned', label: 'Phase 3', title: 'Premium Features', desc: 'Hosted AI chat, daily briefing, custom alerts, drag-and-drop layout, calendar, integrations' },
+    { status: 'planned', label: 'Phase 4', title: 'Platform Expansion', desc: 'Stripe payments, crypto panel, PWA, command palette, plugin SDK' },
+    { status: 'planned', label: 'Phase 5', title: 'AI-Native Intelligence', desc: 'AI co-pilot, natural language config, trend detection, smart defaults' },
   ];
 
   for (const m of milestones) {
