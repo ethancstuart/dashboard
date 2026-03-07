@@ -20,6 +20,24 @@ export function createLayout(): LayoutContainers {
 
   const mapHero = createElement('div', { className: 'map-hero' });
   mapHero.setAttribute('aria-label', 'News map');
+
+  // Map collapse toggle button
+  const mapToggle = createElement('button', { className: 'map-collapse-toggle' });
+  mapToggle.setAttribute('aria-label', 'Toggle map');
+  mapToggle.textContent = '\u25B2';
+  mapToggle.addEventListener('click', () => {
+    const collapsing = !mapHero.classList.contains('map-collapsed');
+    mapHero.classList.toggle('map-collapsed', collapsing);
+    mapToggle.textContent = collapsing ? '\u25BC' : '\u25B2';
+    localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
+  });
+  mapHero.appendChild(mapToggle);
+
+  // Restore saved map collapse state
+  if (localStorage.getItem('dashview:map-collapsed') === '1') {
+    mapHero.classList.add('map-collapsed');
+    mapToggle.textContent = '\u25BC';
+  }
   const sidebar = createElement('div', { className: 'sidebar-stack' });
   sidebar.setAttribute('role', 'complementary');
   sidebar.setAttribute('aria-label', 'Sidebar panels');

@@ -79,8 +79,11 @@ function focusLocationSearch(): void {
 function toggleMap(): void {
   const mapHero = document.querySelector('.map-hero') as HTMLElement;
   if (!mapHero) return;
-  mapHero.classList.toggle('map-collapsed');
-  localStorage.setItem('dashview:map-collapsed', mapHero.classList.contains('map-collapsed') ? '1' : '');
+  const collapsing = !mapHero.classList.contains('map-collapsed');
+  mapHero.classList.toggle('map-collapsed', collapsing);
+  localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
+  const btn = mapHero.querySelector('.map-collapse-toggle');
+  if (btn) btn.textContent = collapsing ? '\u25BC' : '\u25B2';
 }
 
 function closeOverlays(): void {

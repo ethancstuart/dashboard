@@ -50,6 +50,11 @@ export class NewsPanel extends Panel {
 
   setMapContainer(el: HTMLElement): void {
     this.mapContainer = el;
+    el.addEventListener('transitionend', () => {
+      if (this.map && !el.classList.contains('map-collapsed')) {
+        this.map.invalidateSize();
+      }
+    });
   }
 
   private async checkMapboxAvailable(): Promise<void> {
