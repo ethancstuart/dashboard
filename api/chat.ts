@@ -1,5 +1,13 @@
 export const config = { runtime: 'edge' };
 
+type ChatProvider = 'anthropic' | 'openai' | 'google' | 'xai';
+
+interface ChatBody {
+  messages: { role: string; content: string }[];
+  context?: string;
+  provider?: ChatProvider;
+}
+
 function getSessionId(req: Request): string | null {
   const cookies = req.headers.get('cookie') || '';
   const sessionCookie = cookies
@@ -29,6 +37,110 @@ async function decryptKey(ciphertext: string, secret: string): Promise<string> {
   const data = combined.slice(12);
   const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
   return new TextDecoder().decode(decrypted);
+}
+
+function buildSystemMessage(context?: string): string {
+  const base = 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called DashView.';
+  if (context) {
+    return `${base} Here is the current dashboard context:\n${context}\n\nUse this context to provide relevant, data-aware responses.`;
+  }
+  return base;
+}
+
+async function callAnthropic(apiKey: string, messages: { role: string; content: string }[], system: string) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    }),
+  });
+  if (!res.ok) {
+    await res.text();
+    throw new Error(`Anthropic API error: ${res.status}`);
+  }
+  const data = await res.json();
+  // Extract text from Anthropic response format
+  const text = (data.content || [])
+    .filter((b: { type: string }) => b.type === 'text')
+    .map((b: { text: string }) => b.text)
+    .join('');
+  return { response: text || 'No response' };
+}
+
+async function callOpenAI(apiKey: string, messages: { role: string; content: string }[], system: string) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: system }, ...messages.map((m) => ({ role: m.role, content: m.content }))],
+    }),
+  });
+  if (!res.ok) {
+    await res.text();
+    throw new Error(`OpenAI API error: ${res.status}`);
+  }
+  const data = await res.json();
+  return { response: data.choices?.[0]?.message?.content || 'No response' };
+}
+
+async function callGoogle(apiKey: string, messages: { role: string; content: string }[], system: string) {
+  const geminiMessages = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: geminiMessages,
+      }),
+    },
+  );
+  if (!res.ok) {
+    await res.text();
+    throw new Error(`Google AI API error: ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  return { response: text || 'No response' };
+}
+
+async function callXAI(apiKey: string, messages: { role: string; content: string }[], system: string) {
+  // xAI uses OpenAI-compatible API
+  const res = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'grok-3-mini',
+      max_tokens: 1024,
+      messages: [{ role: 'system', content: system }, ...messages.map((m) => ({ role: m.role, content: m.content }))],
+    }),
+  });
+  if (!res.ok) {
+    await res.text();
+    throw new Error(`xAI API error: ${res.status}`);
+  }
+  const data = await res.json();
+  return { response: data.choices?.[0]?.message?.content || 'No response' };
 }
 
 export default async function handler(req: Request) {
@@ -86,10 +198,20 @@ export default async function handler(req: Request) {
     });
   }
 
-  // Get user's Anthropic API key from KV
+  const body = (await req.json()) as ChatBody;
+  const provider: ChatProvider = body.provider || 'anthropic';
+  const validProviders: ChatProvider[] = ['anthropic', 'openai', 'google', 'xai'];
+  if (!validProviders.includes(provider)) {
+    return new Response(JSON.stringify({ error: `Invalid provider: ${provider}` }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // Get user's API key for the selected provider
   let apiKey: string | null = null;
   try {
-    const keyRes = await fetch(`${kvUrl}/get/apikey:${userId}:anthropic`, {
+    const keyRes = await fetch(`${kvUrl}/get/apikey:${userId}:${provider}`, {
       headers: { Authorization: `Bearer ${kvToken}` },
     });
     const keyData = (await keyRes.json()) as { result: string | null };
@@ -101,13 +223,19 @@ export default async function handler(req: Request) {
   }
 
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'No Anthropic API key configured. Add one in settings.' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const providerNames: Record<ChatProvider, string> = {
+      anthropic: 'Anthropic',
+      openai: 'OpenAI',
+      google: 'Google AI',
+      xai: 'xAI (Grok)',
+    };
+    return new Response(
+      JSON.stringify({ error: `No ${providerNames[provider]} API key configured. Add one in the chat panel.` }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
   }
 
-  // Rate limit: check message count
+  // Rate limit
   const rateLimitKey = `ratelimit:chat:${sessionId}`;
   try {
     const rlRes = await fetch(`${kvUrl}/get/${rateLimitKey}`, {
@@ -121,12 +249,10 @@ export default async function handler(req: Request) {
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    // Increment
     await fetch(`${kvUrl}/incr/${rateLimitKey}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${kvToken}` },
     });
-    // Set TTL if new
     if (!rlData.result) {
       await fetch(`${kvUrl}/expire/${rateLimitKey}/3600`, {
         method: 'POST',
@@ -137,42 +263,22 @@ export default async function handler(req: Request) {
     // Rate limit check failed, allow through
   }
 
-  // Proxy to Anthropic API
-  const body = (await req.json()) as { messages: { role: string; content: string }[]; context?: string };
-  const systemMessage = body.context
-    ? `You are a helpful AI assistant integrated into a real-time intelligence dashboard. Here is the current dashboard context:\n${body.context}\n\nUse this context to provide relevant, data-aware responses.`
-    : 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called DashPulse';
+  const system = buildSystemMessage(body.context);
 
   try {
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: systemMessage,
-        messages: body.messages.map((m) => ({ role: m.role, content: m.content })),
-      }),
-    });
-
-    if (!anthropicRes.ok) {
-      await anthropicRes.text();
-      return new Response(JSON.stringify({ error: `Anthropic API error: ${anthropicRes.status}` }), {
-        status: anthropicRes.status,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    const result = await anthropicRes.json();
+    const callers: Record<ChatProvider, typeof callAnthropic> = {
+      anthropic: callAnthropic,
+      openai: callOpenAI,
+      google: callGoogle,
+      xai: callXAI,
+    };
+    const result = await callers[provider](apiKey, body.messages, system);
     return new Response(JSON.stringify(result), {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Failed to reach Anthropic API' }), {
+    const message = err instanceof Error ? err.message : 'Failed to reach AI provider';
+    return new Response(JSON.stringify({ error: message }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     });

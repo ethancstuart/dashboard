@@ -1,6 +1,6 @@
 export const config = { runtime: 'edge' };
 
-const ALLOWED_KEY_NAMES = ['anthropic', 'google-calendar'];
+const ALLOWED_KEY_NAMES = ['anthropic', 'openai', 'google', 'xai', 'google-calendar'];
 const KEY_TTL_SECONDS = 90 * 24 * 3600; // 90 days
 
 function getSessionId(req: Request): string | null {
@@ -128,6 +128,7 @@ function validateKeyName(name: string): boolean {
 function validateKeyValue(name: string, value: string): string | null {
   if (value.length < 10 || value.length > 500) return 'Key must be 10-500 characters';
   if (name === 'anthropic' && !value.startsWith('sk-ant-')) return 'Invalid Anthropic key format';
+  if (name === 'openai' && !value.startsWith('sk-')) return 'Invalid OpenAI key format';
   return null;
 }
 

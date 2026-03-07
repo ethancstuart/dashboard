@@ -1,8 +1,8 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { sendMessage, storeApiKey, hasApiKey } from '../services/chat.ts';
+import { sendMessage, storeApiKey, hasApiKey, getProvider, setProvider, PROVIDER_LABELS, PROVIDER_PLACEHOLDERS } from '../services/chat.ts';
 import * as storage from '../services/storage.ts';
-import type { ChatMessage } from '../types/index.ts';
+import type { ChatMessage, ChatProvider } from '../types/index.ts';
 
 const CHAT_KEY = 'dashview-chat-messages';
 
@@ -93,7 +93,7 @@ export class ChatPanel extends Panel {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to get response';
         // Check if it's an API key error
-        if (errorMsg.includes('No Anthropic API key')) {
+        if (errorMsg.includes('API key configured')) {
           this.messages.pop(); // Remove the user message
           this.saveMessages();
           this.showApiKeyForm();
@@ -124,7 +124,15 @@ export class ChatPanel extends Panel {
     inputArea.appendChild(sendBtn);
     chatWrap.appendChild(inputArea);
 
-    // Clear chat button
+    // Bottom bar: provider badge + clear button
+    const bottomBar = createElement('div', { className: 'chat-bottom-bar' });
+    const providerBadge = createElement('button', {
+      className: 'chat-provider-badge',
+      textContent: PROVIDER_LABELS[getProvider()],
+    });
+    providerBadge.addEventListener('click', () => this.showApiKeyForm());
+    bottomBar.appendChild(providerBadge);
+
     if (this.messages.length > 0) {
       const clearBtn = createElement('button', { className: 'chat-clear-btn', textContent: 'Clear Chat' });
       clearBtn.addEventListener('click', () => {
@@ -132,8 +140,9 @@ export class ChatPanel extends Panel {
         this.saveMessages();
         this.render(null);
       });
-      chatWrap.appendChild(clearBtn);
+      bottomBar.appendChild(clearBtn);
     }
+    chatWrap.appendChild(bottomBar);
 
     this.contentEl.appendChild(chatWrap);
 
@@ -147,15 +156,34 @@ export class ChatPanel extends Panel {
     this.contentEl.textContent = '';
 
     const form = createElement('div', { className: 'chat-key-form' });
-    const title = createElement('div', { className: 'chat-key-title', textContent: 'Set Anthropic API Key' });
+    const title = createElement('div', { className: 'chat-key-title', textContent: 'Set AI Provider & API Key' });
     const desc = createElement('div', {
       className: 'chat-key-desc',
-      textContent: 'Your key is stored securely server-side and never exposed to the browser.',
+      textContent: 'Choose your AI provider and enter your API key. Keys are stored securely server-side.',
     });
+
+    // Provider selector
+    const select = document.createElement('select');
+    select.className = 'landing-input';
+    const currentProvider = getProvider();
+    for (const [value, label] of Object.entries(PROVIDER_LABELS)) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      if (value === currentProvider) option.selected = true;
+      select.appendChild(option);
+    }
+
     const input = document.createElement('input');
     input.type = 'password';
-    input.placeholder = 'sk-ant-...';
+    input.placeholder = PROVIDER_PLACEHOLDERS[currentProvider];
     input.className = 'landing-input';
+
+    select.addEventListener('change', () => {
+      const provider = select.value as ChatProvider;
+      setProvider(provider);
+      input.placeholder = PROVIDER_PLACEHOLDERS[provider];
+    });
 
     const saveBtn = createElement('button', { className: 'landing-btn landing-btn-primary', textContent: 'Save Key' });
     const status = createElement('div', { className: 'chat-key-status' });
@@ -163,6 +191,7 @@ export class ChatPanel extends Panel {
     saveBtn.addEventListener('click', async () => {
       const key = input.value.trim();
       if (!key) return;
+      setProvider(select.value as ChatProvider);
       saveBtn.textContent = 'Saving...';
       (saveBtn as HTMLButtonElement).disabled = true;
       try {
@@ -180,6 +209,7 @@ export class ChatPanel extends Panel {
 
     form.appendChild(title);
     form.appendChild(desc);
+    form.appendChild(select);
     form.appendChild(input);
     form.appendChild(saveBtn);
     form.appendChild(status);

@@ -216,6 +216,8 @@ export interface SportsData {
 }
 
 // Chat
+export type ChatProvider = 'anthropic' | 'openai' | 'google' | 'xai';
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;

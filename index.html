@@ -2538,6 +2538,30 @@
         opacity: 0.85;
       }
 
+      .chat-bottom-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+        gap: 8px;
+      }
+
+      .chat-provider-badge {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        color: var(--color-text-muted);
+        font-size: 10px;
+        cursor: pointer;
+        padding: 2px 8px;
+        white-space: nowrap;
+      }
+
+      .chat-provider-badge:hover {
+        color: var(--color-text);
+        border-color: var(--color-text-muted);
+      }
+
       .chat-clear-btn {
         background: none;
         border: none;
@@ -2546,8 +2570,8 @@
         cursor: pointer;
         opacity: 0.5;
         padding: 4px 0;
-        text-align: center;
-        width: 100%;
+        text-align: right;
+        flex: 1;
       }
 
       .chat-clear-btn:hover {
