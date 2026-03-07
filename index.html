@@ -35,7 +35,7 @@
 
       body {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        background: #0a0a0a;
+        background: var(--color-bg, #0a0a0a);
         color: var(--color-text, #fafafa);
         min-height: 100vh;
         -webkit-font-smoothing: antialiased;
@@ -2626,6 +2626,82 @@
       .chat-key-status {
         font-size: 12px;
         min-height: 16px;
+      }
+
+      /* Settings radio row */
+      .settings-radio-row {
+        display: flex;
+        gap: 4px;
+        padding: 4px 8px;
+      }
+
+      .settings-radio-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--color-text);
+        flex: 1;
+        justify-content: center;
+      }
+
+      .settings-radio-label:hover {
+        background: var(--color-border);
+      }
+
+      .settings-radio-label input[type="radio"] {
+        accent-color: var(--color-accent);
+        margin: 0;
+      }
+
+      /* Light theme overrides for hardcoded dark values */
+      [data-theme="light"] .settings-text-input,
+      [data-theme="light"] .stocks-search-input {
+        background: #f0f0f0;
+      }
+
+      [data-theme="light"] .ticker-bar {
+        background: #ebebeb;
+      }
+
+      [data-theme="light"] .ticker-card {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      [data-theme="light"] .welcome-overlay {
+        background: #f5f5f5;
+      }
+
+      [data-theme="light"] .map-hero .leaflet-container,
+      [data-theme="light"] .news-map-wrap .leaflet-container {
+        background: #e8e8e8;
+      }
+
+      [data-theme="light"] .stocks-row:hover,
+      [data-theme="light"] .news-article:hover,
+      [data-theme="light"] .social-post:hover,
+      [data-theme="light"] .sports-game:hover {
+        background: rgba(0, 0, 0, 0.03);
+      }
+
+      [data-theme="light"] .chat-bubble-assistant {
+        background: rgba(0, 0, 0, 0.04);
+        border-color: rgba(0, 0, 0, 0.08);
+      }
+
+      [data-theme="light"] .chat-input {
+        background: rgba(0, 0, 0, 0.03);
+      }
+
+      [data-theme="light"] .stocks-row {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
+      }
+
+      [data-theme="light"] .news-article {
+        border-bottom-color: rgba(0, 0, 0, 0.06);
       }
     </style>
   </head>

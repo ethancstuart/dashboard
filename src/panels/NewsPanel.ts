@@ -3,6 +3,7 @@ import { createElement } from '../utils/dom.ts';
 import { fetchNews } from '../services/news.ts';
 import { fetchSocialFeed } from '../services/social.ts';
 import * as storage from '../services/storage.ts';
+import { getTheme, onThemeChange } from '../config/theme.ts';
 import type { NewsCategory, NewsData, NewsArticle, SocialPost } from '../types/index.ts';
 
 // Detect non-Latin scripts (CJK, Arabic, Cyrillic, etc.)
@@ -28,6 +29,7 @@ export class NewsPanel extends Panel {
   private terminatorInterval: ReturnType<typeof setInterval> | null = null;
   private mapContainer: HTMLElement | null = null;
   private mapboxAvailable: boolean | null = null;
+  private tileLayer: L.TileLayer | null = null;
 
   constructor() {
     super({
@@ -43,6 +45,7 @@ export class NewsPanel extends Panel {
       storage.set(CATEGORY_KEY, this.category);
     }
     void this.checkMapboxAvailable();
+    onThemeChange(() => this.updateTileLayer());
   }
 
   setMapContainer(el: HTMLElement): void {
@@ -248,18 +251,14 @@ export class NewsPanel extends Panel {
 
     // Use Mapbox tiles proxied through our edge function (token stays server-side)
     if (this.mapboxAvailable) {
-      L.tileLayer('/api/mapbox?z={z}&x={x}&y={y}', {
+      this.tileLayer = L.tileLayer('/api/mapbox?z={z}&x={x}&y={y}', {
         attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
         zoomOffset: -1,
         maxZoom: 19,
       }).addTo(this.map);
     } else {
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-      }).addTo(this.map);
+      this.tileLayer = this.createCartoTileLayer().addTo(this.map);
     }
 
     // Group articles by location
@@ -418,6 +417,22 @@ export class NewsPanel extends Panel {
         interactive: false,
       }).addTo(this.map);
     }
+  }
+
+  private createCartoTileLayer(): L.TileLayer {
+    const theme = getTheme();
+    const style = theme === 'light' ? 'light_all' : 'dark_all';
+    return L.tileLayer(`https://{s}.basemaps.cartocdn.com/${style}/{z}/{x}/{y}{r}.png`, {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    });
+  }
+
+  private updateTileLayer(): void {
+    if (!this.map || this.mapboxAvailable || !this.tileLayer) return;
+    this.map.removeLayer(this.tileLayer);
+    this.tileLayer = this.createCartoTileLayer().addTo(this.map);
   }
 
   private escapeHtml(str: string): string {

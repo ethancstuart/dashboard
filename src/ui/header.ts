@@ -3,6 +3,8 @@ import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { geocodeCity } from '../services/weather.ts';
 import * as storage from '../services/storage.ts';
 import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
+import { getTheme, applyTheme } from '../config/theme.ts';
+import type { ThemeName } from '../config/themes.ts';
 import type { App } from '../App.ts';
 
 const LOCATION_KEY = 'dashview-location';
@@ -56,8 +58,38 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   }
 
   // --- Divider ---
-  const divider = createElement('div', { className: 'settings-dropdown-divider' });
-  dropdown.appendChild(divider);
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
+  // --- Theme section ---
+  const themeTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Theme',
+  });
+  dropdown.appendChild(themeTitle);
+
+  const themeRow = createElement('div', { className: 'settings-radio-row' });
+  const themeOptions: { id: ThemeName; label: string }[] = [
+    { id: 'dark', label: 'Dark' },
+    { id: 'light', label: 'Light' },
+    { id: 'oled', label: 'OLED' },
+  ];
+  const currentTheme = getTheme();
+  for (const opt of themeOptions) {
+    const label = createElement('label', { className: 'settings-radio-label' });
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'theme';
+    radio.value = opt.id;
+    radio.checked = opt.id === currentTheme;
+    radio.addEventListener('change', () => applyTheme(opt.id));
+    label.appendChild(radio);
+    label.appendChild(createElement('span', { textContent: opt.label }));
+    themeRow.appendChild(label);
+  }
+  dropdown.appendChild(themeRow);
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
 
   // --- Location section ---
   const locTitle = createElement('div', {
