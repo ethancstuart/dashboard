@@ -10,6 +10,8 @@ export interface LayoutContainers {
 
 export function createLayout(): LayoutContainers {
   const root = createElement('div', { className: 'layout' });
+  root.setAttribute('role', 'main');
+  root.id = 'main-content';
 
   const predictionBanner = createElement('div', { className: 'prediction-banner' });
   root.appendChild(predictionBanner);
@@ -17,7 +19,10 @@ export function createLayout(): LayoutContainers {
   const grid = createElement('div', { className: 'panel-grid' });
 
   const mapHero = createElement('div', { className: 'map-hero' });
+  mapHero.setAttribute('aria-label', 'News map');
   const sidebar = createElement('div', { className: 'sidebar-stack' });
+  sidebar.setAttribute('role', 'complementary');
+  sidebar.setAttribute('aria-label', 'Sidebar panels');
   const content = createElement('div', { className: 'content-row' });
 
   grid.appendChild(mapHero);

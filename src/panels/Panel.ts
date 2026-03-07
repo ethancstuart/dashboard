@@ -29,17 +29,22 @@ export abstract class Panel {
   private createContainer(): HTMLElement {
     const card = createElement('div', { className: 'panel-card' });
     card.dataset.panelId = this.id;
+    card.setAttribute('role', 'region');
+    const titleId = `panel-title-${this.id}`;
+    card.setAttribute('aria-labelledby', titleId);
 
     // Header
     const header = createElement('div', { className: 'panel-header' });
-    const titleEl = createElement('span', {
-      className: 'panel-title',
-      textContent: this.title,
-    });
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'panel-title';
+    titleEl.textContent = this.title;
+    titleEl.id = titleId;
     const collapseBtn = createElement('button', {
       className: 'panel-collapse-btn',
       textContent: '\u25B4',
     });
+    collapseBtn.setAttribute('aria-label', 'Collapse panel');
+    collapseBtn.setAttribute('aria-expanded', 'true');
     header.addEventListener('click', () => {
       this.setCollapsed(!this.collapsed);
     });
@@ -51,6 +56,7 @@ export abstract class Panel {
 
     // Error
     const error = createElement('div', { className: 'panel-error' });
+    error.setAttribute('role', 'alert');
     error.style.display = 'none';
 
     card.appendChild(header);
@@ -108,7 +114,11 @@ export abstract class Panel {
     this.collapsed = collapsed;
     this.container.classList.toggle('panel-collapsed', collapsed);
     const btn = this.container.querySelector('.panel-collapse-btn');
-    if (btn) btn.textContent = collapsed ? '\u25BE' : '\u25B4';
+    if (btn) {
+      btn.textContent = collapsed ? '\u25BE' : '\u25B4';
+      btn.setAttribute('aria-label', collapsed ? 'Expand panel' : 'Collapse panel');
+      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
     this.container.dispatchEvent(new CustomEvent('panel:statechange', { bubbles: true }));
   }
 

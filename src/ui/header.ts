@@ -235,6 +235,7 @@ function refreshWeather(app: App, lat: number, lon: number): void {
 
 export function createHeader(app: App): HTMLElement {
   const header = createElement('header', { className: 'header' });
+  header.setAttribute('role', 'banner');
 
   const title = createElement('span', {
     className: 'header-title',
@@ -253,14 +254,19 @@ export function createHeader(app: App): HTMLElement {
 
   const gearBtn = createElement('button', { className: 'header-gear' });
   gearBtn.innerHTML = GEAR_SVG;
+  gearBtn.setAttribute('aria-label', 'Settings');
+  gearBtn.setAttribute('aria-haspopup', 'true');
+  gearBtn.setAttribute('aria-expanded', 'false');
 
   const dropdown = createElement('div', { className: 'settings-dropdown' });
   dropdown.style.display = 'none';
+  dropdown.setAttribute('role', 'menu');
 
   gearBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     const isOpen = dropdown.style.display !== 'none';
     dropdown.style.display = isOpen ? 'none' : '';
+    gearBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     if (!isOpen) buildDropdown(dropdown, app);
   });
 
