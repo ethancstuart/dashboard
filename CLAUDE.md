@@ -25,17 +25,21 @@ Long-term north star: worldmonitor.app architecture patterns.
 - Opt-in panels use user-provided keys (stored in localStorage)
 
 ## Panel Lifecycle
-1. App.init() reads panel preferences from localStorage
-2. Enabled panels are instantiated and registered
-3. Each panel creates its own DOM container and attaches to the grid
-4. panel.fetchData() runs immediately, then on setInterval(refreshInterval)
-5. panel.render() updates the DOM directly (no virtual DOM)
-6. panel.toggle() shows/hides and starts/stops the refresh cycle
+1. App.init() reads panel preferences (enabled, collapsed) from localStorage
+2. Enabled panels are instantiated and registered with a priority (0=highest)
+3. panel.attachToDOM(parent) creates DOM container, shows loading state — no data fetch yet
+4. App fetches data in priority order: P0 (weather) → P1 (stocks, news) → P2 (sports, chat)
+5. panel.startDataCycle() calls fetchData() then starts setInterval(refreshInterval)
+6. panel.render() updates the DOM directly (no virtual DOM)
+7. panel.toggle() shows/hides and starts/stops the refresh cycle
+8. panel.setCollapsed() toggles content visibility while keeping refresh running
 
 ## Conventions
 - Panel classes: PascalCase in src/panels/ (WeatherPanel.ts)
 - Services: camelCase in src/services/ (weather.ts)
 - Edge Functions: camelCase in api/ (weather.ts)
+- Config: src/config/ (theme.ts, themes.ts, density.ts, preferences.ts)
+- UI modules: src/ui/ (header.ts, layout.ts, keyboard.ts, onboarding.ts)
 - Types: centralized in src/types/index.ts
 - DOM helpers: src/utils/dom.ts (createElement, querySelector wrappers)
 - All fetches go through src/utils/fetch.ts (retry + circuit breaker)
@@ -47,12 +51,12 @@ npm run preview    → Preview production build locally
 vercel             → Deploy to Vercel
 
 ## Panel Status
-- [ ] Weather (OpenWeatherMap) — core
-- [ ] Stocks (Finnhub) — core
-- [ ] News (RSS feeds via proxy) — core
-- [ ] Calendar (Google Calendar API) — opt-in
-- [ ] Chat (Anthropic API) — opt-in
-- [ ] Settings (localStorage preferences) — core
+- [x] Weather (OpenWeatherMap) — core, priority 0
+- [x] Stocks (Finnhub) — core, priority 1
+- [x] News (RSS feeds via proxy) — core, priority 1
+- [x] Sports (ESPN) — core, priority 2
+- [x] Chat (multi-provider) — opt-in, priority 2
+- [ ] Calendar (Google Calendar API) — opt-in, planned
 
 ## Important Notes
 - No React or UI framework — vanilla TypeScript + DOM
@@ -62,3 +66,9 @@ vercel             → Deploy to Vercel
 - RSS feeds fetched server-side via proxy to avoid CORS
 - No personal data in defaults — location auto-detected, tickers are broad market
 - Adding a new panel: create class extending Panel, register in App.ts, add Edge Function if needed
+- Three themes (dark/light/OLED) stored in dashview:theme, three density modes in dashview:density
+- Unit preferences (°F/°C, 12h/24h) stored in dashview:preferences
+- Keyboard shortcuts: ? help, / search, t theme, m map, 1-5 panels, Esc close
+- First-time visitors see a 5-step onboarding flow (dashview:onboarding)
+- All panels support collapse (click header), state persists per panel
+- ARIA landmarks, skip-link, focus-visible, and role attributes for screen readers

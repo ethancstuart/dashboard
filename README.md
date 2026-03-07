@@ -10,14 +10,19 @@ Built entirely with [Claude Code](https://claude.ai/claude-code).
 
 ## What's Live
 
-- **Weather** -- Hyperlocal forecasts, hourly sparklines, conditions on an interactive world map
-- **Markets** -- 10-stock watchlist with real-time quotes, detail views, and sparklines (Finnhub)
+- **Weather** -- Hyperlocal forecasts, hourly sparklines, conditions on an interactive world map, °F/°C toggle
+- **Markets** -- 10-stock watchlist with real-time quotes, detail views, drag-to-reorder, and sparklines (Finnhub)
 - **News** -- 7 categories with headlines mapped to their origin on an interactive Mapbox map with day/night terminator
 - **Sports** -- NBA, NFL, MLB, EPL live scores with team favorites
 - **AI Chat** -- Multi-provider (Anthropic, OpenAI, Google, xAI), bring your own API key
 - **Predictions** -- Live odds from Polymarket and Kalshi
 - **Market Ticker** -- Scrolling real-time market data
 - **Auth** -- Google/GitHub OAuth with guest, free, and premium tiers
+- **Themes** -- Dark, light, and OLED black with 3 density modes (compact/comfortable/spacious)
+- **Keyboard Shortcuts** -- Full shortcut system (press `?` for help)
+- **Accessibility** -- ARIA landmarks, skip-link, focus-visible outlines, screen reader support
+- **Onboarding** -- Guided setup for first-time visitors
+- **Smart Loading** -- Priority-based data fetching, collapsible panels, retry on error
 
 ## Quick Start
 

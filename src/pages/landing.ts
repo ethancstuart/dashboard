@@ -107,10 +107,12 @@ export function renderLanding(root: HTMLElement): void {
 
   const featureGrid = createElement('div', { className: 'landing-feature-grid' });
   const featureItems = [
-    { icon: '\u2601', title: 'Weather', desc: 'Hyperlocal forecasts, hourly sparklines, and live conditions on a world map.' },
-    { icon: '\uD83D\uDCC8', title: 'Markets', desc: 'Real-time stock quotes, watchlists, sparklines, and financial news.' },
-    { icon: '\uD83C\uDF10', title: 'News', desc: 'Global headlines from 20+ sources, mapped to their origin with live feeds.' },
-    { icon: '\u26BD', title: 'Sports', desc: 'Live scores from NBA, NFL, MLB, and EPL with game status and headlines.' },
+    { icon: '\u2601', title: 'Weather', desc: 'Hyperlocal forecasts with °F/°C toggle, hourly sparklines, and live conditions on a world map.' },
+    { icon: '\uD83D\uDCC8', title: 'Markets', desc: 'Real-time stock quotes, drag-to-reorder watchlists, detail views, and financial news.' },
+    { icon: '\uD83C\uDF10', title: 'News', desc: 'Global headlines from 20+ sources, mapped to their origin on an interactive map.' },
+    { icon: '\u26BD', title: 'Sports', desc: 'Live scores from NBA, NFL, MLB, and EPL with team favorites and game status.' },
+    { icon: '\uD83C\uDFA8', title: 'Themes', desc: 'Dark, light, and OLED black themes with compact, comfortable, and spacious density modes.' },
+    { icon: '\u2328', title: 'Keyboard First', desc: 'Full keyboard shortcuts: jump to panels, cycle themes, toggle map, and more. Press ? for help.' },
   ];
   for (const f of featureItems) {
     const card = createElement('div', { className: 'landing-feature-card' });
