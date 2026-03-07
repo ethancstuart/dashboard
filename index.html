@@ -2669,6 +2669,26 @@
         margin: 0;
       }
 
+      /* Density: compact */
+      [data-density="compact"] .panel-card { padding: 10px; }
+      [data-density="compact"] .panel-header { margin-bottom: 8px; }
+      [data-density="compact"] .panel-title { font-size: 10px; }
+      [data-density="compact"] .panel-content { font-size: 13px; }
+      [data-density="compact"] .panel-grid { gap: 10px; padding: 10px; }
+      [data-density="compact"] .news-article { padding: 6px 8px; }
+      [data-density="compact"] .sports-game { padding: 5px 6px; }
+      [data-density="compact"] .stocks-row { padding: 5px 4px; }
+
+      /* Density: spacious */
+      [data-density="spacious"] .panel-card { padding: 22px; }
+      [data-density="spacious"] .panel-header { margin-bottom: 16px; }
+      [data-density="spacious"] .panel-title { font-size: 12px; }
+      [data-density="spacious"] .panel-content { font-size: 15px; }
+      [data-density="spacious"] .panel-grid { gap: 22px; padding: 22px; }
+      [data-density="spacious"] .news-article { padding: 14px 8px; }
+      [data-density="spacious"] .sports-game { padding: 12px 10px; }
+      [data-density="spacious"] .stocks-row { padding: 10px 4px; }
+
       /* Light theme overrides for hardcoded dark values */
       [data-theme="light"] .settings-text-input,
       [data-theme="light"] .stocks-search-input {

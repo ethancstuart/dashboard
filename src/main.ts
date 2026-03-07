@@ -1,7 +1,9 @@
 import { applyTheme } from './config/theme.ts';
+import { applyDensity } from './config/density.ts';
 import { Router } from './router.ts';
 
 applyTheme();
+applyDensity();
 
 const router = new Router();
 const appRoot = document.getElementById('app')!;

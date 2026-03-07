@@ -4,7 +4,9 @@ import { geocodeCity } from '../services/weather.ts';
 import * as storage from '../services/storage.ts';
 import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
 import { getTheme, applyTheme } from '../config/theme.ts';
+import { getDensity, applyDensity } from '../config/density.ts';
 import type { ThemeName } from '../config/themes.ts';
+import type { DensityMode } from '../config/density.ts';
 import type { App } from '../App.ts';
 
 const LOCATION_KEY = 'dashview-location';
@@ -87,6 +89,37 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
     themeRow.appendChild(label);
   }
   dropdown.appendChild(themeRow);
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
+  // --- Density section ---
+  const densityTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Density',
+  });
+  dropdown.appendChild(densityTitle);
+
+  const densityRow = createElement('div', { className: 'settings-radio-row' });
+  const densityOptions: { id: DensityMode; label: string }[] = [
+    { id: 'compact', label: 'Compact' },
+    { id: 'comfortable', label: 'Comfort' },
+    { id: 'spacious', label: 'Spacious' },
+  ];
+  const currentDensity = getDensity();
+  for (const opt of densityOptions) {
+    const label = createElement('label', { className: 'settings-radio-label' });
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'density';
+    radio.value = opt.id;
+    radio.checked = opt.id === currentDensity;
+    radio.addEventListener('change', () => applyDensity(opt.id));
+    label.appendChild(radio);
+    label.appendChild(createElement('span', { textContent: opt.label }));
+    densityRow.appendChild(label);
+  }
+  dropdown.appendChild(densityRow);
 
   // --- Divider ---
   dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
