@@ -10,11 +10,17 @@ import { NewsPanel } from '../panels/NewsPanel.ts';
 import { SportsPanel } from '../panels/SportsPanel.ts';
 import { ChatPanel } from '../panels/ChatPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
+import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
 import { checkSession } from '../services/auth.ts';
 
 export async function renderDashboard(root: HTMLElement): Promise<void> {
   root.textContent = '';
-  // Check auth session before welcome so greeting can use the user's name
+
+  // Show onboarding for first-time visitors, then welcome animation
+  if (!isOnboardingComplete()) {
+    await showOnboarding();
+  }
+
   const sessionUser = await checkSession();
   await showWelcome(sessionUser?.name);
 

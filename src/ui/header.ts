@@ -3,6 +3,7 @@ import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { geocodeCity } from '../services/weather.ts';
 import * as storage from '../services/storage.ts';
 import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
+import { resetOnboarding } from '../ui/onboarding.ts';
 import { getTheme, applyTheme } from '../config/theme.ts';
 import { getDensity, applyDensity } from '../config/density.ts';
 import { getPreferences, setPreference } from '../config/preferences.ts';
@@ -278,6 +279,24 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
       },
     );
   });
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
+  // --- Reset onboarding ---
+  const resetBtn = createElement('button', {
+    className: 'settings-item',
+    textContent: 'Reset onboarding',
+  });
+  resetBtn.style.fontSize = '12px';
+  resetBtn.style.opacity = '0.6';
+  resetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetOnboarding();
+    resetBtn.textContent = 'Reset on next visit';
+    resetBtn.setAttribute('disabled', '');
+  });
+  dropdown.appendChild(resetBtn);
 }
 
 function refreshWeather(app: App, lat: number, lon: number): void {
