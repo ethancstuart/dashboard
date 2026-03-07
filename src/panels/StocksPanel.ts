@@ -56,6 +56,18 @@ export class StocksPanel extends Panel {
     this.nameCache = { ...DEFAULT_NAMES, ...storage.get<Record<string, string>>(NAMES_KEY, {}) };
   }
 
+  destroy(): void {
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = null;
+    }
+    if (this.searchOutsideHandler) {
+      document.removeEventListener('click', this.searchOutsideHandler);
+      this.searchOutsideHandler = null;
+    }
+    super.destroy();
+  }
+
   async fetchData(): Promise<void> {
     this.data = await fetchStocks(this.watchlist);
     this.render(this.data);

@@ -319,9 +319,23 @@ export function createHeader(app: App): HTMLElement {
 
   const clock = createElement('span', { className: 'header-clock' });
   clock.textContent = formatClock(new Date());
-  setInterval(() => {
+  const clockInterval = setInterval(() => {
     clock.textContent = formatClock(new Date());
   }, 1000);
+
+  // Clean up interval when header is removed from DOM
+  const observer = new MutationObserver(() => {
+    if (!header.isConnected) {
+      clearInterval(clockInterval);
+      observer.disconnect();
+    }
+  });
+  // Observe parent removal — deferred until header is in DOM
+  requestAnimationFrame(() => {
+    if (header.parentNode) {
+      observer.observe(header.parentNode, { childList: true });
+    }
+  });
 
   const settingsWrap = createElement('div', { className: 'header-settings' });
 
@@ -343,9 +357,23 @@ export function createHeader(app: App): HTMLElement {
     if (!isOpen) buildDropdown(dropdown, app);
   });
 
-  document.addEventListener('click', (e) => {
+  const outsideClickHandler = (e: MouseEvent) => {
     if (!settingsWrap.contains(e.target as Node)) {
       dropdown.style.display = 'none';
+    }
+  };
+  document.addEventListener('click', outsideClickHandler);
+
+  // Clean up document listener when header is removed
+  const clickObserver = new MutationObserver(() => {
+    if (!header.isConnected) {
+      document.removeEventListener('click', outsideClickHandler);
+      clickObserver.disconnect();
+    }
+  });
+  requestAnimationFrame(() => {
+    if (header.parentNode) {
+      clickObserver.observe(header.parentNode, { childList: true });
     }
   });
 

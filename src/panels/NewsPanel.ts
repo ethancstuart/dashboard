@@ -289,13 +289,21 @@ export class NewsPanel extends Panel {
         ? group[0].title.slice(0, 38) + '\u2026'
         : group[0].title;
 
-      // Callout-style marker: pin + label
+      // Callout-style marker: pin + label (DOM-based to prevent XSS)
+      const iconEl = document.createElement('div');
+      iconEl.className = 'news-callout';
+      const pinEl = document.createElement('div');
+      pinEl.className = 'news-callout-pin';
+      pinEl.textContent = String(count);
+      const labelEl = document.createElement('div');
+      labelEl.className = 'news-callout-label';
+      labelEl.textContent = group[0].source + (count > 1 ? ` +${count - 1}` : '');
+      iconEl.appendChild(pinEl);
+      iconEl.appendChild(labelEl);
+
       const icon = L.divIcon({
         className: 'news-callout-wrap',
-        html: `<div class="news-callout">
-          <div class="news-callout-pin">${count}</div>
-          <div class="news-callout-label">${this.escapeHtml(group[0].source)}${count > 1 ? ` +${count - 1}` : ''}</div>
-        </div>`,
+        html: iconEl.outerHTML,
         iconSize: [0, 0],
         iconAnchor: [0, 28],
       });
@@ -309,12 +317,36 @@ export class NewsPanel extends Panel {
         offset: [0, -30],
       });
 
-      const popupLines = group.slice(0, 3).map(
-        (a) => `<a href="${this.escapeHtml(a.link)}" target="_blank" rel="noopener">${this.escapeHtml(a.title)}</a>`
-        + (a.description ? `<br><span style="font-size:11px;opacity:0.6">${this.escapeHtml(a.description.slice(0, 100))}</span>` : '')
-      );
-      const popupHtml = `<div class="news-popup-header">${this.escapeHtml(group[0].source)}</div>${popupLines.join('<hr style="border:0;border-top:1px solid rgba(255,255,255,0.08);margin:6px 0">')}`;
-      marker.bindPopup(popupHtml, { maxWidth: 300, className: 'news-popup-dark' });
+      // Build popup with DOM elements to prevent XSS from external API data
+      const popupEl = document.createElement('div');
+      const popupHeader = document.createElement('div');
+      popupHeader.className = 'news-popup-header';
+      popupHeader.textContent = group[0].source;
+      popupEl.appendChild(popupHeader);
+
+      for (let pi = 0; pi < Math.min(group.length, 3); pi++) {
+        if (pi > 0) {
+          const hr = document.createElement('hr');
+          hr.style.cssText = 'border:0;border-top:1px solid rgba(255,255,255,0.08);margin:6px 0';
+          popupEl.appendChild(hr);
+        }
+        const a = group[pi];
+        const link = document.createElement('a');
+        link.href = a.link;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = a.title;
+        popupEl.appendChild(link);
+        if (a.description) {
+          const br = document.createElement('br');
+          const desc = document.createElement('span');
+          desc.style.cssText = 'font-size:11px;opacity:0.6';
+          desc.textContent = a.description.slice(0, 100);
+          popupEl.appendChild(br);
+          popupEl.appendChild(desc);
+        }
+      }
+      marker.bindPopup(popupEl, { maxWidth: 300, className: 'news-popup-dark' });
 
       // Fly to location on click
       const mapRef = this.map;
@@ -350,12 +382,20 @@ export class NewsPanel extends Panel {
 
       const temp = Math.round(w.temp);
       const condition = w.condition;
+      const weatherEl = document.createElement('div');
+      weatherEl.className = 'weather-map-pin';
+      const tempSpan = document.createElement('span');
+      tempSpan.className = 'weather-map-temp';
+      tempSpan.textContent = `${temp}\u00B0`;
+      const condSpan = document.createElement('span');
+      condSpan.className = 'weather-map-cond';
+      condSpan.textContent = condition;
+      weatherEl.appendChild(tempSpan);
+      weatherEl.appendChild(condSpan);
+
       const icon = L.divIcon({
         className: 'weather-map-overlay',
-        html: `<div class="weather-map-pin">
-          <span class="weather-map-temp">${temp}°</span>
-          <span class="weather-map-cond">${condition}</span>
-        </div>`,
+        html: weatherEl.outerHTML,
         iconSize: [0, 0],
         iconAnchor: [0, 20],
       });
@@ -439,6 +479,20 @@ export class NewsPanel extends Panel {
     if (!this.map || this.mapboxAvailable || !this.tileLayer) return;
     this.map.removeLayer(this.tileLayer);
     this.tileLayer = this.createCartoTileLayer().addTo(this.map);
+  }
+
+  destroy(): void {
+    if (this.terminatorInterval) {
+      clearInterval(this.terminatorInterval);
+      this.terminatorInterval = null;
+    }
+    if (this.map) {
+      this.map.remove();
+      this.map = null;
+    }
+    this.terminator = null;
+    this.tileLayer = null;
+    super.destroy();
   }
 
   private escapeHtml(str: string): string {

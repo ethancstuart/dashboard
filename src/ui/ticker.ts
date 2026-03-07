@@ -5,8 +5,8 @@ import type { TickerItem, TickerData, SparklineData } from '../types/index.ts';
 
 const REFRESH_INTERVAL = 60000;
 
-export function createTicker(): HTMLElement {
-  const bar = createElement('div', { className: 'ticker-bar' });
+export function createTicker(): HTMLElement & { destroy(): void } {
+  const bar = createElement('div', { className: 'ticker-bar' }) as HTMLElement & { destroy(): void };
 
   const cardsContainer = createElement('div', { className: 'ticker-cards' });
 
@@ -38,7 +38,11 @@ export function createTicker(): HTMLElement {
   }
 
   void update();
-  setInterval(() => void update(), REFRESH_INTERVAL);
+  const intervalId = setInterval(() => void update(), REFRESH_INTERVAL);
+
+  bar.destroy = () => {
+    clearInterval(intervalId);
+  };
 
   return bar;
 }

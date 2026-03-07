@@ -54,6 +54,9 @@ export async function fetchWithRetry(
     }
     try {
       const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       // Success — reset circuit
       entry.failures = 0;
       entry.openedAt = null;

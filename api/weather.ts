@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const apiKey = process.env.OPENWEATHER_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Weather API key not configured' });
+    return res.status(500).json({ error: 'Weather service unavailable' });
   }
 
   try {
@@ -25,8 +25,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     return await handleWeather(req, res, apiKey);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Weather API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Weather service error' });
   }
 }
 
@@ -34,6 +34,9 @@ async function handleGeocode(req: VercelRequest, res: VercelResponse, apiKey: st
   const q = req.query.q as string | undefined;
   if (!q) {
     return res.status(400).json({ error: 'Missing q parameter' });
+  }
+  if (q.length > 200) {
+    return res.status(400).json({ error: 'Query too long' });
   }
 
   const response = await fetch(

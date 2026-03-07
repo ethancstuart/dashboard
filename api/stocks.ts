@@ -15,7 +15,7 @@ export const config = { runtime: 'nodejs' };
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Finnhub API key not configured' });
+    return res.status(500).json({ error: 'Market data service unavailable' });
   }
 
   const action = req.query.action as string | undefined;
@@ -41,9 +41,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return handleMetrics(req, res, apiKey);
   }
 
-  const symbols = (req.query.symbols as string | undefined)?.split(',').filter(Boolean);
+  const symbols = (req.query.symbols as string | undefined)?.split(',').filter(Boolean).slice(0, 25);
   if (!symbols || symbols.length === 0) {
     return res.status(400).json({ error: 'Missing symbols parameter' });
+  }
+  if (symbols.some((s) => s.length > 20)) {
+    return res.status(400).json({ error: 'Invalid symbol' });
   }
 
   try {
@@ -81,8 +84,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .setHeader('Cache-Control', 'max-age=60')
       .json({ quotes, timestamp: Date.now() });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -182,8 +185,8 @@ async function handleTicker(res: VercelResponse, apiKey: string) {
       .setHeader('Cache-Control', 'max-age=30')
       .json({ items, marketStatus });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -221,8 +224,8 @@ async function handleSparklines(req: VercelRequest, res: VercelResponse, apiKey:
       .setHeader('Cache-Control', 'max-age=300')
       .json({ sparklines });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -273,8 +276,8 @@ async function handleCandle(req: VercelRequest, res: VercelResponse, apiKey: str
         },
       });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -316,8 +319,8 @@ async function handleCompanyNews(req: VercelRequest, res: VercelResponse, apiKey
       .setHeader('Cache-Control', 'max-age=600')
       .json({ news });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -347,8 +350,8 @@ async function handleProfile(req: VercelRequest, res: VercelResponse, apiKey: st
         },
       });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -379,8 +382,8 @@ async function handleMetrics(req: VercelRequest, res: VercelResponse, apiKey: st
         },
       });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }
 
@@ -388,6 +391,9 @@ async function handleSearch(req: VercelRequest, res: VercelResponse, apiKey: str
   const q = req.query.q as string | undefined;
   if (!q) {
     return res.status(400).json({ error: 'Missing q parameter' });
+  }
+  if (q.length > 100) {
+    return res.status(400).json({ error: 'Query too long' });
   }
 
   try {
@@ -410,7 +416,7 @@ async function handleSearch(req: VercelRequest, res: VercelResponse, apiKey: str
 
     return res.setHeader('Cache-Control', 'max-age=300').json({ results });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return res.status(502).json({ error: message });
+    console.error('Stocks API error:', err instanceof Error ? err.message : err);
+    return res.status(502).json({ error: 'Market data service error' });
   }
 }

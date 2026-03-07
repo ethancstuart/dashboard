@@ -163,6 +163,7 @@ export default async function handler(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown';
     console.error('OAuth callback error:', message, err);
-    return new Response(null, { status: 302, headers: { Location: `/#/?error=auth_failed&detail=${encodeURIComponent(message)}` } });
+    // Use fixed error code — never forward raw error messages to the client
+    return new Response(null, { status: 302, headers: { Location: '/#/?error=auth_failed' } });
   }
 }

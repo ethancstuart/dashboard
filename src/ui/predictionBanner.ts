@@ -5,7 +5,7 @@ import type { PredictionMarket } from '../types/index.ts';
 const REFRESH_INTERVAL = 300000;
 const SCROLL_SPEED = 0.25; // pixels per frame
 
-export function initPredictionBanner(container: HTMLElement): void {
+export function initPredictionBanner(container: HTMLElement): { destroy(): void } {
   const track = createElement('div', { className: 'prediction-track' });
   container.appendChild(track);
 
@@ -79,7 +79,14 @@ export function initPredictionBanner(container: HTMLElement): void {
   }
 
   void loadData();
-  setInterval(() => void loadData(), REFRESH_INTERVAL);
+  const intervalId = setInterval(() => void loadData(), REFRESH_INTERVAL);
+
+  return {
+    destroy() {
+      clearInterval(intervalId);
+      if (animationId) cancelAnimationFrame(animationId);
+    },
+  };
 }
 
 function cleanQuestion(q: string): string {
