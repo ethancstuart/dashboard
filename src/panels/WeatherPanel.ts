@@ -1,6 +1,7 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchWeather } from '../services/weather.ts';
+import { getPreferences } from '../config/preferences.ts';
 import * as storage from '../services/storage.ts';
 import type { WeatherData } from '../types/index.ts';
 
@@ -62,7 +63,9 @@ export class WeatherPanel extends Panel {
   }
 
   async fetchData(): Promise<void> {
-    this.data = await fetchWeather(this.lat, this.lon);
+    const prefs = getPreferences();
+    const units = prefs.tempUnit === 'C' ? 'metric' : 'imperial';
+    this.data = await fetchWeather(this.lat, this.lon, units);
     if (this.data.name) {
       const saved = storage.get<SavedLocation | null>(LOCATION_KEY, null);
       storage.set(LOCATION_KEY, {

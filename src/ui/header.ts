@@ -5,6 +5,7 @@ import * as storage from '../services/storage.ts';
 import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
 import { getTheme, applyTheme } from '../config/theme.ts';
 import { getDensity, applyDensity } from '../config/density.ts';
+import { getPreferences, setPreference } from '../config/preferences.ts';
 import type { ThemeName } from '../config/themes.ts';
 import type { DensityMode } from '../config/density.ts';
 import type { App } from '../App.ts';
@@ -27,11 +28,20 @@ function formatClock(now: Date): string {
   const month = MONTHS[now.getMonth()];
   const date = now.getDate();
   const year = now.getFullYear();
-  let hours = now.getHours();
-  const minutes = now.getMinutes().toString().padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  return `${day} ${month} ${date}, ${year} \u00b7 ${hours}:${minutes} ${ampm}`;
+  const prefs = getPreferences();
+  let timeStr: string;
+  if (prefs.timeFormat === '24h') {
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    timeStr = `${hours}:${minutes}`;
+  } else {
+    let hours = now.getHours();
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    timeStr = `${hours}:${minutes} ${ampm}`;
+  }
+  return `${day} ${month} ${date}, ${year} \u00b7 ${timeStr}`;
 }
 
 function buildDropdown(dropdown: HTMLElement, app: App): void {
@@ -120,6 +130,50 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
     densityRow.appendChild(label);
   }
   dropdown.appendChild(densityRow);
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
+  // --- Units section ---
+  const unitsTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Units',
+  });
+  dropdown.appendChild(unitsTitle);
+
+  const currentPrefs = getPreferences();
+
+  // Temperature toggle
+  const tempRow = createElement('div', { className: 'settings-radio-row' });
+  for (const opt of [{ id: 'F' as const, label: '°F' }, { id: 'C' as const, label: '°C' }]) {
+    const label = createElement('label', { className: 'settings-radio-label' });
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'tempUnit';
+    radio.value = opt.id;
+    radio.checked = opt.id === currentPrefs.tempUnit;
+    radio.addEventListener('change', () => setPreference('tempUnit', opt.id));
+    label.appendChild(radio);
+    label.appendChild(createElement('span', { textContent: opt.label }));
+    tempRow.appendChild(label);
+  }
+  dropdown.appendChild(tempRow);
+
+  // Time format toggle
+  const timeRow = createElement('div', { className: 'settings-radio-row' });
+  for (const opt of [{ id: '12h' as const, label: '12h' }, { id: '24h' as const, label: '24h' }]) {
+    const label = createElement('label', { className: 'settings-radio-label' });
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'timeFormat';
+    radio.value = opt.id;
+    radio.checked = opt.id === currentPrefs.timeFormat;
+    radio.addEventListener('change', () => setPreference('timeFormat', opt.id));
+    label.appendChild(radio);
+    label.appendChild(createElement('span', { textContent: opt.label }));
+    timeRow.appendChild(label);
+  }
+  dropdown.appendChild(timeRow);
 
   // --- Divider ---
   dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
