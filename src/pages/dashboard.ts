@@ -3,6 +3,7 @@ import { createHeader } from '../ui/header.ts';
 import { createTicker } from '../ui/ticker.ts';
 import { createLayout } from '../ui/layout.ts';
 import { initPredictionBanner } from '../ui/predictionBanner.ts';
+import { initKeyboardShortcuts } from '../ui/keyboard.ts';
 import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { StocksPanel } from '../panels/StocksPanel.ts';
 import { NewsPanel } from '../panels/NewsPanel.ts';
@@ -39,4 +40,5 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
 
   app.init();
   initPredictionBanner(layout.predictionBanner);
+  initKeyboardShortcuts(app);
 }

@@ -2720,6 +2720,64 @@
       [data-density="spacious"] .sports-game { padding: 12px 10px; }
       [data-density="spacious"] .stocks-row { padding: 10px 4px; }
 
+      /* Help modal */
+      .help-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+      }
+
+      .help-modal {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        padding: 24px;
+        min-width: 320px;
+        max-width: 420px;
+      }
+
+      .help-modal-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--color-text);
+        margin-bottom: 16px;
+      }
+
+      .help-modal-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 6px 0;
+        font-size: 13px;
+        color: var(--color-text);
+      }
+
+      .help-modal-key {
+        display: inline-block;
+        min-width: 32px;
+        text-align: center;
+        padding: 2px 8px;
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        color: var(--color-text-muted);
+      }
+
+      .help-modal-hint {
+        margin-top: 16px;
+        font-size: 11px;
+        color: var(--color-text-muted);
+        text-align: center;
+        opacity: 0.6;
+      }
+
       /* Light theme overrides for hardcoded dark values */
       [data-theme="light"] .settings-text-input,
       [data-theme="light"] .stocks-search-input {
