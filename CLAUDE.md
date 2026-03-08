@@ -1,10 +1,11 @@
-# dashview — Open-Source Real-Time Intelligence Dashboard
+# DashPulse — Open-Source Real-Time Intelligence Dashboard
 
 ## Project Overview
 Vite + vanilla TypeScript dashboard with a panel-based architecture.
 Open-source, MIT licensed. Ships with smart defaults, fully configurable.
-Deployed to Vercel. Built entirely through Claude Code.
+Deployed to Vercel at https://dashpulse.app. Built entirely through Claude Code.
 Long-term north star: worldmonitor.app architecture patterns.
+Part of Ethan Stuart's portfolio: "I don't just manage products — I build them."
 
 ## Tech Stack
 - Vite (build tool, dev server, HMR)
@@ -20,9 +21,10 @@ Long-term north star: worldmonitor.app architecture patterns.
 - User preferences persist in localStorage (no backend database)
 - Each panel manages its own refresh cycle independently
 - Circuit breaker pattern on fetch — 3 failures then 5min backoff
-- Two panel tiers: "core" (weather, stocks, news) and "opt-in" (calendar, chat)
-- Core panels use deployer-level API keys (env vars)
+- Two panel tiers: "core" (weather, stocks, news, crypto, sports) and "opt-in" (calendar, chat)
+- Core panels use deployer-level API keys (env vars) or free APIs (CoinGecko, ESPN)
 - Opt-in panels use user-provided keys (stored in localStorage)
+- Daily AI briefing aggregates live dashboard data, requires user's AI provider key
 
 ## Panel Lifecycle
 1. App.init() reads panel preferences (enabled, collapsed) from localStorage
