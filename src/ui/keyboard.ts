@@ -5,6 +5,7 @@ import type { App } from '../App.ts';
 let helpModal: HTMLElement | null = null;
 
 const SHORTCUTS: { key: string; description: string }[] = [
+  { key: '\u2318K / Ctrl+K', description: 'Open command palette' },
   { key: '?', description: 'Show this help' },
   { key: '/', description: 'Focus location search' },
   { key: 't', description: 'Cycle theme (dark / light / OLED)' },

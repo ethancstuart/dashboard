@@ -12,11 +12,14 @@ Built entirely with [Claude Code](https://claude.ai/claude-code).
 
 - **Weather** -- Hyperlocal forecasts, hourly sparklines, conditions on an interactive world map, °F/°C toggle
 - **Markets** -- 10-stock watchlist with real-time quotes, detail views, drag-to-reorder, and sparklines (Finnhub)
+- **Crypto** -- Top 10 coins with 7-day sparklines, market cap, volume, ATH tracking (CoinGecko)
 - **News** -- 7 categories with headlines mapped to their origin on an interactive Mapbox map with day/night terminator
 - **Sports** -- NBA, NFL, MLB, EPL live scores with team favorites
 - **AI Chat** -- Multi-provider (Anthropic, OpenAI, Google, xAI), bring your own API key
+- **Daily Briefing** -- AI-generated morning summary using live dashboard data
 - **Predictions** -- Live odds from Polymarket and Kalshi
 - **Market Ticker** -- Scrolling real-time market data
+- **Command Palette** -- Cmd+K to search commands, jump to panels, switch themes, trigger actions
 - **Auth** -- Google/GitHub OAuth with guest, free, and premium tiers
 - **Themes** -- Dark, light, and OLED black with 3 density modes (compact/comfortable/spacious)
 - **Keyboard Shortcuts** -- Full shortcut system (press `?` for help)

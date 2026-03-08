@@ -216,6 +216,28 @@ export interface SportsData {
   fetchedAt: number;
 }
 
+// Crypto
+export interface CryptoCoin {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  marketCap: number;
+  volume: number;
+  sparkline: number[];
+  rank: number;
+  high24h: number;
+  low24h: number;
+  ath: number;
+  athChange: number;
+}
+
+export interface CryptoData {
+  coins: CryptoCoin[];
+  fetchedAt: number;
+}
+
 // Chat
 export type ChatProvider = 'anthropic' | 'openai' | 'google' | 'xai';
 

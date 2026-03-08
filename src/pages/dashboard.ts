@@ -4,10 +4,13 @@ import { createTicker } from '../ui/ticker.ts';
 import { createLayout } from '../ui/layout.ts';
 import { initPredictionBanner } from '../ui/predictionBanner.ts';
 import { initKeyboardShortcuts } from '../ui/keyboard.ts';
+import { initCommandPalette } from '../ui/commandPalette.ts';
+import { initBriefing } from '../ui/briefing.ts';
 import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { StocksPanel } from '../panels/StocksPanel.ts';
 import { NewsPanel } from '../panels/NewsPanel.ts';
 import { SportsPanel } from '../panels/SportsPanel.ts';
+import { CryptoPanel } from '../panels/CryptoPanel.ts';
 import { ChatPanel } from '../panels/ChatPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
@@ -31,6 +34,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.registerPanel(new StocksPanel());
   app.registerPanel(newsPanel);
   app.registerPanel(new SportsPanel());
+  app.registerPanel(new CryptoPanel());
   app.registerPanel(new ChatPanel());
 
   root.appendChild(createHeader(app));
@@ -47,4 +51,6 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.init();
   initPredictionBanner(layout.predictionBanner);
   initKeyboardShortcuts(app);
+  initCommandPalette(app);
+  initBriefing();
 }

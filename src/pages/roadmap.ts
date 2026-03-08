@@ -80,8 +80,11 @@ export function renderRoadmap(root: HTMLElement): void {
   const tbody = document.createElement('tbody');
   const rows = [
     ['Weather, Markets, News, Sports', '\u2713', '\u2713', '\u2713'],
+    ['Crypto Panel (Top 10 Coins)', '\u2713', '\u2713', '\u2713'],
     ['Predictions, Map & Ticker', '\u2713', '\u2713', '\u2713'],
     ['AI Chat (BYO Key)', '\u2713', '\u2713', '\u2713'],
+    ['Command Palette (Cmd+K)', '\u2713', '\u2713', '\u2713'],
+    ['Daily AI Briefing', '\u2713', '\u2713', '\u2713'],
     ['Saved Preferences & Sync', '\u2014', '\u2713', '\u2713'],
     ['Cross-Device Sync', '\u2014', '\u2713', '\u2713'],
     ['Custom News Sources', '\u2014', '\u2713', '\u2713'],
@@ -89,7 +92,6 @@ export function renderRoadmap(root: HTMLElement): void {
     ['Theme Presets (Dark/Light/OLED)', '\u2713', '\u2713', '\u2713'],
     ['Dashboard Sharing', '\u2014', '\u2713', '\u2713'],
     ['Hosted AI Chat (No Key Needed)', '\u2014', '\u2014', '\u2713'],
-    ['Daily AI Briefing', '\u2014', '\u2014', '\u2713'],
     ['Custom Alerts', '\u2014', '\u2014', '\u2713'],
     ['Faster Refresh Rates', '\u2014', '\u2014', '\u2713'],
     ['Drag-and-Drop Layout', '\u2014', '\u2014', '\u2713'],
@@ -143,9 +145,10 @@ export function renderRoadmap(root: HTMLElement): void {
     { status: 'shipped', label: 'Shipped', title: 'Auth & Tiers', desc: 'Google/GitHub OAuth, 3-tier system (guest/free/premium)' },
     { status: 'shipped', label: 'Shipped', title: 'Landing & Waitlist', desc: 'Product page, waitlist signup, roadmap, feature comparison' },
     { status: 'shipped', label: 'Shipped', title: 'Foundation Hardening', desc: 'Onboarding flow, themes (dark/light/OLED), panel collapse & density modes, keyboard shortcuts, accessibility, priority loading, unit preferences' },
+    { status: 'shipped', label: 'Shipped', title: 'Power Features', desc: 'Crypto panel (top 10 coins with sparklines), command palette (Cmd+K), daily AI briefing with dashboard context' },
     { status: 'active', label: 'Phase 2', title: 'Sign-In Value', desc: 'Cross-device sync, custom news sources, multiple weather locations, notes panel, dashboard sharing' },
-    { status: 'planned', label: 'Phase 3', title: 'Premium Features', desc: 'Hosted AI chat, daily briefing, custom alerts, drag-and-drop layout, calendar, integrations' },
-    { status: 'planned', label: 'Phase 4', title: 'Platform Expansion', desc: 'Stripe payments, crypto panel, PWA, command palette, plugin SDK' },
+    { status: 'planned', label: 'Phase 3', title: 'Premium Features', desc: 'Hosted AI chat, custom alerts, drag-and-drop layout, calendar, integrations' },
+    { status: 'planned', label: 'Phase 4', title: 'Platform Expansion', desc: 'Stripe payments, PWA, plugin SDK, custom dashboards' },
     { status: 'planned', label: 'Phase 5', title: 'AI-Native Intelligence', desc: 'AI co-pilot, natural language config, trend detection, smart defaults' },
   ];
 

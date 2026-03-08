@@ -5,7 +5,7 @@ import * as storage from './services/storage.ts';
 const STORAGE_KEY = 'dashview:panels';
 
 // Panels that go in the right sidebar
-const SIDEBAR_PANELS = new Set(['weather', 'stocks', 'chat']);
+const SIDEBAR_PANELS = new Set(['weather', 'stocks', 'crypto', 'chat']);
 // Panels that go in the content area (below map, left of sidebar)
 const CONTENT_PANELS = new Set(['news', 'sports']);
 

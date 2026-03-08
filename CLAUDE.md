@@ -55,6 +55,7 @@ vercel             → Deploy to Vercel
 - [x] Stocks (Finnhub) — core, priority 1
 - [x] News (RSS feeds via proxy) — core, priority 1
 - [x] Sports (ESPN) — core, priority 2
+- [x] Crypto (CoinGecko) — core, priority 1
 - [x] Chat (multi-provider) — opt-in, priority 2
 - [ ] Calendar (Google Calendar API) — opt-in, planned
 
@@ -68,7 +69,9 @@ vercel             → Deploy to Vercel
 - Adding a new panel: create class extending Panel, register in App.ts, add Edge Function if needed
 - Three themes (dark/light/OLED) stored in dashview:theme, three density modes in dashview:density
 - Unit preferences (°F/°C, 12h/24h) stored in dashview:preferences
-- Keyboard shortcuts: ? help, / search, t theme, m map, 1-5 panels, Esc close
+- Command palette: Cmd+K opens searchable command palette (panels, themes, density, actions)
+- Daily briefing: AI-generated summary using live dashboard context, cached per day
+- Keyboard shortcuts: Cmd+K palette, ? help, / search, t theme, m map, 1-5 panels, Esc close
 - First-time visitors see a 5-step onboarding flow (dashview:onboarding)
 - All panels support collapse (click header), state persists per panel
 - ARIA landmarks, skip-link, focus-visible, and role attributes for screen readers
