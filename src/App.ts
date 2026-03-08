@@ -1,41 +1,31 @@
 import { Panel } from './panels/Panel.ts';
 import type { PanelState } from './types/index.ts';
 import * as storage from './services/storage.ts';
+import { getPanelOrder } from './ui/layout.ts';
 
 const STORAGE_KEY = 'dashview:panels';
 
-// Panels that go in the right sidebar
-const SIDEBAR_PANELS = new Set(['weather', 'stocks', 'crypto', 'chat']);
-// Panels that go in the content area (below map, left of sidebar)
-const CONTENT_PANELS = new Set(['news', 'sports']);
-
 export class App {
   private panels = new Map<string, Panel>();
-  gridContainer: HTMLElement | null = null;
-  sidebarContainer: HTMLElement | null = null;
-  contentContainer: HTMLElement | null = null;
+  panelGridContainer: HTMLElement | null = null;
 
   async init(): Promise<void> {
     const state = storage.get<PanelState>(STORAGE_KEY, { panels: {} });
+    const order = getPanelOrder();
 
-    // Phase 1: Attach all panels to DOM (no data fetching yet)
+    // Phase 1: Attach all panels to DOM in order
+    // First, handle panels in the saved order
+    const attached = new Set<string>();
+    for (const id of order) {
+      const panel = this.panels.get(id);
+      if (!panel) continue;
+      this.initPanel(panel, state);
+      attached.add(id);
+    }
+    // Then any remaining panels not in the order
     for (const [id, panel] of this.panels) {
-      const saved = state.panels[id];
-      if (saved !== undefined) {
-        panel.enabled = saved.enabled;
-        if (saved.collapsed) panel.collapsed = true;
-      }
-
-      let container: HTMLElement | undefined;
-      if (SIDEBAR_PANELS.has(id)) {
-        container = this.sidebarContainer ?? this.gridContainer ?? undefined;
-      } else {
-        container = this.contentContainer ?? this.gridContainer ?? undefined;
-      }
-
-      panel.attachToDOM(container);
-      if (panel.collapsed) panel.setCollapsed(true);
-      panel.container.addEventListener('panel:statechange', () => this.savePreferences());
+      if (attached.has(id)) continue;
+      this.initPanel(panel, state);
     }
 
     // Phase 2: Fetch data in priority order
@@ -52,6 +42,18 @@ export class App {
       const group = byPriority.get(priority)!;
       await Promise.all(group.map((p) => p.startDataCycle()));
     }
+  }
+
+  private initPanel(panel: Panel, state: PanelState): void {
+    const saved = state.panels[panel.id];
+    if (saved !== undefined) {
+      panel.enabled = saved.enabled;
+      if (saved.collapsed) panel.collapsed = true;
+    }
+
+    panel.attachToDOM(this.panelGridContainer ?? undefined);
+    if (panel.collapsed) panel.setCollapsed(true);
+    panel.container.addEventListener('panel:statechange', () => this.savePreferences());
   }
 
   getPanels(): Panel[] {

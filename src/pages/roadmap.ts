@@ -85,20 +85,21 @@ export function renderRoadmap(root: HTMLElement): void {
     ['AI Chat (BYO Key)', '\u2713', '\u2713', '\u2713'],
     ['Command Palette (Cmd+K)', '\u2713', '\u2713', '\u2713'],
     ['Daily AI Briefing', '\u2713', '\u2713', '\u2713'],
+    ['Notes & To-Do Panel', '\u2713', '\u2713', '\u2713'],
+    ['Price Alerts (up to 3)', '\u2713', '\u2713', '\u2713'],
+    ['PWA + Offline Mode', '\u2713', '\u2713', '\u2713'],
+    ['Export/Import Config', '\u2713', '\u2713', '\u2713'],
+    ['Theme Presets (Dark/Light/OLED)', '\u2713', '\u2713', '\u2713'],
     ['Saved Preferences & Sync', '\u2014', '\u2713', '\u2713'],
     ['Cross-Device Sync', '\u2014', '\u2713', '\u2713'],
     ['Custom News Sources', '\u2014', '\u2713', '\u2713'],
-    ['Up to 3 Weather Locations', '\u2014', '\u2713', '\u2713'],
-    ['Theme Presets (Dark/Light/OLED)', '\u2713', '\u2713', '\u2713'],
     ['Dashboard Sharing', '\u2014', '\u2713', '\u2713'],
     ['Hosted AI Chat (No Key Needed)', '\u2014', '\u2014', '\u2713'],
-    ['Custom Alerts', '\u2014', '\u2014', '\u2713'],
+    ['Unlimited Price Alerts', '\u2014', '\u2014', '\u2713'],
     ['Faster Refresh Rates', '\u2014', '\u2014', '\u2713'],
     ['Drag-and-Drop Layout', '\u2014', '\u2014', '\u2713'],
     ['Calendar Integration', '\u2014', '\u2014', '\u2713'],
-    ['Notes & To-Do Panel', '\u2014', '\u2014', '\u2713'],
     ['25-Stock Watchlist', '\u2014', '\u2014', '\u2713'],
-    ['Unlimited Weather Locations', '\u2014', '\u2014', '\u2713'],
     ['Multiple Dashboards', '\u2014', '\u2014', '\u2713'],
   ];
   for (const r of rows) {
@@ -146,9 +147,13 @@ export function renderRoadmap(root: HTMLElement): void {
     { status: 'shipped', label: 'Shipped', title: 'Landing & Waitlist', desc: 'Product page, waitlist signup, roadmap, feature comparison' },
     { status: 'shipped', label: 'Shipped', title: 'Foundation Hardening', desc: 'Onboarding flow, themes (dark/light/OLED), panel collapse & density modes, keyboard shortcuts, accessibility, priority loading, unit preferences' },
     { status: 'shipped', label: 'Shipped', title: 'Power Features', desc: 'Crypto panel (top 10 coins with sparklines), command palette (Cmd+K), daily AI briefing with dashboard context' },
-    { status: 'active', label: 'Phase 2', title: 'Sign-In Value', desc: 'Cross-device sync, custom news sources, multiple weather locations, notes panel, dashboard sharing' },
-    { status: 'planned', label: 'Phase 3', title: 'Premium Features', desc: 'Hosted AI chat, custom alerts, drag-and-drop layout, calendar, integrations' },
-    { status: 'planned', label: 'Phase 4', title: 'Platform Expansion', desc: 'Stripe payments, PWA, plugin SDK, custom dashboards' },
+    { status: 'shipped', label: 'Shipped', title: 'PWA + Offline', desc: 'Installable as native app, service worker with offline caching, install prompt, offline indicator' },
+    { status: 'shipped', label: 'Shipped', title: 'Notes & Alerts', desc: 'Quick-capture notes panel with to-dos, price alerts with browser notifications, tier-gated limits' },
+    { status: 'shipped', label: 'Shipped', title: 'Config & Analytics', desc: 'Export/import dashboard config, lightweight usage analytics with 30-day rolling window' },
+    { status: 'shipped', label: 'Shipped', title: 'Layout Rethink', desc: 'Responsive panel grid replacing rigid sidebar layout, all panels as equal citizens, panel ordering' },
+    { status: 'active', label: 'Phase 2', title: 'Sign-In Value', desc: 'Cross-device sync, custom news sources, multiple weather locations, dashboard sharing' },
+    { status: 'planned', label: 'Phase 3', title: 'Premium Features', desc: 'Hosted AI chat, drag-and-drop layout, calendar integration, advanced alert conditions' },
+    { status: 'planned', label: 'Phase 4', title: 'Platform Expansion', desc: 'Stripe payments, plugin SDK, custom dashboards, API access' },
     { status: 'planned', label: 'Phase 5', title: 'AI-Native Intelligence', desc: 'AI co-pilot, natural language config, trend detection, smart defaults' },
   ];
 
@@ -171,11 +176,20 @@ export function renderRoadmap(root: HTMLElement): void {
 
   // Footer
   const footer = createElement('footer', { className: 'landing-footer' });
+  const footerLinks = createElement('div', { className: 'landing-footer-links' });
   const footerBack = document.createElement('a');
   footerBack.href = '#/';
   footerBack.className = 'landing-footer-link';
   footerBack.textContent = '\u2190 Back to Home';
-  footer.appendChild(footerBack);
+  const footerSubstack = document.createElement('a');
+  footerSubstack.href = 'https://thedataproductagent.substack.com';
+  footerSubstack.target = '_blank';
+  footerSubstack.rel = 'noopener';
+  footerSubstack.className = 'landing-footer-link';
+  footerSubstack.textContent = 'The Data Product Agent';
+  footerLinks.appendChild(footerBack);
+  footerLinks.appendChild(footerSubstack);
+  footer.appendChild(footerLinks);
   page.appendChild(footer);
 
   root.appendChild(page);

@@ -19,3 +19,7 @@ export function isAdmin(): boolean {
   const user = getUser();
   return !!user?.isAdmin;
 }
+
+export function getAlertLimit(): number {
+  return getCurrentTier() === 'premium' ? Infinity : 3;
+}

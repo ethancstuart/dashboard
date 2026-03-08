@@ -17,11 +17,17 @@ Built entirely with [Claude Code](https://claude.ai/claude-code).
 - **Sports** -- NBA, NFL, MLB, EPL live scores with team favorites
 - **AI Chat** -- Multi-provider (Anthropic, OpenAI, Google, xAI), bring your own API key
 - **Daily Briefing** -- AI-generated morning summary using live dashboard data
+- **Notes** -- Quick-capture notes and to-dos, fully offline, persists in localStorage
+- **Price Alerts** -- Set stock/crypto price thresholds, browser notifications, tier-gated (3 free)
 - **Predictions** -- Live odds from Polymarket and Kalshi
 - **Market Ticker** -- Scrolling real-time market data
-- **Command Palette** -- Cmd+K to search commands, jump to panels, switch themes, trigger actions
+- **Command Palette** -- Cmd+K to search commands, jump to panels, manage alerts, export/import config
+- **PWA + Offline** -- Installable as native app, service worker caching, offline indicator
+- **Export/Import** -- Download/restore dashboard config as JSON (zero-backend config portability)
+- **Usage Analytics** -- Lightweight local tracking of panel views, feature usage, 30-day rolling window
 - **Auth** -- Google/GitHub OAuth with guest, free, and premium tiers
 - **Themes** -- Dark, light, and OLED black with 3 density modes (compact/comfortable/spacious)
+- **Responsive Layout** -- Panel grid adapts from 3-4 columns (desktop) to 1 column (mobile)
 - **Keyboard Shortcuts** -- Full shortcut system (press `?` for help)
 - **Accessibility** -- ARIA landmarks, skip-link, focus-visible outlines, screen reader support
 - **Onboarding** -- Guided setup for first-time visitors
@@ -54,7 +60,7 @@ Optional (BYO key for AI Chat): Anthropic, OpenAI, Google AI, xAI
 
 Panel-based -- every data source is a self-contained TypeScript class with its own refresh cycle. No React, no framework. DOM updates are direct. API keys are proxied through Vercel Edge Functions (never exposed client-side).
 
-- **Panels:** `src/panels/` -- WeatherPanel, StocksPanel, NewsPanel, SportsPanel, ChatPanel
+- **Panels:** `src/panels/` -- WeatherPanel, StocksPanel, NewsPanel, SportsPanel, CryptoPanel, ChatPanel, NotesPanel
 - **Services:** `src/services/` -- API clients, auth, storage
 - **Edge Functions:** `api/` -- server-side API proxies
 - **Pages:** `src/pages/` -- landing, roadmap, dashboard

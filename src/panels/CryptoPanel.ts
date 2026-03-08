@@ -1,6 +1,8 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchCryptoData } from '../services/crypto.ts';
+import { checkAlerts } from '../services/alerts.ts';
+import { openAlertsModal } from '../ui/alertsModal.ts';
 import { renderSparkline } from '../ui/chart.ts';
 import type { CryptoData, CryptoCoin } from '../types/index.ts';
 
@@ -21,6 +23,16 @@ export class CryptoPanel extends Panel {
   async fetchData(): Promise<void> {
     this.data = await fetchCryptoData();
     this.render(this.data);
+
+    // Check price alerts
+    if (this.data?.coins) {
+      const prices = this.data.coins.map((c) => ({
+        symbol: c.symbol.toUpperCase(),
+        price: c.price,
+        type: 'crypto' as const,
+      }));
+      checkAlerts(prices);
+    }
   }
 
   render(data: unknown): void {
@@ -119,6 +131,17 @@ export class CryptoPanel extends Panel {
       });
     }
 
+    // Alert bell
+    const bellBtn = createElement('button', {
+      className: 'stocks-row-bell',
+      textContent: '\uD83D\uDD14',
+    });
+    bellBtn.setAttribute('aria-label', `Set alert for ${coin.symbol}`);
+    bellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAlertsModal({ symbol: coin.symbol.toUpperCase(), type: 'crypto' });
+    });
+
     // Chevron
     const chevron = createElement('span', {
       className: 'stocks-row-chevron',
@@ -130,6 +153,7 @@ export class CryptoPanel extends Panel {
     row.appendChild(priceEl);
     row.appendChild(sparkWrap);
     row.appendChild(changeEl);
+    row.appendChild(bellBtn);
     row.appendChild(chevron);
     return row;
   }

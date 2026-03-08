@@ -1,5 +1,6 @@
 import { createElement } from '../utils/dom.ts';
 import { cycleTheme } from '../config/theme.ts';
+import { openAlertsModal } from '../ui/alertsModal.ts';
 import type { App } from '../App.ts';
 
 let helpModal: HTMLElement | null = null;
@@ -10,11 +11,12 @@ const SHORTCUTS: { key: string; description: string }[] = [
   { key: '/', description: 'Focus location search' },
   { key: 't', description: 'Cycle theme (dark / light / OLED)' },
   { key: 'm', description: 'Toggle map' },
-  { key: '1-5', description: 'Jump to panel (weather, stocks, news, sports, chat)' },
+  { key: '1-6', description: 'Jump to panel (weather, stocks, news, sports, chat, notes)' },
+  { key: 'a', description: 'Open price alerts' },
   { key: 'Esc', description: 'Close modals / dropdowns' },
 ];
 
-const PANEL_ORDER = ['weather', 'stocks', 'news', 'sports', 'chat'];
+const PANEL_ORDER = ['weather', 'stocks', 'news', 'sports', 'chat', 'notes'];
 
 export function initKeyboardShortcuts(app: App): void {
   document.addEventListener('keydown', (e) => {
@@ -42,8 +44,12 @@ export function initKeyboardShortcuts(app: App): void {
       case 'Escape':
         closeOverlays();
         break;
+      case 'a':
+        e.preventDefault();
+        openAlertsModal();
+        break;
       default:
-        if (e.key >= '1' && e.key <= '5') {
+        if (e.key >= '1' && e.key <= '6') {
           e.preventDefault();
           jumpToPanel(app, parseInt(e.key) - 1);
         }

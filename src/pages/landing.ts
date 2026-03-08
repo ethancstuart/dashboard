@@ -107,12 +107,12 @@ export function renderLanding(root: HTMLElement): void {
 
   const featureGrid = createElement('div', { className: 'landing-feature-grid' });
   const featureItems = [
-    { icon: '\u2601', title: 'Weather', desc: 'Hyperlocal forecasts with °F/°C toggle, hourly sparklines, and live conditions on a world map.' },
-    { icon: '\uD83D\uDCC8', title: 'Markets', desc: 'Real-time stock quotes, drag-to-reorder watchlists, detail views, and financial news.' },
-    { icon: '\uD83E\uDE99', title: 'Crypto', desc: 'Top 10 coins with 7-day sparklines, market cap, volume, and ATH tracking.' },
-    { icon: '\uD83C\uDF10', title: 'News', desc: 'Global headlines from 20+ sources, mapped to their origin on an interactive map.' },
-    { icon: '\u26BD', title: 'Sports', desc: 'Live scores from NBA, NFL, MLB, and EPL with team favorites and game status.' },
-    { icon: '\uD83D\uDD0D', title: 'Command Palette', desc: 'Press Cmd+K to search commands, jump to panels, switch themes, and trigger actions.' },
+    { icon: '\u2601', title: 'Weather', desc: 'Hyperlocal forecasts with hourly sparklines, live map overlay, and auto-detected location.' },
+    { icon: '\uD83D\uDCC8', title: 'Markets & Crypto', desc: 'Real-time stocks and top 10 crypto with sparklines, price alerts, and detail views.' },
+    { icon: '\uD83C\uDF10', title: 'News & Sports', desc: 'Global headlines mapped on an interactive globe. Live scores from NBA, NFL, MLB, and EPL.' },
+    { icon: '\uD83E\uDD16', title: 'AI Chat & Briefing', desc: 'Multi-provider AI chat and daily intelligence briefings generated from your live dashboard data.' },
+    { icon: '\uD83D\uDD0D', title: 'Command Palette', desc: 'Cmd+K to search commands, jump to panels, switch themes, manage alerts, and trigger actions.' },
+    { icon: '\uD83D\uDCF2', title: 'Install as App', desc: 'Works offline as a PWA. Install DashPulse on any device for a native app experience.' },
   ];
   for (const f of featureItems) {
     const card = createElement('div', { className: 'landing-feature-card' });
@@ -209,6 +209,13 @@ export function renderLanding(root: HTMLElement): void {
   footerGithub.className = 'landing-footer-link';
   footerGithub.textContent = 'GitHub';
 
+  const footerSubstack = document.createElement('a');
+  footerSubstack.href = 'https://thedataproductagent.substack.com';
+  footerSubstack.target = '_blank';
+  footerSubstack.rel = 'noopener';
+  footerSubstack.className = 'landing-footer-link';
+  footerSubstack.textContent = 'The Data Product Agent';
+
   const footerCopy = createElement('span', {
     className: 'landing-footer-copy',
     textContent: '\u00A9 2026 DashPulse \u2014 Built entirely with Claude Code by Ethan Stuart',
@@ -216,6 +223,7 @@ export function renderLanding(root: HTMLElement): void {
 
   footerLinks.appendChild(footerRoadmap);
   footerLinks.appendChild(footerGithub);
+  footerLinks.appendChild(footerSubstack);
   footer.appendChild(footerLinks);
   footer.appendChild(footerCopy);
   page.appendChild(footer);

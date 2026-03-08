@@ -1,6 +1,7 @@
 import type { PanelConfig, UserTier } from '../types/index.ts';
 import { createElement, qs } from '../utils/dom.ts';
 import { hasAccess } from '../services/tier.ts';
+import { trackPanelView } from '../services/analytics.ts';
 
 export abstract class Panel {
   readonly id: string;
@@ -93,6 +94,7 @@ export abstract class Panel {
   async startDataCycle(): Promise<void> {
     if (!this.enabled) return;
     if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) return;
+    trackPanelView(this.id);
     await this.refresh();
     this.startInterval();
   }
@@ -139,6 +141,7 @@ export abstract class Panel {
     this.enabled = enabled;
     if (enabled) {
       this.container.style.display = '';
+      trackPanelView(this.id);
       this.refresh();
       this.startInterval();
     } else {

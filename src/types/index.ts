@@ -268,6 +268,26 @@ export interface User {
   createdAt: string;
 }
 
+// Notes
+export interface Note {
+  id: string;
+  text: string;
+  createdAt: number;
+  done?: boolean;
+}
+
+// Price Alerts
+export interface PriceAlert {
+  id: string;
+  symbol: string;
+  type: 'stock' | 'crypto';
+  condition: 'above' | 'below';
+  threshold: number;
+  createdAt: number;
+  triggeredAt?: number;
+  acknowledged?: boolean;
+}
+
 // Social / X feed
 export interface SocialPost {
   id: string;

@@ -1,6 +1,8 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { fetchStocks, searchSymbols, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
+import { checkAlerts } from '../services/alerts.ts';
+import { openAlertsModal } from '../ui/alertsModal.ts';
 import * as storage from '../services/storage.ts';
 import type { StocksData, StockQuote, SymbolSearchResult, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
 
@@ -71,6 +73,16 @@ export class StocksPanel extends Panel {
   async fetchData(): Promise<void> {
     this.data = await fetchStocks(this.watchlist);
     this.render(this.data);
+
+    // Check price alerts
+    if (this.data?.watchlist) {
+      const prices = this.data.watchlist.map((q) => ({
+        symbol: q.symbol,
+        price: q.price,
+        type: 'stock' as const,
+      }));
+      checkAlerts(prices);
+    }
   }
 
   render(data: unknown): void {
@@ -238,6 +250,17 @@ export class StocksPanel extends Panel {
       textContent: isSelected ? CHEVRON_UP : CHEVRON_DOWN,
     });
 
+    // Alert bell
+    const bellBtn = createElement('button', {
+      className: 'stocks-row-bell',
+      textContent: '\uD83D\uDD14',
+    });
+    bellBtn.setAttribute('aria-label', `Set alert for ${q.symbol}`);
+    bellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAlertsModal({ symbol: q.symbol, type: 'stock' });
+    });
+
     const removeBtn = createElement('button', {
       className: 'stocks-row-remove',
       textContent: '\u00d7',
@@ -251,6 +274,7 @@ export class StocksPanel extends Panel {
     row.appendChild(identCol);
     row.appendChild(priceEl);
     row.appendChild(changeCol);
+    row.appendChild(bellBtn);
     row.appendChild(chevron);
     row.appendChild(removeBtn);
     return row;

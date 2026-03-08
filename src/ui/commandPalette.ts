@@ -1,6 +1,9 @@
 import { createElement } from '../utils/dom.ts';
 import { cycleTheme, applyTheme } from '../config/theme.ts';
 import { applyDensity } from '../config/density.ts';
+import { trackFeatureUse } from '../services/analytics.ts';
+import { openAlertsModal } from '../ui/alertsModal.ts';
+import { exportConfig, importConfig } from '../services/configSync.ts';
 import type { App } from '../App.ts';
 import type { ThemeName } from '../config/themes.ts';
 import type { DensityMode } from '../config/density.ts';
@@ -48,6 +51,7 @@ function close(): void {
 
 function show(): void {
   close();
+  trackFeatureUse('command_palette');
 
   overlay = createElement('div', { className: 'cmd-palette-overlay' });
   overlay.addEventListener('click', (e) => {
@@ -292,5 +296,73 @@ function buildCommands(app: App): Command[] {
     },
   });
 
+  // Notes
+  cmds.push({
+    id: 'new-note',
+    title: 'New note',
+    section: 'Actions',
+    keywords: 'note add create todo',
+    action: () => {
+      const notesPanel = app.getPanel('notes');
+      if (notesPanel && !notesPanel.enabled) app.togglePanel('notes', true);
+      if (notesPanel) {
+        notesPanel.container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        requestAnimationFrame(() => {
+          const input = notesPanel.container.querySelector('.notes-input') as HTMLTextAreaElement;
+          if (input) input.focus();
+        });
+      }
+    },
+  });
+
+  // Alerts
+  cmds.push({
+    id: 'manage-alerts',
+    title: 'Manage price alerts',
+    section: 'Actions',
+    keywords: 'alert notification price stock crypto bell',
+    action: () => openAlertsModal(),
+  });
+
+  // Export/Import
+  cmds.push({
+    id: 'export-config',
+    title: 'Export config',
+    section: 'Actions',
+    keywords: 'export download backup save settings config',
+    action: () => exportConfig(),
+  });
+
+  cmds.push({
+    id: 'import-config',
+    title: 'Import config',
+    section: 'Actions',
+    keywords: 'import upload restore load settings config',
+    action: () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const result = await importConfig(file);
+        showToast(result.message, result.success ? 'success' : 'error');
+      });
+      input.click();
+    },
+  });
+
   return cmds;
+}
+
+function showToast(message: string, type: 'success' | 'error'): void {
+  const toast = createElement('div', {
+    className: `toast toast-${type}`,
+    textContent: message,
+  });
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }

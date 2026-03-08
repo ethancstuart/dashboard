@@ -1,5 +1,6 @@
 import { createElement } from '../utils/dom.ts';
 import { sendMessage } from '../services/chat.ts';
+import { trackFeatureUse } from '../services/analytics.ts';
 import * as storage from '../services/storage.ts';
 
 const CACHE_KEY = 'dashview-briefing-cache';
@@ -96,6 +97,7 @@ async function showBriefing(): Promise<void> {
     overlay = null;
     return;
   }
+  trackFeatureUse('briefing');
 
   // Check cache — only regenerate once per day
   const today = new Date().toDateString();

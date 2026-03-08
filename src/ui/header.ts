@@ -7,6 +7,10 @@ import { resetOnboarding } from '../ui/onboarding.ts';
 import { getTheme, applyTheme } from '../config/theme.ts';
 import { getDensity, applyDensity } from '../config/density.ts';
 import { getPreferences, setPreference } from '../config/preferences.ts';
+import { getUntriggeredCount } from '../services/alerts.ts';
+import { openAlertsModal } from '../ui/alertsModal.ts';
+import { exportConfig, importConfig } from '../services/configSync.ts';
+import { getAnalyticsSummary } from '../services/analytics.ts';
 import type { ThemeName } from '../config/themes.ts';
 import type { DensityMode } from '../config/density.ts';
 import type { App } from '../App.ts';
@@ -283,6 +287,77 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   // --- Divider ---
   dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
 
+  // --- Export/Import section ---
+  const syncTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Config',
+  });
+  dropdown.appendChild(syncTitle);
+
+  const exportBtn = createElement('button', {
+    className: 'settings-item',
+    textContent: 'Export config',
+  });
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportConfig();
+  });
+  dropdown.appendChild(exportBtn);
+
+  const importBtn = createElement('button', {
+    className: 'settings-item',
+    textContent: 'Import config',
+  });
+  importBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const result = await importConfig(file);
+      importBtn.textContent = result.message;
+      setTimeout(() => {
+        importBtn.textContent = 'Import config';
+        if (result.success) location.reload();
+      }, 2000);
+    });
+    input.click();
+  });
+  dropdown.appendChild(importBtn);
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
+  // --- Usage Stats ---
+  const statsTitle = createElement('div', {
+    className: 'settings-dropdown-title',
+    textContent: 'Usage Stats',
+  });
+  dropdown.appendChild(statsTitle);
+
+  const summary = getAnalyticsSummary();
+  const statsGrid = createElement('div', { className: 'settings-stats-grid' });
+  const statsItems = [
+    [`${summary.daysActive}`, 'Days Active'],
+    [`${summary.totalPanelViews}`, 'Panel Views'],
+    [`${summary.alertsCreated}`, 'Alerts'],
+    [`${summary.notesAdded}`, 'Notes'],
+  ];
+  for (const [value, label] of statsItems) {
+    const cell = createElement('div', { className: 'settings-stat-cell' });
+    const valEl = createElement('div', { className: 'settings-stat-value', textContent: value });
+    const labelEl = createElement('div', { className: 'settings-stat-label', textContent: label });
+    cell.appendChild(valEl);
+    cell.appendChild(labelEl);
+    statsGrid.appendChild(cell);
+  }
+  dropdown.appendChild(statsGrid);
+
+  // --- Divider ---
+  dropdown.appendChild(createElement('div', { className: 'settings-dropdown-divider' }));
+
   // --- Reset onboarding ---
   const resetBtn = createElement('button', {
     className: 'settings-item',
@@ -434,7 +509,24 @@ export function createHeader(app: App): HTMLElement {
   updateAuthUI();
   onAuthChange(() => updateAuthUI());
 
+  // Alert badge
+  const alertBtn = createElement('button', { className: 'header-alert-btn' });
+  alertBtn.setAttribute('aria-label', 'Price alerts');
+  alertBtn.textContent = '\uD83D\uDD14';
+  const alertBadge = createElement('span', { className: 'header-alert-badge' });
+  alertBtn.appendChild(alertBadge);
+  alertBtn.addEventListener('click', () => openAlertsModal());
+
+  function updateAlertBadge() {
+    const count = getUntriggeredCount();
+    alertBadge.textContent = count > 0 ? String(count) : '';
+    alertBadge.style.display = count > 0 ? '' : 'none';
+  }
+  updateAlertBadge();
+  document.addEventListener('dashview:alerts-updated', updateAlertBadge);
+
   right.appendChild(clock);
+  right.appendChild(alertBtn);
   right.appendChild(authWrap);
   right.appendChild(settingsWrap);
 
