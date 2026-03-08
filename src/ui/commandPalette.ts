@@ -246,8 +246,8 @@ function buildCommands(app: App): Command[] {
       const collapsing = !mapHero.classList.contains('map-collapsed');
       mapHero.classList.toggle('map-collapsed', collapsing);
       localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
-      const btn = mapHero.querySelector('.map-collapse-toggle');
-      if (btn) btn.textContent = collapsing ? '\u25BC' : '\u25B2';
+      const expandBtn = document.querySelector('.map-expand-toggle') as HTMLElement;
+      if (expandBtn) expandBtn.style.display = collapsing ? '' : 'none';
     },
   });
 

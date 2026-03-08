@@ -33,27 +33,39 @@ export function createLayout(): LayoutContainers {
   const predictionBanner = createElement('div', { className: 'prediction-banner' });
   root.appendChild(predictionBanner);
 
-  // Map hero — full-width, collapsible
+  // Map hero — full-width, collapsible, interactive
   const mapHero = createElement('div', { className: 'map-hero' });
   mapHero.setAttribute('aria-label', 'News map');
 
   const mapToggle = createElement('button', { className: 'map-collapse-toggle' });
-  mapToggle.setAttribute('aria-label', 'Toggle map');
-  mapToggle.textContent = '\u25B2';
+  mapToggle.setAttribute('aria-label', 'Collapse map');
+  mapToggle.textContent = 'Hide Map';
   mapToggle.addEventListener('click', () => {
-    const collapsing = !mapHero.classList.contains('map-collapsed');
-    mapHero.classList.toggle('map-collapsed', collapsing);
-    mapToggle.textContent = collapsing ? '\u25BC' : '\u25B2';
-    localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
+    mapHero.classList.add('map-collapsed');
+    mapExpand.style.display = '';
+    localStorage.setItem('dashview:map-collapsed', '1');
   });
   mapHero.appendChild(mapToggle);
 
-  if (localStorage.getItem('dashview:map-collapsed') === '1') {
+  // Expand button sits outside the map hero so it's visible when collapsed
+  const mapExpand = createElement('button', { className: 'map-expand-toggle' });
+  mapExpand.setAttribute('aria-label', 'Show map');
+  mapExpand.textContent = 'Show Map';
+  mapExpand.addEventListener('click', () => {
+    mapHero.classList.remove('map-collapsed');
+    mapExpand.style.display = 'none';
+    localStorage.setItem('dashview:map-collapsed', '');
+  });
+
+  const isCollapsed = localStorage.getItem('dashview:map-collapsed') === '1';
+  if (isCollapsed) {
     mapHero.classList.add('map-collapsed');
-    mapToggle.textContent = '\u25BC';
+  } else {
+    mapExpand.style.display = 'none';
   }
 
   root.appendChild(mapHero);
+  root.appendChild(mapExpand);
 
   // Panel grid — responsive, all panels are equal citizens
   const panelGrid = createElement('div', { className: 'panel-grid' });

@@ -244,15 +244,18 @@ export class NewsPanel extends Panel {
       minZoom: 2,
       maxZoom: 14,
       worldCopyJump: true,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false,
-      boxZoom: false,
-      keyboard: false,
+      dragging: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      touchZoom: true,
+      boxZoom: true,
+      keyboard: true,
+      zoomSnap: 0.5,
+      zoomDelta: 0.5,
+      wheelDebounceTime: 80,
     });
 
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    L.control.zoom({ position: 'topright' }).addTo(this.map);
     L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(this.map);
 
     // Use Mapbox tiles proxied through our edge function (token stays server-side)
