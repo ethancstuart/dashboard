@@ -33,7 +33,12 @@ export function createLayout(): LayoutContainers {
   const predictionBanner = createElement('div', { className: 'prediction-banner' });
   root.appendChild(predictionBanner);
 
-  // Map hero — full-width, collapsible, interactive
+  // Panel grid — responsive, all panels are equal citizens
+  const panelGrid = createElement('div', { className: 'panel-grid' });
+  panelGrid.setAttribute('role', 'region');
+  panelGrid.setAttribute('aria-label', 'Dashboard panels');
+
+  // Map card — lives inside the panel grid, spans 2 columns
   const mapHero = createElement('div', { className: 'map-hero' });
   mapHero.setAttribute('aria-label', 'News map');
 
@@ -47,7 +52,7 @@ export function createLayout(): LayoutContainers {
   });
   mapHero.appendChild(mapToggle);
 
-  // Expand button sits outside the map hero so it's visible when collapsed
+  // Expand button also inside the grid so it takes the map's grid slot
   const mapExpand = createElement('button', { className: 'map-expand-toggle' });
   mapExpand.setAttribute('aria-label', 'Show map');
   mapExpand.textContent = 'Show Map';
@@ -64,13 +69,8 @@ export function createLayout(): LayoutContainers {
     mapExpand.style.display = 'none';
   }
 
-  root.appendChild(mapHero);
-  root.appendChild(mapExpand);
-
-  // Panel grid — responsive, all panels are equal citizens
-  const panelGrid = createElement('div', { className: 'panel-grid' });
-  panelGrid.setAttribute('role', 'region');
-  panelGrid.setAttribute('aria-label', 'Dashboard panels');
+  panelGrid.appendChild(mapHero);
+  panelGrid.appendChild(mapExpand);
   root.appendChild(panelGrid);
 
   return { root, mapHero, panelGrid, predictionBanner };
