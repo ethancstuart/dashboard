@@ -15,7 +15,19 @@ export interface PanelState {
   panels: Record<string, PanelSettings>;
 }
 
-// Weather
+// Weather — saved locations
+export interface SavedLocation {
+  lat: number;
+  lon: number;
+  name?: string;
+  isAutoDetected?: boolean;
+}
+
+export interface WeatherLocations {
+  locations: SavedLocation[];
+  activeIndex: number;
+}
+
 export interface ForecastDay {
   day: string;
   icon: string;

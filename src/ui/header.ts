@@ -1,7 +1,6 @@
 import { createElement } from '../utils/dom.ts';
 import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { geocodeCity } from '../services/weather.ts';
-import * as storage from '../services/storage.ts';
 import { getUser, login, logout, onAuthChange } from '../services/auth.ts';
 import { resetOnboarding } from '../ui/onboarding.ts';
 import { getTheme, applyTheme } from '../config/theme.ts';
@@ -15,13 +14,7 @@ import type { ThemeName } from '../config/themes.ts';
 import type { DensityMode } from '../config/density.ts';
 import type { App } from '../App.ts';
 
-const LOCATION_KEY = 'dashview-location';
-
-interface SavedLocation {
-  lat: number;
-  lon: number;
-  name?: string;
-}
+import type { SavedLocation } from '../types/index.ts';
 
 function createGearSVG(): SVGSVGElement {
   const NS = 'http://www.w3.org/2000/svg';
@@ -199,16 +192,67 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   // --- Location section ---
   const locTitle = createElement('div', {
     className: 'settings-dropdown-title',
-    textContent: 'Location',
+    textContent: 'Locations',
   });
   dropdown.appendChild(locTitle);
 
+  const weatherPanel = app.getPanel('weather');
+  const wp = weatherPanel instanceof WeatherPanel ? weatherPanel : null;
+
+  // Saved locations list
+  const locList = createElement('div', { className: 'settings-locations-list' });
+  const statusDisplay = createElement('div', { className: 'settings-location-display' });
+  statusDisplay.style.padding = '4px 8px';
+
+  function renderLocList() {
+    locList.textContent = '';
+    statusDisplay.textContent = '';
+    statusDisplay.style.color = '';
+    if (!wp) return;
+    const locs = wp.getLocations();
+    const activeIdx = wp.getActiveIndex();
+    for (let i = 0; i < locs.length; i++) {
+      const loc = locs[i];
+      const item = createElement('div', {
+        className: `settings-location-item${i === activeIdx ? ' active' : ''}`,
+      });
+      const nameEl = createElement('span', {
+        textContent: loc.name ?? `${loc.lat.toFixed(2)}, ${loc.lon.toFixed(2)}`,
+      });
+      nameEl.style.cursor = 'pointer';
+      nameEl.style.flex = '1';
+      nameEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wp.setActiveLocation(i);
+        renderLocList();
+      });
+      item.appendChild(nameEl);
+      // Remove button (hidden if only 1 location)
+      if (locs.length > 1) {
+        const removeBtn = createElement('button', {
+          className: 'settings-location-remove',
+          textContent: '\u00d7',
+        });
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          wp.removeLocation(i);
+          renderLocList();
+        });
+        item.appendChild(removeBtn);
+      }
+      locList.appendChild(item);
+    }
+  }
+  renderLocList();
+  dropdown.appendChild(locList);
+
+  // City search input
   const inputRow = createElement('div', { className: 'settings-input-row' });
   inputRow.style.padding = '0 8px';
 
   const input = createElement('input', {}) as HTMLInputElement;
   input.type = 'text';
-  input.placeholder = 'Enter city name\u2026';
+  input.placeholder = 'Add city\u2026';
   input.className = 'settings-text-input';
 
   const searchBtn = createElement('button', {
@@ -219,20 +263,7 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   inputRow.appendChild(input);
   inputRow.appendChild(searchBtn);
   dropdown.appendChild(inputRow);
-
-  const locationDisplay = createElement('div', {
-    className: 'settings-location-display',
-  });
-  locationDisplay.style.padding = '4px 8px';
-  const saved = storage.get<SavedLocation | null>(LOCATION_KEY, null);
-  if (saved?.name) {
-    locationDisplay.textContent = saved.name;
-  } else if (saved) {
-    locationDisplay.textContent = `${saved.lat}, ${saved.lon}`;
-  } else {
-    locationDisplay.textContent = 'Auto-detected';
-  }
-  dropdown.appendChild(locationDisplay);
+  dropdown.appendChild(statusDisplay);
 
   const detectBtn = createElement('button', {
     className: 'settings-item',
@@ -240,10 +271,10 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   });
   dropdown.appendChild(detectBtn);
 
-  // Search handler
+  // Search handler — adds location instead of replacing
   const handleSearch = async () => {
     const query = input.value.trim();
-    if (!query) return;
+    if (!query || !wp) return;
     searchBtn.textContent = '\u2026';
     searchBtn.setAttribute('disabled', '');
     try {
@@ -253,17 +284,26 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
         lon: result.lon,
         name: `${result.name}, ${result.country}`,
       };
-      storage.set(LOCATION_KEY, loc);
-      input.value = '';
-      locationDisplay.textContent = loc.name!;
-      refreshWeather(app, loc.lat, loc.lon);
+      const added = wp.addLocation(loc);
+      if (!added) {
+        statusDisplay.textContent = `Max ${wp.getMaxLocations()} locations`;
+        statusDisplay.style.color = 'var(--color-negative)';
+        setTimeout(() => { statusDisplay.textContent = ''; statusDisplay.style.color = ''; }, 3000);
+      } else {
+        // Switch to the newly added (or existing duplicate) location
+        const locs = wp.getLocations();
+        const idx = locs.findIndex(
+          (l) => Math.abs(l.lat - loc.lat) < 0.01 && Math.abs(l.lon - loc.lon) < 0.01,
+        );
+        if (idx >= 0) wp.setActiveLocation(idx);
+        input.value = '';
+        renderLocList();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Geocoding failed';
-      locationDisplay.textContent = msg;
-      locationDisplay.style.color = 'var(--color-negative)';
-      setTimeout(() => {
-        locationDisplay.style.color = '';
-      }, 3000);
+      statusDisplay.textContent = msg;
+      statusDisplay.style.color = 'var(--color-negative)';
+      setTimeout(() => { statusDisplay.textContent = ''; statusDisplay.style.color = ''; }, 3000);
     } finally {
       searchBtn.textContent = 'Go';
       searchBtn.removeAttribute('disabled');
@@ -274,21 +314,30 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') void handleSearch();
   });
-  // Stop click from closing dropdown
   input.addEventListener('click', (e) => e.stopPropagation());
 
   detectBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation || !wp) return;
     detectBtn.textContent = 'Detecting\u2026';
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = Math.round(pos.coords.latitude * 100) / 100;
         const lon = Math.round(pos.coords.longitude * 100) / 100;
-        const loc: SavedLocation = { lat, lon };
-        storage.set(LOCATION_KEY, loc);
-        locationDisplay.textContent = `${lat}, ${lon}`;
-        refreshWeather(app, lat, lon);
+        const loc: SavedLocation = { lat, lon, isAutoDetected: true };
+        const added = wp.addLocation(loc);
+        if (!added) {
+          statusDisplay.textContent = `Max ${wp.getMaxLocations()} locations`;
+          statusDisplay.style.color = 'var(--color-negative)';
+          setTimeout(() => { statusDisplay.textContent = ''; statusDisplay.style.color = ''; }, 3000);
+        } else {
+          const locs = wp.getLocations();
+          const idx = locs.findIndex(
+            (l) => Math.abs(l.lat - lat) < 0.01 && Math.abs(l.lon - lon) < 0.01,
+          );
+          if (idx >= 0) wp.setActiveLocation(idx);
+          renderLocList();
+        }
         detectBtn.textContent = '\uD83D\uDCCD Detect my location';
       },
       () => {
@@ -387,12 +436,6 @@ function buildDropdown(dropdown: HTMLElement, app: App): void {
   dropdown.appendChild(resetBtn);
 }
 
-function refreshWeather(app: App, lat: number, lon: number): void {
-  const weather = app.getPanel('weather');
-  if (weather instanceof WeatherPanel) {
-    weather.updateLocation(lat, lon);
-  }
-}
 
 export function createHeader(app: App): HTMLElement {
   const header = createElement('header', { className: 'header' });
