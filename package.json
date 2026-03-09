@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.21",
-    "@vercel/node": "^5.6.10",
+    "@vercel/node": "^5.6.11",
     "typescript": "~5.9.3",
     "vite": "^7.3.1"
   },

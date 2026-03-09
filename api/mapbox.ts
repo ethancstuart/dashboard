@@ -28,9 +28,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .json({ available: true });
   }
 
-  // Validate tile coordinates are integers
+  // Validate tile coordinates are integers within bounds
   if (!/^\d+$/.test(z) || !/^\d+$/.test(x) || !/^\d+$/.test(y)) {
     return res.status(400).json({ error: 'Invalid tile coordinates' });
+  }
+  const zn = Number(z);
+  const xn = Number(x);
+  const yn = Number(y);
+  const maxTile = Math.pow(2, zn);
+  if (zn > 22 || xn >= maxTile || yn >= maxTile) {
+    return res.status(400).json({ error: 'Tile coordinates out of range' });
   }
 
   const ALLOWED_STYLES = new Set(['dark-v11', 'navigation-night-v1', 'satellite-streets-v12']);

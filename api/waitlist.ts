@@ -2,9 +2,6 @@ export const config = { runtime: 'edge' };
 
 const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://dashpulse.app' };
 
-// Simple in-memory rate limiter (per-instance, resets on cold start)
-const recentSubmits = new Map<string, number>();
-
 export default async function handler(req: Request) {
   if (req.method === 'GET') {
     // Return waitlist count (placeholder until KV is set up)
@@ -46,20 +43,32 @@ export default async function handler(req: Request) {
       });
     }
 
-    // Rate limit: 1 submit per email per 5 minutes
-    const now = Date.now();
-    const lastSubmit = recentSubmits.get(email);
-    if (lastSubmit && now - lastSubmit < 300000) {
-      return new Response(JSON.stringify({ error: 'Please wait before submitting again' }), {
-        status: 429,
-        headers: CORS_HEADERS,
-      });
-    }
-    recentSubmits.set(email, now);
-
-    // Try to store in Vercel KV if available
     const kvUrl = process.env.KV_REST_API_URL;
     const kvToken = process.env.KV_REST_API_TOKEN;
+
+    // Rate limit: 1 submit per email per 5 minutes (persisted in KV)
+    if (kvUrl && kvToken) {
+      try {
+        const rlKey = `waitlist-rl:${encodeURIComponent(email)}`;
+        const rlRes = await fetch(`${kvUrl}/get/${rlKey}`, {
+          headers: { Authorization: `Bearer ${kvToken}` },
+        });
+        const rlData = await rlRes.json();
+        if (rlData.result) {
+          return new Response(JSON.stringify({ error: 'Please wait before submitting again' }), {
+            status: 429,
+            headers: CORS_HEADERS,
+          });
+        }
+        // Set rate limit key with 5-minute TTL
+        await fetch(`${kvUrl}/set/${rlKey}/1?EX=300`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${kvToken}` },
+        });
+      } catch {
+        // KV unavailable — proceed without rate limiting
+      }
+    }
 
     if (kvUrl && kvToken) {
       try {
