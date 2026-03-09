@@ -1,7 +1,11 @@
 # Project Rules
 
 ## Tech Stack
-[TODO: Update for this project]
+- Vite + vanilla TypeScript (strict mode, no framework)
+- CSS custom properties for theming
+- Vercel Edge Functions for API proxying
+- Service Worker for PWA (hand-written, no Workbox)
+- Panel-based architecture — each data source is a self-contained class
 
 ## Code Style
 - TypeScript strict mode enabled

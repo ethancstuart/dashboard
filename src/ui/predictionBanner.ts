@@ -27,10 +27,10 @@ export function initPredictionBanner(container: HTMLElement): { destroy(): void 
     }
 
     offset = 0;
-    startScroll(markets.length);
+    startScroll();
   }
 
-  function startScroll(originalCount: number) {
+  function startScroll() {
     if (animationId) cancelAnimationFrame(animationId);
 
     function step() {
@@ -60,7 +60,7 @@ export function initPredictionBanner(container: HTMLElement): { destroy(): void 
   container.addEventListener('mouseleave', () => {
     // Restart — get count from track children / 2
     const total = track.children.length;
-    if (total > 0) startScroll(total / 2);
+    if (total > 0) startScroll();
   });
 
   async function loadData() {

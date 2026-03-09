@@ -502,12 +502,6 @@ export class NewsPanel extends Panel {
     super.destroy();
   }
 
-  private escapeHtml(str: string): string {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
   private createArticleRow(article: NewsArticle): HTMLElement {
     const row = createElement('div', { className: 'news-article' });
 

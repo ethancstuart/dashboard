@@ -35,7 +35,6 @@ export class StocksPanel extends Panel {
   private data: StocksData | null = null;
   private searchTimeout: ReturnType<typeof setTimeout> | null = null;
   private dragFromIndex: number = -1;
-  private dragOverIndex: number = -1;
   private gripActive: boolean = false;
   private selectedSymbol: string | null = null;
   private detailNews: CompanyNews[] | null = null;
@@ -181,7 +180,6 @@ export class StocksPanel extends Panel {
       e.preventDefault();
       if (this.dragFromIndex === -1) return;
       this.clearDragIndicators();
-      this.dragOverIndex = index;
       if (index < this.dragFromIndex) {
         row.classList.add('stocks-row-drag-above');
       } else if (index > this.dragFromIndex) {
@@ -444,7 +442,6 @@ export class StocksPanel extends Panel {
     const rows = this.contentEl.querySelectorAll('.stocks-row');
     rows.forEach((r) => r.classList.remove('stocks-row-dragging'));
     this.dragFromIndex = -1;
-    this.dragOverIndex = -1;
     this.gripActive = false;
   }
 

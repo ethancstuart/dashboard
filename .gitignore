@@ -3,10 +3,6 @@ node_modules/
 
 # Build outputs
 dist/
-build/
-.next/
-.svelte-kit/
-out/
 
 # Environment variables
 .env
@@ -34,5 +30,3 @@ coverage/
 
 # Hosting
 .vercel/
-
-.vercel

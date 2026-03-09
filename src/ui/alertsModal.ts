@@ -35,7 +35,7 @@ export function openAlertsModal(prefill?: { symbol: string; type: 'stock' | 'cry
   const body = createElement('div', { className: 'alerts-modal-body' });
 
   // Add alert form
-  body.appendChild(createAlertForm(prefill, body));
+  body.appendChild(createAlertForm(prefill));
 
   // Existing alerts
   const alerts = getAlerts();
@@ -74,7 +74,6 @@ export function closeAlertsModal(): void {
 
 function createAlertForm(
   prefill: { symbol: string; type: 'stock' | 'crypto' } | undefined,
-  body: HTMLElement,
 ): HTMLElement {
   const form = createElement('div', { className: 'alerts-form' });
 
