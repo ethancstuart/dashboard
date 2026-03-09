@@ -10,8 +10,10 @@ export function get<T>(key: string, defaultValue: T): T {
 
 export function set(key: string, value: unknown): void {
   localStorage.setItem(key, JSON.stringify(value));
+  document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key, action: 'set' } }));
 }
 
 export function remove(key: string): void {
   localStorage.removeItem(key);
+  document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key, action: 'remove' } }));
 }

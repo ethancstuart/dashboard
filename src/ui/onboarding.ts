@@ -98,6 +98,7 @@ export function showOnboarding(): Promise<void> {
             const lat = Math.round(pos.coords.latitude * 100) / 100;
             const lon = Math.round(pos.coords.longitude * 100) / 100;
             localStorage.setItem('dashview-location', JSON.stringify({ lat, lon }));
+            document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview-location', action: 'set' } }));
             next();
           },
           () => next(),

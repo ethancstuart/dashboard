@@ -89,3 +89,8 @@ vercel             → Deploy to Vercel
 - Export/Import: JSON config portability via configSync.ts, excludes sensitive keys
 - Analytics: lightweight event tracking in dashview-analytics, 30-day rolling window, visible in settings
 - Layout: responsive panel grid (no sidebar/content split), panel order from dashview:panel-order
+- Cross-device sync: logged-in users (free/premium) sync preferences to KV via api/prefs.ts
+  - Pulls on login and tab focus (5-min cooldown), pushes on change (5-sec debounce)
+  - Conflict resolution: per-key merge, local dirty keys take priority over server
+  - Beacon flush on tab close for pending changes
+  - Change tracking via dashview:storage-changed CustomEvent on document

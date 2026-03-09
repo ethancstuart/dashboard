@@ -18,6 +18,9 @@ import { NotesPanel } from '../panels/NotesPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
 import { checkSession } from '../services/auth.ts';
+import { initPrefsSync } from '../services/prefsSync.ts';
+import { applyTheme } from '../config/theme.ts';
+import { applyDensity } from '../config/density.ts';
 
 export async function renderDashboard(root: HTMLElement): Promise<void> {
   root.textContent = '';
@@ -28,6 +31,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   }
 
   const sessionUser = await checkSession();
+  initPrefsSync();
   await showWelcome(sessionUser?.name);
 
   const app = new App();
@@ -59,4 +63,10 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   initBriefing(app);
   initOfflineIndicator();
   initInstallPrompt(header);
+
+  // Re-apply theme/density when prefs arrive from another device
+  document.addEventListener('dashview:prefs-synced', () => {
+    applyTheme();
+    applyDensity();
+  });
 }

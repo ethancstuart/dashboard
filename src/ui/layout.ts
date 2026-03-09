@@ -49,6 +49,7 @@ export function createLayout(): LayoutContainers {
     mapHero.classList.add('map-collapsed');
     mapExpand.style.display = '';
     localStorage.setItem('dashview:map-collapsed', '1');
+    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
   });
   mapHero.appendChild(mapToggle);
 
@@ -60,6 +61,7 @@ export function createLayout(): LayoutContainers {
     mapHero.classList.remove('map-collapsed');
     mapExpand.style.display = 'none';
     localStorage.setItem('dashview:map-collapsed', '');
+    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
   });
 
   const isCollapsed = localStorage.getItem('dashview:map-collapsed') === '1';

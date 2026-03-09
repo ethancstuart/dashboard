@@ -22,6 +22,7 @@ export function applyTheme(name?: ThemeName): void {
   document.body.style.background = props['--color-bg'];
   try {
     localStorage.setItem(STORAGE_KEY, theme);
+    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: STORAGE_KEY, action: 'set' } }));
   } catch { /* ignore */ }
   for (const cb of listeners) cb(theme);
 }

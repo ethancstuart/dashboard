@@ -22,4 +22,5 @@ export function setPreference<K extends keyof UserPreferences>(key: K, value: Us
   const prefs = getPreferences();
   prefs[key] = value;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: STORAGE_KEY, action: 'set' } }));
 }

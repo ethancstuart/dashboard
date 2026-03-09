@@ -1,4 +1,5 @@
 const SENSITIVE_KEYS = ['dashview-user', 'dashview-session'];
+const SKIP_SYNC_KEYS = ['dashview-analytics', 'dashview-chat-messages', 'dashview:onboarding', 'dashview:install-dismissed', 'dashview-last-visit'];
 const CONFIG_VERSION = 1;
 
 interface ExportedConfig {
@@ -7,35 +8,35 @@ interface ExportedConfig {
   data: Record<string, unknown>;
 }
 
-export function exportConfig(includeAnalytics = false): void {
+/** Gather all syncable dashview preferences from localStorage. */
+export function gatherSyncablePrefs(): Record<string, unknown> {
   const data: Record<string, unknown> = {};
-
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (!key) continue;
-
-    // Only export dashview keys
-    if (!key.startsWith('dashview')) continue;
-
-    // Skip sensitive keys
+    if (!key || !key.startsWith('dashview')) continue;
     if (SENSITIVE_KEYS.some((s) => key.includes(s))) continue;
-
-    // Skip API keys
     if (key.toLowerCase().includes('api') && key.toLowerCase().includes('key')) continue;
-
-    // Skip analytics unless opted in
-    if (!includeAnalytics && key === 'dashview-analytics') continue;
+    if (SKIP_SYNC_KEYS.includes(key)) continue;
 
     try {
       const raw = localStorage.getItem(key);
-      if (raw !== null) {
-        data[key] = JSON.parse(raw);
-      }
+      if (raw !== null) data[key] = JSON.parse(raw);
     } catch {
-      // Store raw string values
       const raw = localStorage.getItem(key);
       if (raw !== null) data[key] = raw;
     }
+  }
+  return data;
+}
+
+export function exportConfig(includeAnalytics = false): void {
+  const data = gatherSyncablePrefs();
+  // Re-add analytics if opted in (it's excluded from sync by default)
+  if (includeAnalytics) {
+    try {
+      const raw = localStorage.getItem('dashview-analytics');
+      if (raw) data['dashview-analytics'] = JSON.parse(raw);
+    } catch { /* ignore */ }
   }
 
   const exported: ExportedConfig = {
