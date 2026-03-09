@@ -1,6 +1,6 @@
-import { corsHeaders } from './_cors.ts';
-
 export const config = { runtime: 'edge' };
+
+const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://dashpulse.app' };
 
 // Simple in-memory rate limiter (per-instance, resets on cold start)
 const recentSubmits = new Map<string, number>();
@@ -9,14 +9,14 @@ export default async function handler(req: Request) {
   if (req.method === 'GET') {
     // Return waitlist count (placeholder until KV is set up)
     return new Response(JSON.stringify({ count: 0 }), {
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -27,14 +27,14 @@ export default async function handler(req: Request) {
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'Name and email are required' }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
     if (name.length > 100 || email.length > 254) {
       return new Response(JSON.stringify({ error: 'Input too long' }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
@@ -42,7 +42,7 @@ export default async function handler(req: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(JSON.stringify({ error: 'Invalid email address' }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
@@ -52,7 +52,7 @@ export default async function handler(req: Request) {
     if (lastSubmit && now - lastSubmit < 300000) {
       return new Response(JSON.stringify({ error: 'Please wait before submitting again' }), {
         status: 429,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
     recentSubmits.set(email, now);
@@ -78,12 +78,12 @@ export default async function handler(req: Request) {
 
     return new Response(
       JSON.stringify({ message: "You're on the list! We'll be in touch." }),
-      { headers: corsHeaders() },
+      { headers: CORS_HEADERS },
     );
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid request body' }), {
       status: 400,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 }

@@ -1,6 +1,6 @@
-import { corsHeaders } from './_cors.ts';
-
 export const config = { runtime: 'edge' };
+
+const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://dashpulse.app' };
 
 const ALLOWED_KEY_NAMES = ['anthropic', 'openai', 'google', 'xai', 'google-calendar'];
 const KEY_TTL_SECONDS = 90 * 24 * 3600; // 90 days
@@ -141,7 +141,7 @@ export default async function handler(req: Request) {
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -151,13 +151,13 @@ export default async function handler(req: Request) {
   if (!kvUrl || !kvToken) {
     return new Response(JSON.stringify({ error: 'Storage not configured' }), {
       status: 503,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
   if (!authSecret) {
     return new Response(JSON.stringify({ error: 'Encryption not configured' }), {
       status: 503,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -165,13 +165,13 @@ export default async function handler(req: Request) {
   if (!user) {
     return new Response(JSON.stringify({ error: 'Invalid session' }), {
       status: 401,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
   if (user.tier !== 'premium') {
     return new Response(JSON.stringify({ error: 'Premium tier required' }), {
       status: 403,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -180,7 +180,7 @@ export default async function handler(req: Request) {
   if (!allowed) {
     return new Response(JSON.stringify({ error: 'Rate limit exceeded (20 key operations/hour)' }), {
       status: 429,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -192,14 +192,14 @@ export default async function handler(req: Request) {
     if (!keyName || !keyValue) {
       return new Response(JSON.stringify({ error: 'keyName and keyValue required' }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
     if (!validateKeyName(keyName)) {
       return new Response(JSON.stringify({ error: `Invalid key name. Allowed: ${ALLOWED_KEY_NAMES.join(', ')}` }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
@@ -207,7 +207,7 @@ export default async function handler(req: Request) {
     if (validationError) {
       return new Response(JSON.stringify({ error: validationError }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
@@ -227,7 +227,7 @@ export default async function handler(req: Request) {
     await auditLog(kvUrl, kvToken, user.id, 'store', keyName);
 
     return new Response(JSON.stringify({ stored: keyName }), {
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -240,11 +240,11 @@ export default async function handler(req: Request) {
       const keyNames = (data.result || []).map((k: string) => k.replace(`apikey:${user.id}:`, ''));
       await auditLog(kvUrl, kvToken, user.id, 'list', '*');
       return new Response(JSON.stringify({ keys: keyNames }), {
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     } catch {
       return new Response(JSON.stringify({ keys: [] }), {
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
   }
@@ -254,7 +254,7 @@ export default async function handler(req: Request) {
     if (!keyName || !validateKeyName(keyName)) {
       return new Response(JSON.stringify({ error: 'Valid key name required' }), {
         status: 400,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
 
@@ -266,12 +266,12 @@ export default async function handler(req: Request) {
     await auditLog(kvUrl, kvToken, user.id, 'delete', keyName);
 
     return new Response(JSON.stringify({ deleted: keyName }), {
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
-    headers: corsHeaders(),
+    headers: CORS_HEADERS,
   });
 }

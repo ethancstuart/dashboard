@@ -1,6 +1,6 @@
-import { corsHeaders } from './_cors.ts';
-
 export const config = { runtime: 'edge' };
+
+const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://dashpulse.app' };
 
 type ChatProvider = 'anthropic' | 'openai' | 'google' | 'xai';
 
@@ -107,7 +107,7 @@ async function callGoogle(apiKey: string, messages: { role: string; content: str
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents: geminiMessages,
@@ -149,7 +149,7 @@ export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -157,7 +157,7 @@ export default async function handler(req: Request) {
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -168,7 +168,7 @@ export default async function handler(req: Request) {
   if (!kvUrl || !kvToken || !authSecret) {
     return new Response(JSON.stringify({ error: 'Storage not configured' }), {
       status: 503,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -182,21 +182,21 @@ export default async function handler(req: Request) {
     if (!sessionData.result) {
       return new Response(JSON.stringify({ error: 'Invalid session' }), {
         status: 401,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
     const user = JSON.parse(sessionData.result);
     if (user.tier !== 'premium') {
       return new Response(JSON.stringify({ error: 'Premium tier required' }), {
         status: 403,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
     userId = user.id;
   } catch {
     return new Response(JSON.stringify({ error: 'Session check failed' }), {
       status: 500,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -212,7 +212,7 @@ export default async function handler(req: Request) {
   if (!validProviders.includes(provider)) {
     return new Response(JSON.stringify({ error: `Invalid provider: ${provider}` }), {
       status: 400,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 
@@ -239,7 +239,7 @@ export default async function handler(req: Request) {
     };
     return new Response(
       JSON.stringify({ error: `No ${providerNames[provider]} API key configured. Add one in the chat panel.` }),
-      { status: 400, headers: corsHeaders() },
+      { status: 400, headers: CORS_HEADERS },
     );
   }
 
@@ -254,7 +254,7 @@ export default async function handler(req: Request) {
     if (count >= 50) {
       return new Response(JSON.stringify({ error: 'Rate limit exceeded (50 messages/hour)' }), {
         status: 429,
-        headers: corsHeaders(),
+        headers: CORS_HEADERS,
       });
     }
     await fetch(`${kvUrl}/incr/${rateLimitKey}`, {
@@ -282,13 +282,13 @@ export default async function handler(req: Request) {
     };
     const result = await callers[provider](apiKey, body.messages, system);
     return new Response(JSON.stringify(result), {
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to reach AI provider';
     return new Response(JSON.stringify({ error: message }), {
       status: 502,
-      headers: corsHeaders(),
+      headers: CORS_HEADERS,
     });
   }
 }
