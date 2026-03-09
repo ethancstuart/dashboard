@@ -33,6 +33,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Never cache auth or chat API routes — always network-only
+  if (url.pathname.startsWith('/api/auth/') || url.pathname === '/api/chat') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   // API routes: network-first with stale fallback
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstWithCache(event.request, API_CACHE));

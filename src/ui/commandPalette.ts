@@ -74,45 +74,71 @@ function show(): void {
   let selectedIndex = 0;
   let filtered = commands;
 
-  function renderList() {
-    list.textContent = '';
-    let currentSection = '';
+  // Pre-render all command items once
+  interface ItemEntry { el: HTMLElement; sectionEl: HTMLElement | null; cmd: Command }
+  const allItems: ItemEntry[] = [];
+  let currentSection = '';
 
-    for (let i = 0; i < filtered.length; i++) {
-      const cmd = filtered[i];
+  const emptyEl = createElement('div', {
+    className: 'cmd-palette-empty',
+    textContent: 'No commands found',
+  });
+  emptyEl.style.display = 'none';
 
-      if (cmd.section !== currentSection) {
-        currentSection = cmd.section;
-        const sectionEl = createElement('div', {
-          className: 'cmd-palette-section',
-          textContent: currentSection,
-        });
-        list.appendChild(sectionEl);
+  for (let i = 0; i < commands.length; i++) {
+    const cmd = commands[i];
+    let sectionEl: HTMLElement | null = null;
+
+    if (cmd.section !== currentSection) {
+      currentSection = cmd.section;
+      sectionEl = createElement('div', {
+        className: 'cmd-palette-section',
+        textContent: currentSection,
+      });
+      list.appendChild(sectionEl);
+    }
+
+    const item = createElement('div', {
+      className: 'cmd-palette-item',
+      textContent: cmd.title,
+    });
+    item.dataset.index = String(i);
+    item.addEventListener('click', () => {
+      close();
+      cmd.action();
+    });
+    item.addEventListener('mouseenter', () => {
+      selectedIndex = filtered.indexOf(cmd);
+      updateSelection();
+    });
+    list.appendChild(item);
+    allItems.push({ el: item, sectionEl, cmd });
+  }
+  list.appendChild(emptyEl);
+
+  function updateSelection() {
+    for (let i = 0; i < allItems.length; i++) {
+      const entry = allItems[i];
+      const filteredIdx = filtered.indexOf(entry.cmd);
+      entry.el.classList.toggle('cmd-palette-item-active', filteredIdx === selectedIndex);
+    }
+  }
+
+  function updateVisibility() {
+    const visibleSections = new Set<string>();
+    for (const entry of allItems) {
+      const visible = filtered.includes(entry.cmd);
+      entry.el.style.display = visible ? '' : 'none';
+      if (visible) visibleSections.add(entry.cmd.section);
+    }
+    // Show/hide section headers based on whether any item in the section is visible
+    for (const entry of allItems) {
+      if (entry.sectionEl) {
+        entry.sectionEl.style.display = visibleSections.has(entry.cmd.section) ? '' : 'none';
       }
-
-      const item = createElement('div', {
-        className: `cmd-palette-item ${i === selectedIndex ? 'cmd-palette-item-active' : ''}`,
-        textContent: cmd.title,
-      });
-      item.dataset.index = String(i);
-      item.addEventListener('click', () => {
-        close();
-        cmd.action();
-      });
-      item.addEventListener('mouseenter', () => {
-        selectedIndex = i;
-        renderList();
-      });
-      list.appendChild(item);
     }
-
-    if (filtered.length === 0) {
-      const empty = createElement('div', {
-        className: 'cmd-palette-empty',
-        textContent: 'No commands found',
-      });
-      list.appendChild(empty);
-    }
+    emptyEl.style.display = filtered.length === 0 ? '' : 'none';
+    updateSelection();
   }
 
   input.addEventListener('input', () => {
@@ -128,7 +154,7 @@ function show(): void {
       );
     }
     selectedIndex = 0;
-    renderList();
+    updateVisibility();
   });
 
   input.addEventListener('keydown', (e) => {
@@ -140,14 +166,14 @@ function show(): void {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       selectedIndex = Math.min(selectedIndex + 1, filtered.length - 1);
-      renderList();
+      updateSelection();
       scrollToSelected(list);
       return;
     }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       selectedIndex = Math.max(selectedIndex - 1, 0);
-      renderList();
+      updateSelection();
       scrollToSelected(list);
       return;
     }
@@ -165,7 +191,7 @@ function show(): void {
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
-  renderList();
+  updateVisibility();
   requestAnimationFrame(() => input.focus());
 }
 

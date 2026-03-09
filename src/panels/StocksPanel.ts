@@ -58,6 +58,10 @@ export class StocksPanel extends Panel {
     this.nameCache = { ...DEFAULT_NAMES, ...storage.get<Record<string, string>>(NAMES_KEY, {}) };
   }
 
+  getLastData(): StocksData | null {
+    return this.data;
+  }
+
   destroy(): void {
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);

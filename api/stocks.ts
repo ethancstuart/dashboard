@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const CORS_ORIGIN = 'https://dashpulse.app';
+function setCors(res: VercelResponse): VercelResponse {
+  return res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+}
+
 interface FinnhubQuote {
   c: number;  // current price
   d: number;  // change
@@ -13,6 +18,7 @@ interface FinnhubQuote {
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res);
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: 'Market data service unavailable' });

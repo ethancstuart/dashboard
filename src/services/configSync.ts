@@ -87,8 +87,12 @@ export async function importConfig(file: File): Promise<{ success: boolean; mess
 
 function sanitizeValue(value: unknown): unknown {
   if (typeof value === 'string') {
-    // Strip HTML tags
-    return value.replace(/<[^>]*>/g, '');
+    return value
+      .replace(/<[^>]*>/g, '')                          // Strip HTML tags
+      .replace(/javascript\s*:/gi, '')                   // Remove javascript: URIs
+      .replace(/on\w+\s*=/gi, '')                        // Remove event handler attributes
+      .replace(/\\u00[0-9a-f]{2}/gi, '')                 // Remove unicode escapes
+      .replace(/&#x?[0-9a-f]+;?/gi, '');                 // Remove HTML entities used for encoding
   }
   if (Array.isArray(value)) {
     return value.map(sanitizeValue);

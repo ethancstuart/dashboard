@@ -15,6 +15,7 @@ export abstract class Panel {
   container: HTMLElement;
   protected contentEl: HTMLElement;
   protected errorEl: HTMLElement;
+  private collapseBtn: HTMLElement;
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(config: PanelConfig & { requiredTier?: UserTier }) {
@@ -28,6 +29,7 @@ export abstract class Panel {
     this.container = this.createContainer();
     this.contentEl = qs<HTMLElement>('.panel-content', this.container)!;
     this.errorEl = qs<HTMLElement>('.panel-error', this.container)!;
+    this.collapseBtn = qs<HTMLElement>('.panel-collapse-btn', this.container)!;
   }
 
   private createContainer(): HTMLElement {
@@ -73,6 +75,10 @@ export abstract class Panel {
   abstract fetchData(): Promise<void>;
   abstract render(data: unknown): void;
 
+  getLastData(): unknown {
+    return null;
+  }
+
   attachToDOM(parent?: HTMLElement): void {
     const root = parent ?? document.getElementById('app');
     if (!root) return;
@@ -105,7 +111,7 @@ export abstract class Panel {
   }
 
   private showLocked(): void {
-    this.contentEl.innerHTML = '';
+    this.contentEl.textContent = '';
     const overlay = createElement('div', { className: 'panel-locked' });
     const icon = createElement('div', { className: 'panel-locked-icon', textContent: '\uD83D\uDD12' });
     const label = createElement('div', { className: 'panel-locked-label', textContent: 'Premium Feature' });
@@ -128,12 +134,9 @@ export abstract class Panel {
   setCollapsed(collapsed: boolean): void {
     this.collapsed = collapsed;
     this.container.classList.toggle('panel-collapsed', collapsed);
-    const btn = this.container.querySelector('.panel-collapse-btn');
-    if (btn) {
-      btn.textContent = collapsed ? '\u25BE' : '\u25B4';
-      btn.setAttribute('aria-label', collapsed ? 'Expand panel' : 'Collapse panel');
-      btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    }
+    this.collapseBtn.textContent = collapsed ? '\u25BE' : '\u25B4';
+    this.collapseBtn.setAttribute('aria-label', collapsed ? 'Expand panel' : 'Collapse panel');
+    this.collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     this.container.dispatchEvent(new CustomEvent('panel:statechange', { bubbles: true }));
   }
 
@@ -167,7 +170,10 @@ export abstract class Panel {
   showLoading(): void {
     this.errorEl.style.display = 'none';
     this.contentEl.style.display = '';
-    this.contentEl.innerHTML = '<div class="panel-loading"><div class="panel-loading-dot"></div></div>';
+    this.contentEl.textContent = '';
+    const loadingWrap = createElement('div', { className: 'panel-loading' });
+    loadingWrap.appendChild(createElement('div', { className: 'panel-loading-dot' }));
+    this.contentEl.appendChild(loadingWrap);
   }
 
   destroy(): void {

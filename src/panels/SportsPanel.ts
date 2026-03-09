@@ -19,6 +19,10 @@ export class SportsPanel extends Panel {
   private data: SportsData | null = null;
   private favorites: Set<string>;
 
+  getLastData(): SportsData | null {
+    return this.data;
+  }
+
   constructor() {
     super({
       id: 'sports',

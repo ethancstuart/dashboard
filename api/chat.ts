@@ -1,3 +1,5 @@
+import { corsHeaders } from './_cors.ts';
+
 export const config = { runtime: 'edge' };
 
 type ChatProvider = 'anthropic' | 'openai' | 'google' | 'xai';
@@ -105,7 +107,7 @@ async function callGoogle(apiKey: string, messages: { role: string; content: str
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
       body: JSON.stringify({
         system_instruction: { parts: [{ text: system }] },
         contents: geminiMessages,
@@ -147,7 +149,7 @@ export default async function handler(req: Request) {
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -155,7 +157,7 @@ export default async function handler(req: Request) {
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -166,7 +168,7 @@ export default async function handler(req: Request) {
   if (!kvUrl || !kvToken || !authSecret) {
     return new Response(JSON.stringify({ error: 'Storage not configured' }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -180,31 +182,37 @@ export default async function handler(req: Request) {
     if (!sessionData.result) {
       return new Response(JSON.stringify({ error: 'Invalid session' }), {
         status: 401,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
     const user = JSON.parse(sessionData.result);
     if (user.tier !== 'premium') {
       return new Response(JSON.stringify({ error: 'Premium tier required' }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
     userId = user.id;
   } catch {
     return new Response(JSON.stringify({ error: 'Session check failed' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
   const body = (await req.json()) as ChatBody;
+
+  // Cap context length and sanitize
+  if (body.context) {
+    body.context = body.context.slice(0, 5000).replace(/<[^>]*>/g, '');
+  }
+
   const provider: ChatProvider = body.provider || 'anthropic';
   const validProviders: ChatProvider[] = ['anthropic', 'openai', 'google', 'xai'];
   if (!validProviders.includes(provider)) {
     return new Response(JSON.stringify({ error: `Invalid provider: ${provider}` }), {
       status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -231,7 +239,7 @@ export default async function handler(req: Request) {
     };
     return new Response(
       JSON.stringify({ error: `No ${providerNames[provider]} API key configured. Add one in the chat panel.` }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } },
+      { status: 400, headers: corsHeaders() },
     );
   }
 
@@ -246,7 +254,7 @@ export default async function handler(req: Request) {
     if (count >= 50) {
       return new Response(JSON.stringify({ error: 'Rate limit exceeded (50 messages/hour)' }), {
         status: 429,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
     await fetch(`${kvUrl}/incr/${rateLimitKey}`, {
@@ -274,13 +282,13 @@ export default async function handler(req: Request) {
     };
     const result = await callers[provider](apiKey, body.messages, system);
     return new Response(JSON.stringify(result), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to reach AI provider';
     return new Response(JSON.stringify({ error: message }), {
       status: 502,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 }

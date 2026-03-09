@@ -86,7 +86,11 @@ export class WeatherPanel extends Panel {
   render(data: unknown): void {
     const w = data as WeatherData;
     if (!w) {
-      this.contentEl.innerHTML = '<div class="panel-empty-state"><div class="panel-empty-pulse"></div><div>Detecting your location...</div></div>';
+      this.contentEl.textContent = '';
+      const emptyState = createElement('div', { className: 'panel-empty-state' });
+      emptyState.appendChild(createElement('div', { className: 'panel-empty-pulse' }));
+      emptyState.appendChild(createElement('div', { textContent: 'Detecting your location...' }));
+      this.contentEl.appendChild(emptyState);
       return;
     }
 

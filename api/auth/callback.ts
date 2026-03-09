@@ -155,7 +155,7 @@ export default async function handler(req: Request) {
     // Set session cookie and redirect to dashboard
     const headers = new Headers();
     headers.set('Location', '/#/app');
-    headers.append('Set-Cookie', `__Host-session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+    headers.append('Set-Cookie', `__Host-session=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800`);
     // Clear legacy cookie if present
     headers.append('Set-Cookie', 'session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
     headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0');

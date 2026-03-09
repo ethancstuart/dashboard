@@ -20,6 +20,10 @@ export class CryptoPanel extends Panel {
     });
   }
 
+  getLastData(): CryptoData | null {
+    return this.data;
+  }
+
   async fetchData(): Promise<void> {
     this.data = await fetchCryptoData();
     this.render(this.data);

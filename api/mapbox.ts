@@ -1,11 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const CORS_ORIGIN = 'https://dashpulse.app';
+function setCors(res: VercelResponse): VercelResponse {
+  return res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+}
+
 export const config = { runtime: 'nodejs' };
 
 // Proxy Mapbox tile requests server-side so the token never reaches the client.
 // Client requests: /api/mapbox?z=2&x=1&y=1
 // Server fetches the tile from Mapbox with the secret token and pipes it back.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res);
   const token = process.env.MAPBOX_TOKEN;
   if (!token) {
     return res.status(500).json({ error: 'Mapbox token not configured' });

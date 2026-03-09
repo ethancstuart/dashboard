@@ -2,6 +2,8 @@ import { createElement } from '../utils/dom.ts';
 import { sendMessage } from '../services/chat.ts';
 import { trackFeatureUse } from '../services/analytics.ts';
 import * as storage from '../services/storage.ts';
+import type { App } from '../App.ts';
+import type { StocksData, CryptoData, NewsData, SportsData } from '../types/index.ts';
 
 const CACHE_KEY = 'dashview-briefing-cache';
 
@@ -12,8 +14,10 @@ interface BriefingCache {
 }
 
 let overlay: HTMLElement | null = null;
+let appRef: App | null = null;
 
-export function initBriefing(): void {
+export function initBriefing(app: App): void {
+  appRef = app;
   document.addEventListener('dashview:briefing', () => {
     void showBriefing();
   });
@@ -22,67 +26,48 @@ export function initBriefing(): void {
 function gatherDashboardContext(): string {
   const parts: string[] = [];
 
-  // Weather
+  // Weather — from storage cache
   const weatherCache = storage.get<{ temp: number; condition: string } | null>('dashview-weather-cache', null);
   const locationCache = storage.get<{ lat: number; lon: number; name?: string } | null>('dashview-location', null);
   if (weatherCache && locationCache) {
     parts.push(`Weather in ${locationCache.name || 'your location'}: ${weatherCache.temp}\u00B0, ${weatherCache.condition}`);
   }
 
-  // Stocks — read from last rendered data in DOM
-  const stockRows = document.querySelectorAll('.stocks-row .stocks-row-symbol');
-  const stockChanges = document.querySelectorAll('.stocks-row .stocks-row-change-pct');
-  if (stockRows.length > 0) {
-    const stocks: string[] = [];
-    for (let i = 0; i < Math.min(stockRows.length, 10); i++) {
-      const symbol = stockRows[i]?.textContent || '';
-      const change = stockChanges[i]?.textContent || '';
-      if (symbol) stocks.push(`${symbol} ${change}`);
+  // Stocks — from panel data
+  if (appRef) {
+    const stocksPanel = appRef.getPanel('stocks');
+    const stocksData = stocksPanel?.getLastData() as StocksData | null;
+    if (stocksData?.watchlist?.length) {
+      const stocks = stocksData.watchlist.slice(0, 10).map(
+        (q) => `${q.symbol} ${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%`,
+      );
+      parts.push(`Watchlist: ${stocks.join(', ')}`);
     }
-    if (stocks.length > 0) parts.push(`Watchlist: ${stocks.join(', ')}`);
-  }
 
-  // Crypto — read from DOM
-  const cryptoRows = document.querySelectorAll('.crypto-rank');
-  if (cryptoRows.length > 0) {
-    const row = cryptoRows[0]?.closest('.stocks-row');
-    if (row) {
-      const symbols = document.querySelectorAll('[data-panel-id="crypto"] .stocks-row-symbol');
-      const changes = document.querySelectorAll('[data-panel-id="crypto"] .stocks-row-change-pct');
-      const cryptos: string[] = [];
-      for (let i = 0; i < Math.min(symbols.length, 5); i++) {
-        cryptos.push(`${symbols[i]?.textContent} ${changes[i]?.textContent}`);
-      }
-      if (cryptos.length > 0) parts.push(`Top crypto: ${cryptos.join(', ')}`);
+    // Crypto — from panel data
+    const cryptoPanel = appRef.getPanel('crypto');
+    const cryptoData = cryptoPanel?.getLastData() as CryptoData | null;
+    if (cryptoData?.coins?.length) {
+      const cryptos = cryptoData.coins.slice(0, 5).map(
+        (c) => `${c.symbol.toUpperCase()} ${c.change24h >= 0 ? '+' : ''}${c.change24h.toFixed(1)}%`,
+      );
+      parts.push(`Top crypto: ${cryptos.join(', ')}`);
     }
-  }
 
-  // News headlines — read from DOM
-  const newsLinks = document.querySelectorAll('.news-article-title');
-  if (newsLinks.length > 0) {
-    const headlines: string[] = [];
-    for (let i = 0; i < Math.min(newsLinks.length, 5); i++) {
-      headlines.push(newsLinks[i]?.textContent || '');
+    // News — from panel data
+    const newsPanel = appRef.getPanel('news');
+    const newsData = newsPanel?.getLastData() as NewsData | null;
+    if (newsData?.articles?.length) {
+      const headlines = newsData.articles.slice(0, 5).map((a) => a.title);
+      parts.push(`Top headlines: ${headlines.join(' | ')}`);
     }
-    if (headlines.length > 0) parts.push(`Top headlines: ${headlines.join(' | ')}`);
-  }
 
-  // Sports
-  const sportsGames = document.querySelectorAll('.sports-game');
-  if (sportsGames.length > 0) {
-    parts.push(`${sportsGames.length} sports games on the scoreboard today`);
-  }
-
-  // Predictions
-  const predictions = document.querySelectorAll('.prediction-card-question');
-  if (predictions.length > 0) {
-    const preds: string[] = [];
-    for (let i = 0; i < Math.min(predictions.length, 3); i++) {
-      const q = predictions[i]?.textContent || '';
-      const prob = predictions[i]?.closest('.prediction-card')?.querySelector('.prediction-card-prob')?.textContent || '';
-      if (q) preds.push(`${q} (${prob})`);
+    // Sports — from panel data
+    const sportsPanel = appRef.getPanel('sports');
+    const sportsData = sportsPanel?.getLastData() as SportsData | null;
+    if (sportsData?.games?.length) {
+      parts.push(`${sportsData.games.length} sports games on the scoreboard today`);
     }
-    if (preds.length > 0) parts.push(`Prediction markets: ${preds.join('; ')}`);
   }
 
   const today = new Date();

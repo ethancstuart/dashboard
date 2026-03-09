@@ -1,3 +1,5 @@
+import { corsHeaders } from './_cors.ts';
+
 export const config = { runtime: 'edge' };
 
 const ALLOWED_KEY_NAMES = ['anthropic', 'openai', 'google', 'xai', 'google-calendar'];
@@ -139,7 +141,7 @@ export default async function handler(req: Request) {
   if (!sessionId) {
     return new Response(JSON.stringify({ error: 'Not authenticated' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -149,13 +151,13 @@ export default async function handler(req: Request) {
   if (!kvUrl || !kvToken) {
     return new Response(JSON.stringify({ error: 'Storage not configured' }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
   if (!authSecret) {
     return new Response(JSON.stringify({ error: 'Encryption not configured' }), {
       status: 503,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -163,13 +165,13 @@ export default async function handler(req: Request) {
   if (!user) {
     return new Response(JSON.stringify({ error: 'Invalid session' }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
   if (user.tier !== 'premium') {
     return new Response(JSON.stringify({ error: 'Premium tier required' }), {
       status: 403,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -178,7 +180,7 @@ export default async function handler(req: Request) {
   if (!allowed) {
     return new Response(JSON.stringify({ error: 'Rate limit exceeded (20 key operations/hour)' }), {
       status: 429,
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -190,14 +192,14 @@ export default async function handler(req: Request) {
     if (!keyName || !keyValue) {
       return new Response(JSON.stringify({ error: 'keyName and keyValue required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
 
     if (!validateKeyName(keyName)) {
       return new Response(JSON.stringify({ error: `Invalid key name. Allowed: ${ALLOWED_KEY_NAMES.join(', ')}` }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
 
@@ -205,7 +207,7 @@ export default async function handler(req: Request) {
     if (validationError) {
       return new Response(JSON.stringify({ error: validationError }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
 
@@ -225,7 +227,7 @@ export default async function handler(req: Request) {
     await auditLog(kvUrl, kvToken, user.id, 'store', keyName);
 
     return new Response(JSON.stringify({ stored: keyName }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
@@ -238,11 +240,11 @@ export default async function handler(req: Request) {
       const keyNames = (data.result || []).map((k: string) => k.replace(`apikey:${user.id}:`, ''));
       await auditLog(kvUrl, kvToken, user.id, 'list', '*');
       return new Response(JSON.stringify({ keys: keyNames }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     } catch {
       return new Response(JSON.stringify({ keys: [] }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
   }
@@ -252,7 +254,7 @@ export default async function handler(req: Request) {
     if (!keyName || !validateKeyName(keyName)) {
       return new Response(JSON.stringify({ error: 'Valid key name required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers: corsHeaders(),
       });
     }
 
@@ -264,12 +266,12 @@ export default async function handler(req: Request) {
     await auditLog(kvUrl, kvToken, user.id, 'delete', keyName);
 
     return new Response(JSON.stringify({ deleted: keyName }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: corsHeaders(),
     });
   }
 
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
-    headers: { 'Content-Type': 'application/json' },
+    headers: corsHeaders(),
   });
 }

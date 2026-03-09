@@ -1,3 +1,4 @@
+import './styles/main.css';
 import { applyTheme } from './config/theme.ts';
 import { applyDensity } from './config/density.ts';
 import { Router } from './router.ts';

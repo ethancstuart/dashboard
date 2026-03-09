@@ -47,7 +47,7 @@ export function renderLanding(root: HTMLElement): void {
       const avatar = document.createElement('a');
       avatar.href = '#/app';
       avatar.className = 'landing-user-avatar';
-      if (user.avatar) {
+      if (user.avatar && /^https:\/\/(lh3\.googleusercontent\.com|avatars\.githubusercontent\.com)\//i.test(user.avatar)) {
         const img = document.createElement('img');
         img.src = user.avatar;
         img.alt = user.name;

@@ -56,7 +56,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   initPredictionBanner(layout.predictionBanner);
   initKeyboardShortcuts(app);
   initCommandPalette(app);
-  initBriefing();
+  initBriefing(app);
   initOfflineIndicator();
   initInstallPrompt(header);
 }

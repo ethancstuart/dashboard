@@ -1,5 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+const CORS_ORIGIN = 'https://dashpulse.app';
+function setCors(res: VercelResponse): VercelResponse {
+  return res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+}
+
 interface ForecastDay {
   day: string;
   icon: string;
@@ -12,6 +17,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const config = { runtime: 'nodejs' };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  setCors(res);
   const action = req.query.action as string | undefined;
 
   const apiKey = process.env.OPENWEATHER_API_KEY;

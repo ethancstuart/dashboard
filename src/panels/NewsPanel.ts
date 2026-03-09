@@ -54,6 +54,7 @@ export class NewsPanel extends Panel {
     el.addEventListener('transitionend', () => {
       if (this.map && !el.classList.contains('map-collapsed')) {
         this.map.invalidateSize();
+        this.updateTerminator();
       }
     });
   }
@@ -66,6 +67,10 @@ export class NewsPanel extends Panel {
     } catch {
       this.mapboxAvailable = false;
     }
+  }
+
+  getLastData(): NewsData | null {
+    return this.data;
   }
 
   async fetchData(): Promise<void> {
@@ -282,8 +287,8 @@ export class NewsPanel extends Panel {
       }
     }
 
-    // Use marker clustering if available, otherwise standard markers
-    const markerTarget: L.Map | L.LayerGroup = this.tryCreateClusterGroup() || this.map;
+    // Collect markers in a group and add to map in one batch
+    const markerGroup: L.LayerGroup = this.tryCreateClusterGroup() || L.featureGroup();
 
     for (const [, group] of groups) {
       const { lat, lon } = group[0];
@@ -306,12 +311,12 @@ export class NewsPanel extends Panel {
 
       const icon = L.divIcon({
         className: 'news-callout-wrap',
-        html: iconEl.outerHTML,
+        html: iconEl,
         iconSize: [0, 0],
         iconAnchor: [0, 28],
       });
 
-      const marker = L.marker([lat, lon], { icon }).addTo(markerTarget);
+      const marker = L.marker([lat, lon], { icon }).addTo(markerGroup);
 
       // Hover tooltip with headline
       marker.bindTooltip(headline, {
@@ -358,9 +363,7 @@ export class NewsPanel extends Panel {
       });
     }
 
-    if (markerTarget !== this.map) {
-      (markerTarget as L.LayerGroup).addTo(this.map);
-    }
+    markerGroup.addTo(this.map);
 
     // Add weather overlay on map if available
     this.addWeatherOverlay();
@@ -398,7 +401,7 @@ export class NewsPanel extends Panel {
 
       const icon = L.divIcon({
         className: 'weather-map-overlay',
-        html: weatherEl.outerHTML,
+        html: weatherEl,
         iconSize: [0, 0],
         iconAnchor: [0, 20],
       });
@@ -453,6 +456,7 @@ export class NewsPanel extends Panel {
 
   private updateTerminator(): void {
     if (!this.map) return;
+    if (this.mapContainer?.classList.contains('map-collapsed')) return;
 
     const coords = this.buildTerminatorCoords();
 
