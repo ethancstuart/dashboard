@@ -1,0 +1,171 @@
+/* Light theme overrides for hardcoded dark values */
+[data-theme="light"] .settings-text-input,
+[data-theme="light"] .stocks-search-input {
+  background: #f0f0f0;
+}
+
+[data-theme="light"] .ticker-bar {
+  background: #ebebeb;
+}
+
+[data-theme="light"] .ticker-card {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .welcome-overlay {
+  background: #f5f5f5;
+}
+
+[data-theme="light"] .map-hero .leaflet-container,
+[data-theme="light"] .news-map-wrap .leaflet-container {
+  background: #e8e8e8;
+}
+
+[data-theme="light"] .map-hero::after {
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .news-callout-label {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="light"] .weather-map-pin {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="light"] .weather-map-temp {
+  color: #1a1a1a;
+}
+
+[data-theme="light"] .weather-map-cond {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .stocks-row:hover,
+[data-theme="light"] .news-article:hover,
+[data-theme="light"] .social-post:hover,
+[data-theme="light"] .sports-game:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .chat-bubble-assistant {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .chat-input {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .stocks-row {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .news-article {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .cmd-palette {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .cmd-palette-input {
+  color: #111;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .cmd-palette-input::placeholder {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="light"] .cmd-palette-item {
+  color: #111;
+}
+
+[data-theme="light"] .cmd-palette-item-active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .cmd-palette-section {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] .crypto-rank {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="light"] .briefing-dialog {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .briefing-header {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .briefing-body {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="light"] .briefing-date {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] .briefing-close {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] .briefing-footer {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .briefing-regen {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #111;
+}
+
+[data-theme="light"] .notes-input {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .notes-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .notes-item {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .alerts-modal {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .alerts-input,
+[data-theme="light"] .alerts-select {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .settings-stat-cell {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* Light theme overrides for location pills */
+[data-theme="light"] .weather-loc-btn {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .weather-loc-btn:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  color: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="light"] .weather-loc-btn.active {
+  color: #fff;
+}

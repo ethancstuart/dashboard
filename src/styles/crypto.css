@@ -1,0 +1,20 @@
+/* Crypto Panel */
+.crypto-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0 6px;
+}
+
+.crypto-rank {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 28px;
+  text-align: center;
+}
+
+.crypto-sparkline-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 60px;
+}

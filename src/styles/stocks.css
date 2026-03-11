@@ -1,0 +1,448 @@
+/* Stocks panel */
+.stocks-section-header {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 10px;
+}
+
+.stocks-positive {
+  color: var(--color-positive);
+}
+
+.stocks-negative {
+  color: var(--color-negative);
+}
+
+/* Watchlist */
+.stocks-watchlist {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.stocks-watchlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.stocks-column-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.stocks-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 4px;
+  border-radius: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.stocks-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stocks-row-ident {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.stocks-row-symbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.stocks-row-name {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.stocks-row-price {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: right;
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.stocks-row-change-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 68px;
+}
+
+.stocks-row-change-pct {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.stocks-row-change-dollar {
+  font-size: 10px;
+  opacity: 0.7;
+  line-height: 1.3;
+}
+
+.stocks-row-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.stocks-row:hover .stocks-row-remove {
+  opacity: 1;
+}
+
+.stocks-row-remove:hover {
+  color: var(--color-negative);
+}
+
+.stocks-row-star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.stocks-row:hover .stocks-row-star {
+  opacity: 0.7;
+}
+
+.stocks-row-star-active {
+  color: #f59e0b;
+  opacity: 1;
+}
+
+.stocks-row:hover .stocks-row-star-active {
+  opacity: 1;
+}
+
+.stocks-row-star:hover {
+  opacity: 1;
+}
+
+.stocks-updated {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  text-align: right;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.stocks-search-wrapper {
+  position: relative;
+  margin-top: 8px;
+}
+
+.stocks-search-input {
+  width: 100%;
+  background: #1a1a1a;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.stocks-search-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.stocks-search-input:focus {
+  border-color: var(--color-accent);
+}
+
+.stocks-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.stocks-search-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  gap: 12px;
+}
+
+.stocks-search-result:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stocks-search-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.stocks-search-result-symbol {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.stocks-search-result-name {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stocks-search-result-add {
+  background: none;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stocks-search-result-add:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.stocks-search-result-added {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.stocks-search-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Stock drag-and-drop */
+.stocks-row-grip {
+  cursor: grab;
+  opacity: 0;
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: opacity 0.15s;
+  user-select: none;
+  padding: 0 2px;
+}
+
+.stocks-row:hover .stocks-row-grip {
+  opacity: 0.5;
+}
+
+.stocks-row-grip:hover {
+  opacity: 1 !important;
+}
+
+.stocks-row-dragging {
+  opacity: 0.4;
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.stocks-row-drag-above {
+  box-shadow: 0 -2px 0 0 var(--color-accent);
+}
+
+.stocks-row-drag-below {
+  box-shadow: 0 2px 0 0 var(--color-accent);
+}
+
+.stocks-row-clickable {
+  cursor: pointer;
+}
+
+.stocks-row-selected {
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.stocks-detail {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 4px 0;
+}
+
+.stocks-detail-news {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.stocks-detail-article {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.stocks-detail-article:last-child {
+  border-bottom: none;
+}
+
+.stocks-detail-headline {
+  font-size: 12px;
+  color: var(--color-accent);
+  text-decoration: none;
+  line-height: 1.4;
+  display: block;
+}
+
+.stocks-detail-headline:hover {
+  text-decoration: underline;
+}
+
+.stocks-detail-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.stocks-detail-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.stocks-detail-empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: 12px 0;
+}
+
+.stocks-detail-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.stocks-detail-industry {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.stocks-detail-weblink {
+  font-size: 11px;
+  color: var(--color-accent);
+  text-decoration: none;
+  opacity: 0.8;
+}
+
+.stocks-detail-weblink:hover {
+  text-decoration: underline;
+  opacity: 1;
+}
+
+/* Stock detail slide animation */
+.stocks-detail-slide {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; overflow: hidden; }
+  to { opacity: 1; max-height: 600px; }
+}
+
+/* Stock row chevron */
+.stocks-row-chevron {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  transition: transform 0.15s;
+}
+
+/* Stocks metrics grid */
+.stocks-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+}
+
+.stocks-metrics-grid + .stocks-metrics-grid {
+  margin-top: -4px;
+}
+
+.stocks-metric-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stocks-metric-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.stocks-metric-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}

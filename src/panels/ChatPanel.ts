@@ -5,6 +5,7 @@ import * as storage from '../services/storage.ts';
 import type { ChatMessage, ChatProvider } from '../types/index.ts';
 
 const CHAT_KEY = 'dashview-chat-messages';
+const MAX_CHAT_MESSAGES = 50;
 
 export class ChatPanel extends Panel {
   private messages: ChatMessage[] = [];
@@ -19,7 +20,7 @@ export class ChatPanel extends Panel {
       priority: 2,
       requiredTier: 'premium',
     });
-    this.messages = storage.get<ChatMessage[]>(CHAT_KEY, []);
+    this.messages = storage.get<ChatMessage[]>(CHAT_KEY, []).slice(-MAX_CHAT_MESSAGES);
   }
 
   async fetchData(): Promise<void> {
@@ -228,7 +229,7 @@ export class ChatPanel extends Panel {
 
   private saveMessages(): void {
     // Keep last 50 messages
-    const toSave = this.messages.slice(-50);
+    const toSave = this.messages.slice(-MAX_CHAT_MESSAGES);
     storage.set(CHAT_KEY, toSave);
   }
 }

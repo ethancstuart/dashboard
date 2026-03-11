@@ -1,0 +1,78 @@
+/* Ticker banner — centered market cards */
+.ticker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0d0d0d;
+  border-bottom: 1px solid var(--color-border);
+  padding: 8px 16px;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ticker-bar::-webkit-scrollbar { display: none; }
+
+.ticker-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.ticker-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  min-width: 185px;
+  flex-shrink: 0;
+}
+
+.ticker-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ticker-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ticker-card-price {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.ticker-card-change {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.ticker-sparkline {
+  width: 60px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.ticker-positive { color: var(--color-positive); }
+.ticker-negative { color: var(--color-negative); }
+
+@media (max-width: 768px) {
+  .ticker-bar { padding: 6px 8px; gap: 6px; }
+  .ticker-card { min-width: 150px; padding: 6px 10px; }
+}

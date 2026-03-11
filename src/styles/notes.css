@@ -1,0 +1,117 @@
+/* Notes Panel */
+.notes-input-area {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.notes-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  min-height: 36px;
+}
+
+.notes-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.notes-input:focus {
+  border-color: var(--color-accent);
+}
+
+.notes-add-btn {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.notes-add-btn:hover {
+  opacity: 0.85;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notes-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.notes-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.notes-item-done .notes-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.notes-checkbox {
+  accent-color: var(--color-accent);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.notes-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--color-text);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.notes-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.notes-delete-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.notes-item:hover .notes-delete-btn {
+  opacity: 1;
+}
+
+.notes-delete-btn:hover {
+  color: var(--color-negative);
+}

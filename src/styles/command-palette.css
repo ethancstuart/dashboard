@@ -1,0 +1,75 @@
+/* Command Palette */
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 20vh;
+  backdrop-filter: blur(4px);
+}
+
+.cmd-palette {
+  background: var(--color-surface, #141414);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 520px;
+  max-width: 90vw;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.cmd-palette-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text, #fafafa);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.cmd-palette-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.cmd-palette-list {
+  overflow-y: auto;
+  padding: 6px 0;
+  flex: 1;
+}
+
+.cmd-palette-section {
+  padding: 8px 16px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cmd-palette-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text, #fafafa);
+  transition: background 0.1s;
+}
+
+.cmd-palette-item-active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cmd-palette-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+}

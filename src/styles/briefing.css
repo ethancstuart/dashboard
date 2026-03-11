@@ -1,0 +1,129 @@
+/* Daily Briefing */
+.briefing-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.briefing-dialog {
+  background: var(--color-surface, #141414);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.briefing-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.briefing-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text, #fafafa);
+}
+
+.briefing-date {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  flex: 1;
+}
+
+.briefing-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.briefing-close:hover {
+  color: var(--color-text, #fafafa);
+}
+
+.briefing-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.briefing-section-title {
+  font-weight: 600;
+  color: var(--color-accent, #3b82f6);
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.briefing-bullet {
+  padding-left: 16px;
+  position: relative;
+}
+
+.briefing-bullet::before {
+  content: '\2022';
+  position: absolute;
+  left: 4px;
+  color: var(--color-accent, #3b82f6);
+}
+
+.briefing-spacer {
+  height: 8px;
+}
+
+.briefing-loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.briefing-error {
+  padding: 16px 20px;
+  color: var(--color-negative, #ef4444);
+  font-size: 13px;
+}
+
+.briefing-footer {
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.briefing-regen {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text, #fafafa);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.briefing-regen:hover {
+  background: rgba(255, 255, 255, 0.1);
+}

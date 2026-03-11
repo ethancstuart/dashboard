@@ -1,0 +1,140 @@
+/* Panel card */
+.panel-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.panel-collapsed .panel-header {
+  margin-bottom: 0;
+}
+
+.panel-collapsed .panel-content,
+.panel-collapsed .panel-error {
+  display: none !important;
+}
+
+.panel-collapse-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: transform 0.15s;
+}
+
+.panel-collapse-btn:hover {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.panel-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.panel-content {
+  flex: 1;
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.panel-error {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+/* Panel error with retry */
+.panel-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.panel-retry-btn {
+  background: none;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.panel-retry-btn:hover {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* Empty state */
+.panel-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.panel-empty-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Last updated badge */
+.panel-last-updated {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+  text-align: right;
+  margin-top: 8px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Loading indicator */
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+}
+
+.panel-loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
