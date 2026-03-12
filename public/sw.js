@@ -1,5 +1,5 @@
 /// @ts-nocheck
-const CACHE_VERSION = 'dashpulse-v3';
+const CACHE_VERSION = 'dashpulse-v4';
 const API_CACHE = 'dashpulse-api-v2';
 const STATIC_CACHE = 'dashpulse-static-v2';
 
@@ -45,16 +45,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // External tile/font/icon assets: cache-first
-  if (
-    url.hostname.includes('basemaps.cartocdn.com') ||
-    url.hostname.includes('fonts.googleapis.com') ||
-    url.hostname.includes('fonts.gstatic.com') ||
-    url.hostname.includes('unpkg.com') ||
-    url.hostname.includes('openweathermap.org') ||
-    url.hostname.includes('espncdn.com')
-  ) {
-    event.respondWith(cacheFirstWithNetwork(event.request, STATIC_CACHE));
+  // External assets: let the browser handle natively (no SW interception)
+  // This avoids caching 503 error responses that stick in the browser cache
+  if (url.origin !== self.location.origin) {
     return;
   }
 
