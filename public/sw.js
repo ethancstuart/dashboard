@@ -1,5 +1,5 @@
 /// @ts-nocheck
-const CACHE_VERSION = 'dashpulse-v2';
+const CACHE_VERSION = 'dashpulse-v3';
 const API_CACHE = 'dashpulse-api-v2';
 const STATIC_CACHE = 'dashpulse-static-v2';
 
