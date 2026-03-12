@@ -128,6 +128,7 @@ function validateKeyName(name: string): boolean {
 }
 
 function validateKeyValue(name: string, value: string): string | null {
+  if (name === 'google-calendar') return null; // Refresh tokens stored via OAuth flow
   if (value.length < 10 || value.length > 500) return 'Key must be 10-500 characters';
   if (name === 'anthropic' && !value.startsWith('sk-ant-')) return 'Invalid Anthropic key format';
   if (name === 'openai' && !value.startsWith('sk-')) return 'Invalid OpenAI key format';

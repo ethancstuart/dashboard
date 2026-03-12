@@ -37,5 +37,17 @@ router
       m.renderRoadmap(appRoot);
     }).catch((err) => showRouteError(appRoot, err));
   })
+  .on('/import/:code', (params) => {
+    import('./pages/dashboard.ts').then((m) => {
+      appRoot.textContent = '';
+      m.renderDashboard(appRoot);
+      // After dashboard renders, open import modal
+      setTimeout(() => {
+        import('./ui/shareModal.ts').then((sm) => {
+          sm.openImportModal(params?.code || '');
+        });
+      }, 1000);
+    }).catch((err) => showRouteError(appRoot, err));
+  })
   .otherwise(() => router.navigate('/'))
   .start();

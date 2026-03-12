@@ -160,8 +160,29 @@ export interface KeyMetrics {
   beta: number;
 }
 
+// Custom Feeds
+export interface CustomFeed {
+  id: string;
+  url: string;
+  name: string;
+  lat?: number;
+  lon?: number;
+  enabled: boolean;
+}
+
+// Calendar
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  location?: string;
+  calendarColor?: string;
+}
+
 // News
-export type NewsCategory = 'us' | 'world' | 'markets' | 'tech' | 'science' | 'entertainment' | 'x';
+export type NewsCategory = 'us' | 'world' | 'markets' | 'tech' | 'science' | 'entertainment' | 'x' | 'custom';
 
 export interface NewsArticle {
   title: string;
@@ -293,8 +314,11 @@ export interface PriceAlert {
   id: string;
   symbol: string;
   type: 'stock' | 'crypto';
-  condition: 'above' | 'below';
+  condition: 'above' | 'below' | 'change_above' | 'change_below' | 'outside_range' | 'crosses_above' | 'crosses_below';
   threshold: number;
+  threshold2?: number;
+  referencePrice?: number;
+  lastPrice?: number;
   createdAt: number;
   triggeredAt?: number;
   acknowledged?: boolean;

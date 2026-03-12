@@ -379,6 +379,16 @@ function buildCommands(app: App): Command[] {
     },
   });
 
+  cmds.push({
+    id: 'share-dashboard',
+    title: 'Share Dashboard',
+    section: 'Actions',
+    keywords: 'share link export send url code',
+    action: () => {
+      import('../ui/shareModal.ts').then(m => m.openShareModal());
+    },
+  });
+
   return cmds;
 }
 

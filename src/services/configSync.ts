@@ -86,6 +86,43 @@ export async function importConfig(file: File): Promise<{ success: boolean; mess
   }
 }
 
+export async function shareConfig(): Promise<{ code: string; expiresAt: number }> {
+  const data = gatherSyncablePrefs();
+  const res = await fetch('/api/share', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data }),
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.error || 'Failed to create share');
+  return result as { code: string; expiresAt: number };
+}
+
+export async function importSharedConfig(code: string): Promise<{ success: boolean; message: string; preview?: Record<string, unknown> }> {
+  const res = await fetch(`/api/share?code=${encodeURIComponent(code)}`);
+  const result = await res.json();
+  if (!res.ok) return { success: false, message: result.error || 'Share not found' };
+
+  const shareData = result as { data: Record<string, unknown>; createdBy: string; createdAt: number; expiresAt: number };
+
+  // Return preview. The modal will call applySharedConfig to actually apply.
+  return { success: true, message: 'Preview ready', preview: shareData.data };
+}
+
+export function applySharedConfig(data: Record<string, unknown>): { success: boolean; message: string } {
+  let count = 0;
+  for (const [key, value] of Object.entries(data)) {
+    if (!key.startsWith('dashview')) continue;
+    if (SENSITIVE_KEYS.some(s => key.includes(s))) continue;
+    if (key.toLowerCase().includes('api') && key.toLowerCase().includes('key')) continue;
+
+    const sanitized = sanitizeValue(value);
+    localStorage.setItem(key, typeof sanitized === 'string' ? sanitized : JSON.stringify(sanitized));
+    count++;
+  }
+  return { success: true, message: `Imported ${count} settings. Reload to apply.` };
+}
+
 function sanitizeValue(value: unknown): unknown {
   if (typeof value === 'string') {
     return value

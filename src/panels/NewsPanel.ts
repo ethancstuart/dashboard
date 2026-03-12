@@ -1,6 +1,6 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { fetchNews } from '../services/news.ts';
+import { fetchNews, getCustomFeeds } from '../services/news.ts';
 import { fetchSocialFeed } from '../services/social.ts';
 import * as storage from '../services/storage.ts';
 import { getTheme, onThemeChange } from '../config/theme.ts';
@@ -101,9 +101,16 @@ export class NewsPanel extends Panel {
 
     this.contentEl.textContent = '';
 
-    // Tabs
-    const tabs = createElement('div', { className: 'news-tabs' });
-    for (const cat of CATEGORIES) {
+    // Build category list, conditionally including 'custom' tab
+    const hasCustomFeeds = getCustomFeeds().filter(f => f.enabled).length > 0;
+    const allCategories = [...CATEGORIES];
+    if (hasCustomFeeds) {
+      allCategories.push({ id: 'custom', label: 'Custom' });
+    }
+
+    // Tabs row with gear button
+    const tabsRow = createElement('div', { className: 'news-tabs' });
+    for (const cat of allCategories) {
       const btn = createElement('button', {
         className: `news-tab ${cat.id === this.category ? 'news-tab-active' : ''}`,
         textContent: cat.label,
@@ -114,9 +121,18 @@ export class NewsPanel extends Panel {
         storage.set(CATEGORY_KEY, this.category);
         void this.fetchData();
       });
-      tabs.appendChild(btn);
+      tabsRow.appendChild(btn);
     }
-    this.contentEl.appendChild(tabs);
+
+    // Gear button to open feeds modal
+    const gearBtn = createElement('button', { className: 'news-gear-btn', textContent: '\u2699' });
+    gearBtn.title = 'Manage feeds';
+    gearBtn.addEventListener('click', () => {
+      import('../ui/feedsModal.ts').then(m => m.openFeedsModal());
+    });
+    tabsRow.appendChild(gearBtn);
+
+    this.contentEl.appendChild(tabsRow);
 
     // X tab: render social posts
     if (this.category === 'x') {

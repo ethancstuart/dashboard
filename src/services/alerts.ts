@@ -68,9 +68,60 @@ export function checkAlerts(
     );
     if (!match) continue;
 
-    const breached =
-      (alert.condition === 'above' && match.price >= alert.threshold) ||
-      (alert.condition === 'below' && match.price <= alert.threshold);
+    let breached = false;
+
+    switch (alert.condition) {
+      case 'above':
+        breached = match.price >= alert.threshold;
+        break;
+      case 'below':
+        breached = match.price <= alert.threshold;
+        break;
+      case 'change_above': {
+        if (!alert.referencePrice) {
+          alert.referencePrice = match.price;
+          changed = true;
+          break; // Don't trigger on first check, just capture reference
+        }
+        const pctChange = ((match.price - alert.referencePrice) / alert.referencePrice) * 100;
+        breached = pctChange >= alert.threshold;
+        break;
+      }
+      case 'change_below': {
+        if (!alert.referencePrice) {
+          alert.referencePrice = match.price;
+          changed = true;
+          break; // Don't trigger on first check, just capture reference
+        }
+        const pctChange = ((alert.referencePrice - match.price) / alert.referencePrice) * 100;
+        breached = pctChange >= alert.threshold;
+        break;
+      }
+      case 'outside_range': {
+        if (alert.threshold2 !== undefined) {
+          breached = match.price < alert.threshold || match.price > alert.threshold2;
+        }
+        break;
+      }
+      case 'crosses_above': {
+        if (alert.lastPrice === undefined) {
+          alert.lastPrice = match.price;
+          changed = true;
+          break; // Don't trigger on first check, just capture lastPrice
+        }
+        breached = alert.lastPrice < alert.threshold && match.price >= alert.threshold;
+        break;
+      }
+      case 'crosses_below': {
+        if (alert.lastPrice === undefined) {
+          alert.lastPrice = match.price;
+          changed = true;
+          break; // Don't trigger on first check, just capture lastPrice
+        }
+        breached = alert.lastPrice > alert.threshold && match.price <= alert.threshold;
+        break;
+      }
+    }
 
     if (breached) {
       alert.triggeredAt = Date.now();
@@ -80,9 +131,25 @@ export function checkAlerts(
     }
   }
 
-  if (changed) {
+  // Update lastPrice for crossing alerts (even non-triggered ones)
+  let lastPriceUpdated = false;
+  for (const alert of alerts) {
+    if (alert.condition === 'crosses_above' || alert.condition === 'crosses_below') {
+      const match = prices.find(
+        (p) => p.symbol.toUpperCase() === alert.symbol.toUpperCase() && p.type === alert.type,
+      );
+      if (match && alert.lastPrice !== match.price) {
+        alert.lastPrice = match.price;
+        lastPriceUpdated = true;
+      }
+    }
+  }
+
+  if (changed || lastPriceUpdated) {
     storage.set(STORAGE_KEY, alerts);
-    dispatchAlertUpdate();
+    if (changed) {
+      dispatchAlertUpdate();
+    }
   }
 
   return triggered;
@@ -93,9 +160,38 @@ export function requestNotificationPermission(): Promise<NotificationPermission>
   return Notification.requestPermission();
 }
 
+function getNotificationBody(alert: PriceAlert, currentPrice: number): string {
+  switch (alert.condition) {
+    case 'above':
+      return `${alert.symbol} is above $${alert.threshold.toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    case 'below':
+      return `${alert.symbol} is below $${alert.threshold.toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    case 'change_above': {
+      const pct = alert.referencePrice
+        ? (((currentPrice - alert.referencePrice) / alert.referencePrice) * 100).toFixed(1)
+        : '?';
+      return `${alert.symbol} up ${pct}% from $${(alert.referencePrice || 0).toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    }
+    case 'change_below': {
+      const pct = alert.referencePrice
+        ? (((alert.referencePrice - currentPrice) / alert.referencePrice) * 100).toFixed(1)
+        : '?';
+      return `${alert.symbol} down ${pct}% from $${(alert.referencePrice || 0).toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    }
+    case 'outside_range':
+      return `${alert.symbol} is outside $${alert.threshold.toFixed(2)}-$${(alert.threshold2 || 0).toFixed(2)} range (now $${currentPrice.toFixed(2)})`;
+    case 'crosses_above':
+      return `${alert.symbol} crossed above $${alert.threshold.toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    case 'crosses_below':
+      return `${alert.symbol} crossed below $${alert.threshold.toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+    default:
+      return `${alert.symbol} alert triggered (now $${currentPrice.toFixed(2)})`;
+  }
+}
+
 function fireNotification(alert: PriceAlert, currentPrice: number): void {
   const title = `${alert.symbol} Alert`;
-  const body = `${alert.symbol} is ${alert.condition} $${alert.threshold.toFixed(2)} (now $${currentPrice.toFixed(2)})`;
+  const body = getNotificationBody(alert, currentPrice);
 
   // Try SW notification for background support
   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {

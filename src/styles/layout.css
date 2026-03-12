@@ -145,3 +145,47 @@
     padding: 12px 8px;
   }
 }
+
+/* Panel drag-and-drop */
+.panel-drag-handle {
+  cursor: grab;
+  opacity: 0;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 6px 0 0;
+  color: var(--color-text-muted);
+  transition: opacity 0.15s;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.panel-header:hover .panel-drag-handle {
+  opacity: 0.4;
+}
+
+.panel-drag-handle:hover {
+  opacity: 0.8 !important;
+  cursor: grab;
+}
+
+.panel-drag-handle:active {
+  cursor: grabbing;
+}
+
+.panel-dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.panel-drag-above {
+  border-top: 2px solid var(--color-accent) !important;
+}
+
+.panel-drag-below {
+  border-bottom: 2px solid var(--color-accent) !important;
+}
+
+.panel-drag-clone {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}

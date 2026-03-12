@@ -62,7 +62,7 @@ const FEEDS: Record<string, FeedSource[]> = {
   ],
 };
 
-const VALID_CATEGORIES = new Set(Object.keys(FEEDS));
+const VALID_CATEGORIES = new Set([...Object.keys(FEEDS), 'custom']);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const category = (req.query.category as string | undefined) || 'world';
@@ -71,10 +71,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const sources = FEEDS[category];
+
+  // Handle custom feeds
+  let customSources: FeedSource[] = [];
+  const customUrlsParam = req.query.customUrls as string | undefined;
+  if (customUrlsParam) {
+    try {
+      const parsed = JSON.parse(customUrlsParam) as { url: string; name: string; lat?: number; lon?: number }[];
+      customSources = parsed.slice(0, 10).map(f => ({
+        name: f.name || 'Custom',
+        url: f.url,
+        country: '',
+        lat: f.lat || 0,
+        lon: f.lon || 0,
+      }));
+    } catch { /* ignore invalid JSON */ }
+  }
+
+  const allSources = category === 'custom' ? customSources : [...(sources || []), ...customSources];
+  if (allSources.length === 0) {
+    return res.json({ articles: [], category, fetchedAt: Date.now() });
+  }
+
   const parser = new Parser({ timeout: 5000 });
 
   const results = await Promise.allSettled(
-    sources.map(async (source) => {
+    allSources.map(async (source) => {
       const feed = await parser.parseURL(source.url);
       return (feed.items || []).slice(0, 10).map((item) => ({
         title: item.title || '',

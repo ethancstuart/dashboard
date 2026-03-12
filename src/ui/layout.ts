@@ -1,4 +1,5 @@
 import { createElement } from '../utils/dom.ts';
+import { initPanelDrag } from './dragController.ts';
 
 export interface LayoutContainers {
   root: HTMLElement;
@@ -7,7 +8,7 @@ export interface LayoutContainers {
   predictionBanner: HTMLElement;
 }
 
-const DEFAULT_PANEL_ORDER = ['weather', 'stocks', 'news', 'crypto', 'sports', 'chat', 'notes'];
+const DEFAULT_PANEL_ORDER = ['weather', 'stocks', 'news', 'crypto', 'sports', 'chat', 'calendar', 'notes'];
 const PANEL_ORDER_KEY = 'dashview:panel-order';
 
 export function getPanelOrder(): string[] {
@@ -76,4 +77,11 @@ export function createLayout(): LayoutContainers {
   root.appendChild(panelGrid);
 
   return { root, mapHero, panelGrid, predictionBanner };
+}
+
+export function enablePanelDrag(grid: HTMLElement): void {
+  initPanelDrag(grid, (newOrder) => {
+    savePanelOrder(newOrder);
+    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:panel-order', action: 'set' } }));
+  });
 }

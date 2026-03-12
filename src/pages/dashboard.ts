@@ -1,7 +1,7 @@
 import { App } from '../App.ts';
 import { createHeader } from '../ui/header.ts';
 import { createTicker } from '../ui/ticker.ts';
-import { createLayout } from '../ui/layout.ts';
+import { createLayout, enablePanelDrag } from '../ui/layout.ts';
 import { initPredictionBanner } from '../ui/predictionBanner.ts';
 import { initKeyboardShortcuts } from '../ui/keyboard.ts';
 import { initCommandPalette } from '../ui/commandPalette.ts';
@@ -15,6 +15,7 @@ import { SportsPanel } from '../panels/SportsPanel.ts';
 import { CryptoPanel } from '../panels/CryptoPanel.ts';
 import { ChatPanel } from '../panels/ChatPanel.ts';
 import { NotesPanel } from '../panels/NotesPanel.ts';
+import { CalendarPanel } from '../panels/CalendarPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
 import { checkSession } from '../services/auth.ts';
@@ -43,6 +44,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.registerPanel(new SportsPanel());
   app.registerPanel(new CryptoPanel());
   app.registerPanel(new ChatPanel());
+  app.registerPanel(new CalendarPanel());
   app.registerPanel(new NotesPanel());
 
   const header = createHeader(app);
@@ -57,6 +59,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.panelGridContainer = layout.panelGrid;
 
   app.init();
+  enablePanelDrag(layout.panelGrid);
   initPredictionBanner(layout.predictionBanner);
   initKeyboardShortcuts(app);
   initCommandPalette(app);

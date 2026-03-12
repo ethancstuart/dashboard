@@ -238,3 +238,34 @@
   justify-content: center;
   padding: 0 3px;
 }
+
+/* Condition select - wider to fit labels */
+.alerts-select-condition {
+  min-width: 140px;
+}
+
+/* Range row for outside_range second input */
+.alerts-range-row {
+  padding-left: 0;
+}
+
+/* Info text below form fields */
+.alerts-form-info {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  padding: 2px 0;
+  line-height: 1.4;
+}
+
+/* Condition type color badges in alert rows */
+.alerts-condition-up {
+  color: var(--color-positive, #22c55e);
+}
+
+.alerts-condition-down {
+  color: var(--color-negative, #ef4444);
+}
+
+.alerts-condition-range {
+  color: var(--color-accent, #3b82f6);
+}

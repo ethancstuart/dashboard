@@ -72,6 +72,16 @@ export function closeAlertsModal(): void {
   }
 }
 
+const CONDITION_OPTIONS: { value: PriceAlert['condition']; label: string }[] = [
+  { value: 'above', label: 'Price Above' },
+  { value: 'below', label: 'Price Below' },
+  { value: 'crosses_above', label: 'Crosses Above' },
+  { value: 'crosses_below', label: 'Crosses Below' },
+  { value: 'change_above', label: '% Change Up' },
+  { value: 'change_below', label: '% Change Down' },
+  { value: 'outside_range', label: 'Outside Range' },
+];
+
 function createAlertForm(
   prefill: { symbol: string; type: 'stock' | 'crypto' } | undefined,
 ): HTMLElement {
@@ -102,11 +112,8 @@ function createAlertForm(
   const row2 = createElement('div', { className: 'alerts-form-row' });
 
   const condSelect = document.createElement('select');
-  condSelect.className = 'alerts-select';
-  for (const c of [
-    { value: 'above', label: 'Above' },
-    { value: 'below', label: 'Below' },
-  ]) {
+  condSelect.className = 'alerts-select alerts-select-condition';
+  for (const c of CONDITION_OPTIONS) {
     const opt = document.createElement('option');
     opt.value = c.value;
     opt.textContent = c.label;
@@ -122,6 +129,74 @@ function createAlertForm(
   row2.appendChild(condSelect);
   row2.appendChild(priceInput);
   form.appendChild(row2);
+
+  // Dynamic row for range high value (outside_range)
+  const rangeRow = createElement('div', { className: 'alerts-form-row alerts-range-row' });
+  rangeRow.style.display = 'none';
+
+  const priceInput2 = document.createElement('input');
+  priceInput2.type = 'number';
+  priceInput2.placeholder = 'High price';
+  priceInput2.className = 'alerts-input';
+  priceInput2.step = '0.01';
+
+  rangeRow.appendChild(priceInput2);
+  form.appendChild(rangeRow);
+
+  // Info text for context-dependent help
+  const infoText = createElement('div', { className: 'alerts-form-info' });
+  infoText.style.display = 'none';
+  form.appendChild(infoText);
+
+  // Update form fields based on condition selection
+  function updateFormForCondition(): void {
+    const condition = condSelect.value as PriceAlert['condition'];
+
+    // Reset visibility
+    rangeRow.style.display = 'none';
+    infoText.style.display = 'none';
+
+    switch (condition) {
+      case 'above':
+      case 'below':
+        priceInput.placeholder = 'Price threshold';
+        priceInput.step = '0.01';
+        break;
+      case 'crosses_above':
+        priceInput.placeholder = 'Price threshold';
+        priceInput.step = '0.01';
+        infoText.textContent = 'Triggers when price crosses above the threshold from below';
+        infoText.style.display = 'block';
+        break;
+      case 'crosses_below':
+        priceInput.placeholder = 'Price threshold';
+        priceInput.step = '0.01';
+        infoText.textContent = 'Triggers when price crosses below the threshold from above';
+        infoText.style.display = 'block';
+        break;
+      case 'change_above':
+        priceInput.placeholder = '% Threshold';
+        priceInput.step = '0.1';
+        infoText.textContent = 'Reference price captured at first check';
+        infoText.style.display = 'block';
+        break;
+      case 'change_below':
+        priceInput.placeholder = '% Threshold';
+        priceInput.step = '0.1';
+        infoText.textContent = 'Reference price captured at first check';
+        infoText.style.display = 'block';
+        break;
+      case 'outside_range':
+        priceInput.placeholder = 'Low price';
+        priceInput.step = '0.01';
+        rangeRow.style.display = 'flex';
+        infoText.textContent = 'Triggers when price is below low or above high';
+        infoText.style.display = 'block';
+        break;
+    }
+  }
+
+  condSelect.addEventListener('change', updateFormForCondition);
 
   const addBtn = createElement('button', {
     className: 'alerts-add-btn',
@@ -140,7 +215,7 @@ function createAlertForm(
   addBtn.addEventListener('click', async () => {
     const symbol = symbolInput.value.trim().toUpperCase();
     const type = typeSelect.value as 'stock' | 'crypto';
-    const condition = condSelect.value as 'above' | 'below';
+    const condition = condSelect.value as PriceAlert['condition'];
     const threshold = parseFloat(priceInput.value);
 
     if (!symbol || isNaN(threshold) || threshold <= 0) {
@@ -149,15 +224,45 @@ function createAlertForm(
       return;
     }
 
+    // Validate range second input
+    if (condition === 'outside_range') {
+      const t2 = parseFloat(priceInput2.value);
+      if (isNaN(t2) || t2 <= 0) {
+        status.textContent = 'Please enter a valid high price';
+        status.style.color = 'var(--color-negative)';
+        return;
+      }
+      if (t2 <= threshold) {
+        status.textContent = 'High price must be greater than low price';
+        status.style.color = 'var(--color-negative)';
+        return;
+      }
+    }
+
     // Request notification permission on first alert
     await requestNotificationPermission();
 
-    const result = addAlert({ symbol, type, condition, threshold });
+    const alertData: Omit<PriceAlert, 'id' | 'createdAt'> = {
+      symbol,
+      type,
+      condition,
+      threshold,
+    };
+
+    if (condition === 'outside_range') {
+      alertData.threshold2 = parseFloat(priceInput2.value);
+    }
+
+    // referencePrice and lastPrice are intentionally omitted —
+    // they will be captured on the first check cycle
+
+    const result = addAlert(alertData);
     if (result) {
       status.textContent = `Alert created for ${symbol}`;
       status.style.color = 'var(--color-positive)';
       symbolInput.value = '';
       priceInput.value = '';
+      priceInput2.value = '';
 
       // Refresh the list
       setTimeout(() => openAlertsModal(), 500);
@@ -172,6 +277,48 @@ function createAlertForm(
   return form;
 }
 
+function getConditionDisplayText(alert: PriceAlert): string {
+  switch (alert.condition) {
+    case 'above':
+      return `above $${alert.threshold.toFixed(2)}`;
+    case 'below':
+      return `below $${alert.threshold.toFixed(2)}`;
+    case 'change_above':
+      return alert.referencePrice
+        ? `+${alert.threshold}% from $${alert.referencePrice.toFixed(2)}`
+        : `+${alert.threshold}% (ref pending)`;
+    case 'change_below':
+      return alert.referencePrice
+        ? `-${alert.threshold}% from $${alert.referencePrice.toFixed(2)}`
+        : `-${alert.threshold}% (ref pending)`;
+    case 'outside_range':
+      return `outside $${alert.threshold.toFixed(2)}-$${(alert.threshold2 || 0).toFixed(2)}`;
+    case 'crosses_above':
+      return `crosses above $${alert.threshold.toFixed(2)}`;
+    case 'crosses_below':
+      return `crosses below $${alert.threshold.toFixed(2)}`;
+    default:
+      return `${alert.condition} $${alert.threshold.toFixed(2)}`;
+  }
+}
+
+function getConditionBadgeClass(condition: PriceAlert['condition']): string {
+  switch (condition) {
+    case 'above':
+    case 'crosses_above':
+    case 'change_above':
+      return 'alerts-condition-up';
+    case 'below':
+    case 'crosses_below':
+    case 'change_below':
+      return 'alerts-condition-down';
+    case 'outside_range':
+      return 'alerts-condition-range';
+    default:
+      return '';
+  }
+}
+
 function createAlertRow(alert: PriceAlert, _body: HTMLElement): HTMLElement {
   const row = createElement('div', {
     className: `alerts-row ${alert.triggeredAt ? 'alerts-row-triggered' : ''}`,
@@ -183,8 +330,8 @@ function createAlertRow(alert: PriceAlert, _body: HTMLElement): HTMLElement {
     textContent: alert.symbol,
   });
   const condition = createElement('span', {
-    className: 'alerts-row-condition',
-    textContent: `${alert.condition} $${alert.threshold.toFixed(2)}`,
+    className: `alerts-row-condition ${getConditionBadgeClass(alert.condition)}`,
+    textContent: getConditionDisplayText(alert),
   });
   const typeBadge = createElement('span', {
     className: 'alerts-row-type',
