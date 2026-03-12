@@ -3,6 +3,20 @@ import Parser from 'rss-parser';
 
 export const config = { runtime: 'nodejs' };
 
+function isPrivateHost(hostname: string): boolean {
+  // Block cloud metadata endpoints
+  if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') return true;
+  // Block localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return true;
+  // Block private IP ranges
+  if (/^10\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  // Block link-local
+  if (/^169\.254\./.test(hostname)) return true;
+  return false;
+}
+
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -32,6 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     new URL(url); // validate URL format
   } catch {
     return res.status(400).json({ valid: false, error: 'Invalid URL format' });
+  }
+
+  // Block SSRF: reject private IPs and cloud metadata
+  const hostname = new URL(url).hostname;
+  if (isPrivateHost(hostname)) {
+    return res.status(400).json({ valid: false, error: 'URL not allowed' });
   }
 
   try {

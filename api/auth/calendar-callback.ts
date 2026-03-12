@@ -2,7 +2,7 @@ export const config = { runtime: 'edge' };
 
 function getSessionId(req: Request): string | null {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map(c => c.trim()).find(c => c.startsWith('__Host-session=') || c.startsWith('session='));
+  const sessionCookie = cookies.split(';').map(c => c.trim()).find(c => c.startsWith('__Host-session='));
   return sessionCookie?.split('=')[1] || null;
 }
 

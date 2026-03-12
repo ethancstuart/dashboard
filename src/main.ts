@@ -37,6 +37,12 @@ router
       m.renderRoadmap(appRoot);
     }).catch((err) => showRouteError(appRoot, err));
   })
+  .on('/embed', () => {
+    import('./pages/embed.ts').then((m) => {
+      appRoot.textContent = '';
+      m.renderEmbed(appRoot);
+    }).catch((err) => showRouteError(appRoot, err));
+  })
   .on('/import/:code', (params) => {
     import('./pages/dashboard.ts').then((m) => {
       appRoot.textContent = '';

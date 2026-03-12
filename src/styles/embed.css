@@ -1,0 +1,45 @@
+/* Embed-specific styles — loaded only on the embed route */
+
+.embed-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* Override panel grid for embed — tighter gaps, responsive from small iframes */
+.embed-wrapper .panel-grid {
+  gap: 0.625rem;
+  padding: 0;
+}
+
+/* Slightly smaller panel cards inside embed */
+.embed-wrapper .panel-card {
+  font-size: 0.9rem;
+}
+
+/* Hide map hero in embed — no room for the wide map */
+.embed-wrapper .map-hero,
+.embed-wrapper .map-expand-toggle {
+  display: none;
+}
+
+/* Powered-by badge */
+.embed-powered-by {
+  position: fixed;
+  bottom: 0.5rem;
+  right: 0.75rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  letter-spacing: 0.02em;
+  z-index: 100;
+  transition: color 0.2s;
+}
+
+.embed-powered-by:hover {
+  color: rgba(255, 255, 255, 0.8);
+}

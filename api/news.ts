@@ -3,6 +3,20 @@ import Parser from 'rss-parser';
 
 export const config = { runtime: 'nodejs' };
 
+function isPrivateHost(hostname: string): boolean {
+  // Block cloud metadata endpoints
+  if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') return true;
+  // Block localhost
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '0.0.0.0') return true;
+  // Block private IP ranges
+  if (/^10\./.test(hostname)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  // Block link-local
+  if (/^169\.254\./.test(hostname)) return true;
+  return false;
+}
+
 interface FeedSource {
   name: string;
   url: string;
@@ -78,13 +92,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (customUrlsParam) {
     try {
       const parsed = JSON.parse(customUrlsParam) as { url: string; name: string; lat?: number; lon?: number }[];
-      customSources = parsed.slice(0, 10).map(f => ({
-        name: f.name || 'Custom',
-        url: f.url,
-        country: '',
-        lat: f.lat || 0,
-        lon: f.lon || 0,
-      }));
+      customSources = parsed.slice(0, 10)
+        .filter(f => { try { return !isPrivateHost(new URL(f.url).hostname); } catch { return false; } })
+        .map(f => ({
+          name: f.name || 'Custom',
+          url: f.url,
+          country: '',
+          lat: f.lat || 0,
+          lon: f.lon || 0,
+        }));
     } catch { /* ignore invalid JSON */ }
   }
 

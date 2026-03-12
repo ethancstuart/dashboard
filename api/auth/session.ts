@@ -2,7 +2,7 @@ export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request) {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('__Host-session=') || c.startsWith('session='));
+  const sessionCookie = cookies.split(';').map((c) => c.trim()).find((c) => c.startsWith('__Host-session='));
   const sessionId = sessionCookie?.split('=')[1];
 
   if (!sessionId) {

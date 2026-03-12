@@ -1,10 +1,10 @@
 export const config = { runtime: 'edge' };
 
-const CORS_HEADERS = { 'Content-Type': 'application/json' };
+const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://dashpulse.app' };
 
 function getSessionId(req: Request): string | null {
   const cookies = req.headers.get('cookie') || '';
-  const sessionCookie = cookies.split(';').map(c => c.trim()).find(c => c.startsWith('__Host-session=') || c.startsWith('session='));
+  const sessionCookie = cookies.split(';').map(c => c.trim()).find(c => c.startsWith('__Host-session='));
   return sessionCookie?.split('=')[1] || null;
 }
 

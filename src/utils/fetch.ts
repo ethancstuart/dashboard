@@ -55,7 +55,16 @@ export async function fetchWithRetry(
     try {
       const response = await fetch(url, options);
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const is5xx = response.status >= 500;
+        const err = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (!is5xx) {
+          // 4xx errors: reset circuit (not a server fault) but still throw for callers
+          entry.failures = 0;
+          entry.openedAt = null;
+          entry.probing = false;
+          throw err;
+        }
+        throw err;
       }
       // Success — reset circuit
       entry.failures = 0;
@@ -64,15 +73,22 @@ export async function fetchWithRetry(
       return response;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
+      // Don't retry 4xx errors — they won't resolve with retries
+      if (lastError.message.startsWith('HTTP 4')) {
+        break;
+      }
     }
   }
 
-  // All retries exhausted
-  entry.failures++;
-  entry.probing = false;
-  if (entry.failures >= FAILURE_THRESHOLD) {
-    entry.openedAt = Date.now();
+  // All retries exhausted — only count 5xx / network errors toward circuit breaker
+  const is4xx = lastError?.message.startsWith('HTTP 4');
+  if (!is4xx) {
+    entry.failures++;
+    if (entry.failures >= FAILURE_THRESHOLD) {
+      entry.openedAt = Date.now();
+    }
   }
+  entry.probing = false;
 
   throw lastError!;
 }

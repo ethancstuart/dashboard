@@ -9,7 +9,13 @@ export function get<T>(key: string, defaultValue: T): T {
 }
 
 export function set(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage quota exceeded — silently fail
+    console.warn('localStorage quota exceeded for key:', key);
+    return;
+  }
   document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key, action: 'set' } }));
 }
 

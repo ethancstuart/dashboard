@@ -15,7 +15,7 @@ function getSessionId(req: Request): string | null {
   const sessionCookie = cookies
     .split(';')
     .map((c) => c.trim())
-    .find((c) => c.startsWith('__Host-session=') || c.startsWith('session='));
+    .find((c) => c.startsWith('__Host-session='));
   return sessionCookie?.split('=')[1] || null;
 }
 
@@ -201,6 +201,9 @@ export default async function handler(req: Request) {
   }
 
   const body = (await req.json()) as ChatBody;
+
+  // Cap message history to last 20 messages
+  body.messages = (body.messages || []).slice(-20);
 
   // Cap context length and sanitize
   if (body.context) {

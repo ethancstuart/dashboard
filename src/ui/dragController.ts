@@ -22,10 +22,15 @@ export function initPanelDrag(grid: HTMLElement, onReorder: (newOrder: string[])
 
     header.insertBefore(grip, header.firstChild);
 
-    (panel as HTMLElement).draggable = true;
+    // Only make panel draggable when grip is held — prevents conflict
+    // with internal drag handlers (e.g. StocksPanel watchlist reorder)
+    grip.addEventListener('mousedown', () => {
+      (panel as HTMLElement).draggable = true;
+    });
 
     panel.addEventListener('dragstart', (e) => {
       if (!gripActive) {
+        (panel as HTMLElement).draggable = false;
         (e as DragEvent).preventDefault();
         return;
       }
@@ -83,6 +88,7 @@ export function initPanelDrag(grid: HTMLElement, onReorder: (newOrder: string[])
 
     panel.addEventListener('dragend', () => {
       gripActive = false;
+      (panel as HTMLElement).draggable = false;
       (panel as HTMLElement).classList.remove('panel-dragging');
       // Clean up all drag indicators
       grid.querySelectorAll('.panel-drag-above, .panel-drag-below').forEach(el => {
