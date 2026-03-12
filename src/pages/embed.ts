@@ -1,5 +1,5 @@
 import '../styles/embed.css';
-import { App } from '../App.ts';
+import { Panel } from '../panels/Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { WeatherPanel } from '../panels/WeatherPanel.ts';
 import { StocksPanel } from '../panels/StocksPanel.ts';
@@ -12,6 +12,9 @@ import { CryptoPanel } from '../panels/CryptoPanel.ts';
  * suitable for iframe embedding. Skips onboarding, welcome,
  * keyboard shortcuts, command palette, drag-drop, PWA prompts,
  * offline indicator, header, and settings.
+ *
+ * Bypasses localStorage entirely — all panels forced enabled
+ * with default order.
  */
 export async function renderEmbed(root: HTMLElement): Promise<void> {
   root.textContent = '';
@@ -39,16 +42,22 @@ export async function renderEmbed(root: HTMLElement): Promise<void> {
 
   root.appendChild(wrapper);
 
-  // Register panels — all enabled by default, no user-interactive panels
-  const app = new App();
-  app.registerPanel(new WeatherPanel());
-  app.registerPanel(new StocksPanel());
-  app.registerPanel(new NewsPanel());
-  app.registerPanel(new SportsPanel());
-  app.registerPanel(new CryptoPanel());
+  // Register panels — all forced enabled, no localStorage state
+  const panels: Panel[] = [
+    new WeatherPanel(),
+    new StocksPanel(),
+    new NewsPanel(),
+    new SportsPanel(),
+    new CryptoPanel(),
+  ];
 
-  app.panelGridContainer = panelGrid;
+  // Attach all panels directly to the grid, forcing enabled + expanded
+  for (const panel of panels) {
+    panel.enabled = true;
+    panel.collapsed = false;
+    panel.attachToDOM(panelGrid);
+  }
 
-  // Init fetches data and attaches panels to the grid
-  await app.init();
+  // Fetch data for all panels in parallel
+  await Promise.all(panels.map((p) => p.startDataCycle()));
 }
