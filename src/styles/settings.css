@@ -328,6 +328,14 @@
   border-color: var(--color-accent);
 }
 
+.settings-panel-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
 .settings-panel-btn {
   padding: 4px 10px;
   background: var(--color-accent);

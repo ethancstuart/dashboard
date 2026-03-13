@@ -109,11 +109,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
     }
   }
 
-  // Build command registry for AI bar
-  const commands = buildCommands(app, renderActiveSpace);
-  registerCommands(commands);
-
-  // AI Bar
+  // AI Bar (commands registered after app.init)
   const aiBar = createAIBar(app, {
     onCommand: (cmd) => {
       executeSlashCommand(cmd, app, renderActiveSpace);
@@ -150,6 +146,10 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.panelGridContainer = hiddenContainer;
 
   await app.init();
+
+  // Build command registry AFTER app.init so panels are available
+  const commands = buildCommands(app, renderActiveSpace);
+  registerCommands(commands);
 
   // Now render the active space (moves visible panels into the grid)
   renderActiveSpace();

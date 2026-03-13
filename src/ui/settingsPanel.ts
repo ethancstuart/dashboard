@@ -233,6 +233,38 @@ function openSettings(app: App): void {
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') void handleSearch(); });
   }
 
+  // --- AI Provider ---
+  addSection(body, 'AI PROVIDER');
+  const aiHint = createElement('div', { className: 'settings-panel-hint' });
+  aiHint.textContent = 'Add your Anthropic API key for unlimited AI chat and briefings.';
+  body.appendChild(aiHint);
+
+  const aiKeyRow = createElement('div', { className: 'settings-panel-input-row' });
+  const aiKeyInput = document.createElement('input');
+  aiKeyInput.type = 'password';
+  aiKeyInput.placeholder = 'sk-ant-...';
+  aiKeyInput.className = 'settings-panel-input';
+  aiKeyInput.style.flex = '1';
+  aiKeyInput.value = localStorage.getItem('dashview:anthropic-key') || '';
+
+  const aiKeySave = createElement('button', { className: 'settings-panel-btn', textContent: 'Save' });
+  aiKeySave.addEventListener('click', () => {
+    const key = aiKeyInput.value.trim();
+    if (key) {
+      localStorage.setItem('dashview:anthropic-key', key);
+      document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:anthropic-key', action: 'set' } }));
+      aiKeySave.textContent = 'Saved';
+      setTimeout(() => { aiKeySave.textContent = 'Save'; }, 1500);
+    } else {
+      localStorage.removeItem('dashview:anthropic-key');
+      aiKeySave.textContent = 'Cleared';
+      setTimeout(() => { aiKeySave.textContent = 'Save'; }, 1500);
+    }
+  });
+  aiKeyRow.appendChild(aiKeyInput);
+  aiKeyRow.appendChild(aiKeySave);
+  body.appendChild(aiKeyRow);
+
   // --- Config ---
   addSection(body, 'CONFIG');
   const exportBtn = createElement('button', { className: 'settings-panel-action', textContent: 'Export config' });
