@@ -95,18 +95,6 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
     }
 
     renderSpace(layout.spaceContent, space, panelMap);
-
-    // Set up map for news panel — only in spaces where a geo map is relevant
-    const mapSpaces = new Set(['overview', 'world']);
-    const showMap = space.widgets.some((w) => w.panelId === 'news') && mapSpaces.has(space.id);
-    if (showMap) {
-      if (layout.mapHero.parentElement !== layout.spaceContent) {
-        layout.spaceContent.insertBefore(layout.mapHero, layout.spaceContent.firstChild);
-      }
-      newsPanel.setMapContainer(layout.mapHero);
-    } else {
-      layout.mapHero.remove();
-    }
   }
 
   // AI Bar (commands registered after app.init)

@@ -6,7 +6,6 @@ export interface LayoutContainers {
   spaceBarSlot: HTMLElement;
   spaceContent: HTMLElement;
   pulseBarSlot: HTMLElement;
-  mapHero: HTMLElement;
   panelGrid: HTMLElement;
   predictionBanner: HTMLElement;
 }
@@ -51,38 +50,6 @@ export function createLayout(): LayoutContainers {
   // Pulse bar slot
   const pulseBarSlot = createElement('div', { className: 'pulse-bar-slot' });
 
-  // Map hero (used by news panel, sits inside space content when needed)
-  const mapHero = createElement('div', { className: 'map-hero' });
-  mapHero.setAttribute('aria-label', 'News map');
-
-  const mapToggle = createElement('button', { className: 'map-collapse-toggle' });
-  mapToggle.setAttribute('aria-label', 'Collapse map');
-  mapToggle.textContent = 'Hide Map';
-  mapToggle.addEventListener('click', () => {
-    mapHero.classList.add('map-collapsed');
-    mapExpand.style.display = '';
-    localStorage.setItem('dashview:map-collapsed', '1');
-    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
-  });
-  mapHero.appendChild(mapToggle);
-
-  const mapExpand = createElement('button', { className: 'map-expand-toggle' });
-  mapExpand.setAttribute('aria-label', 'Show map');
-  mapExpand.textContent = 'Show Map';
-  mapExpand.addEventListener('click', () => {
-    mapHero.classList.remove('map-collapsed');
-    mapExpand.style.display = 'none';
-    localStorage.setItem('dashview:map-collapsed', '');
-    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
-  });
-
-  const isCollapsed = localStorage.getItem('dashview:map-collapsed') === '1';
-  if (isCollapsed) {
-    mapHero.classList.add('map-collapsed');
-  } else {
-    mapExpand.style.display = 'none';
-  }
-
   // Legacy panel grid (for backwards-compat with embed mode)
   const panelGrid = createElement('div', { className: 'panel-grid' });
   panelGrid.setAttribute('role', 'region');
@@ -93,7 +60,7 @@ export function createLayout(): LayoutContainers {
   root.appendChild(spaceContent);
   root.appendChild(pulseBarSlot);
 
-  return { root, aiBarSlot, spaceBarSlot, spaceContent, pulseBarSlot, mapHero, panelGrid, predictionBanner };
+  return { root, aiBarSlot, spaceBarSlot, spaceContent, pulseBarSlot, panelGrid, predictionBanner };
 }
 
 export function enablePanelDrag(_grid: HTMLElement): void {
