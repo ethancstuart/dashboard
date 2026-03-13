@@ -260,21 +260,15 @@ function buildCommands(app: App): Command[] {
     });
   }
 
-  // Map
+  // Globe
   cmds.push({
-    id: 'toggle-map',
-    title: 'Toggle map',
+    id: 'goto-globe',
+    title: 'Go to globe',
     section: 'Actions',
-    keywords: 'map show hide collapse expand news',
+    keywords: 'globe map world monitor earth',
     action: () => {
-      const mapHero = document.querySelector('.map-hero') as HTMLElement;
-      if (!mapHero) return;
-      const collapsing = !mapHero.classList.contains('map-collapsed');
-      mapHero.classList.toggle('map-collapsed', collapsing);
-      localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
-      document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
-      const expandBtn = document.querySelector('.map-expand-toggle') as HTMLElement;
-      if (expandBtn) expandBtn.style.display = collapsing ? '' : 'none';
+      const globe = document.querySelector('.panel-card[data-panel-id="globe"]') as HTMLElement;
+      if (globe) globe.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
   });
 

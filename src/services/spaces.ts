@@ -16,6 +16,7 @@ const DEFAULT_SPACES: Space[] = [
       { panelId: 'news', size: 'medium', colSpan: 6, position: 3 },
       { panelId: 'sports', size: 'compact', colSpan: 3, position: 4 },
       { panelId: 'entertainment', size: 'compact', colSpan: 3, position: 5 },
+      { panelId: 'globe', size: 'compact', colSpan: 3, position: 6 },
     ],
   },
   {
@@ -33,10 +34,11 @@ const DEFAULT_SPACES: Space[] = [
     name: 'World',
     icon: '\uD83C\uDF0D',
     widgets: [
-      { panelId: 'news', size: 'large', colSpan: 8, position: 0 },
-      { panelId: 'weather', size: 'medium', colSpan: 4, position: 1 },
-      { panelId: 'sports', size: 'medium', colSpan: 6, position: 2 },
-      { panelId: 'entertainment', size: 'medium', colSpan: 6, position: 3 },
+      { panelId: 'globe', size: 'medium', colSpan: 6, position: 0 },
+      { panelId: 'news', size: 'large', colSpan: 6, position: 1 },
+      { panelId: 'weather', size: 'medium', colSpan: 4, position: 2 },
+      { panelId: 'sports', size: 'medium', colSpan: 4, position: 3 },
+      { panelId: 'entertainment', size: 'medium', colSpan: 4, position: 4 },
     ],
   },
   {

@@ -381,3 +381,21 @@ export interface EntertainmentData {
   tab: EntertainmentTab;
   fetchedAt: number;
 }
+
+// Globe
+export interface GlobeMarker {
+  lat: number;
+  lng: number;
+  size: number;
+  color: string;
+  articles: NewsArticle[];
+  label: string;
+}
+
+export interface GlobeWeatherPin {
+  lat: number;
+  lng: number;
+  temp: number;
+  condition: string;
+  name: string;
+}

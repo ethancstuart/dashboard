@@ -24,6 +24,7 @@ import { ChatPanel } from '../panels/ChatPanel.ts';
 import { NotesPanel } from '../panels/NotesPanel.ts';
 import { CalendarPanel } from '../panels/CalendarPanel.ts';
 import { EntertainmentPanel } from '../panels/EntertainmentPanel.ts';
+import { GlobePanel } from '../panels/GlobePanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
 import { checkSession } from '../services/auth.ts';
@@ -64,6 +65,7 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.registerPanel(new WeatherPanel());
   app.registerPanel(new StocksPanel());
   app.registerPanel(newsPanel);
+  app.registerPanel(new GlobePanel());
   app.registerPanel(new SportsPanel());
   app.registerPanel(new CryptoPanel());
   app.registerPanel(new ChatPanel());

@@ -10,7 +10,7 @@ const SHORTCUTS: { key: string; description: string }[] = [
   { key: '?', description: 'Show this help' },
   { key: '/', description: 'Focus location search' },
   { key: 't', description: 'Cycle theme (dark / light / OLED)' },
-  { key: 'm', description: 'Toggle map' },
+  { key: 'm', description: 'Toggle globe' },
   { key: '1-6', description: 'Jump to panel (weather, stocks, news, sports, chat, notes)' },
   { key: 'a', description: 'Open price alerts' },
   { key: 'Esc', description: 'Close modals / dropdowns' },
@@ -84,14 +84,11 @@ function focusLocationSearch(): void {
 }
 
 function toggleMap(): void {
-  const mapHero = document.querySelector('.map-hero') as HTMLElement;
-  if (!mapHero) return;
-  const collapsing = !mapHero.classList.contains('map-collapsed');
-  mapHero.classList.toggle('map-collapsed', collapsing);
-  localStorage.setItem('dashview:map-collapsed', collapsing ? '1' : '');
-  document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:map-collapsed', action: 'set' } }));
-  const expandBtn = document.querySelector('.map-expand-toggle') as HTMLElement;
-  if (expandBtn) expandBtn.style.display = collapsing ? '' : 'none';
+  // Globe panel visibility is controlled by space widgets — 'm' is a no-op now
+  const globe = document.querySelector('.panel-card[data-panel-id="globe"]') as HTMLElement;
+  if (globe) {
+    globe.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 }
 
 function closeOverlays(): void {

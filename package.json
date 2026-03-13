@@ -12,7 +12,6 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.21",
     "@vercel/node": "^5.6.11",
     "happy-dom": "^20.8.3",
     "typescript": "~5.9.3",
@@ -21,6 +20,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.0",
+    "globe.gl": "^2.45.1",
     "rss-parser": "^3.13.0"
   }
 }
