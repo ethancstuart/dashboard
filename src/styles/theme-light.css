@@ -169,3 +169,16 @@
 [data-theme="light"] .weather-loc-btn.active {
   color: #fff;
 }
+
+[data-theme="light"] .entertainment-card:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .entertainment-card {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .entertainment-poster,
+[data-theme="light"] .entertainment-poster-placeholder {
+  background: rgba(0, 0, 0, 0.05);
+}

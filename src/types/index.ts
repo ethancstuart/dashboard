@@ -333,3 +333,23 @@ export interface SocialPost {
   timestamp: string;
   link: string;
 }
+
+// Entertainment (TMDB)
+export type EntertainmentTab = 'trending' | 'movies' | 'tv' | 'upcoming';
+
+export interface EntertainmentItem {
+  id: number;
+  title: string;
+  mediaType: 'movie' | 'tv';
+  posterPath: string | null;
+  year: string;
+  rating: number;
+  overview: string;
+  genreIds: number[];
+}
+
+export interface EntertainmentData {
+  items: EntertainmentItem[];
+  tab: EntertainmentTab;
+  fetchedAt: number;
+}

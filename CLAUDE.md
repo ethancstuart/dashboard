@@ -65,6 +65,7 @@ vercel             → Deploy to Vercel
 - [x] Chat (multi-provider) — opt-in, priority 2
 - [x] Notes (localStorage) — core, priority 2, no network
 - [ ] Calendar (Google Calendar API) — opt-in, planned
+- [x] Entertainment (TMDB) — core, priority 2
 
 ## Shared Context — home-base
 This project is part of a portfolio managed from ~/Projects/home-base.

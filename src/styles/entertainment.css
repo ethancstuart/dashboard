@@ -1,0 +1,130 @@
+/* Entertainment panel */
+.entertainment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entertainment-card {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s;
+}
+
+.entertainment-card:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.entertainment-card:last-child {
+  border-bottom: none;
+}
+
+.entertainment-poster {
+  width: 77px;
+  height: 115px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.entertainment-poster-placeholder {
+  width: 77px;
+  height: 115px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.entertainment-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entertainment-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entertainment-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.entertainment-media-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.entertainment-rating {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid;
+}
+
+.entertainment-rating-high {
+  color: var(--color-positive);
+  border-color: var(--color-positive);
+}
+
+.entertainment-rating-mid {
+  color: #eab308;
+  border-color: #eab308;
+}
+
+.entertainment-rating-low {
+  color: var(--color-negative);
+  border-color: var(--color-negative);
+}
+
+.entertainment-overview {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .entertainment-poster,
+  .entertainment-poster-placeholder {
+    width: 60px;
+    height: 90px;
+  }
+  .entertainment-card {
+    padding: 6px;
+    gap: 8px;
+  }
+}

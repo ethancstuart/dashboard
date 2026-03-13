@@ -16,6 +16,7 @@ import { CryptoPanel } from '../panels/CryptoPanel.ts';
 import { ChatPanel } from '../panels/ChatPanel.ts';
 import { NotesPanel } from '../panels/NotesPanel.ts';
 import { CalendarPanel } from '../panels/CalendarPanel.ts';
+import { EntertainmentPanel } from '../panels/EntertainmentPanel.ts';
 import { showWelcome } from '../ui/welcome.ts';
 import { isOnboardingComplete, showOnboarding } from '../ui/onboarding.ts';
 import { checkSession } from '../services/auth.ts';
@@ -45,11 +46,14 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   app.registerPanel(new CryptoPanel());
   app.registerPanel(new ChatPanel());
   app.registerPanel(new CalendarPanel());
+  app.registerPanel(new EntertainmentPanel());
   app.registerPanel(new NotesPanel());
 
   const header = createHeader(app);
+  const ticker = createTicker();
+
   root.appendChild(header);
-  root.appendChild(createTicker());
+  root.appendChild(ticker);
 
   const layout = createLayout();
   root.appendChild(layout.root);
