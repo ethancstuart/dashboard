@@ -1,15 +1,14 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { fetchStocks, searchSymbols, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
+import { fetchStocks, fetchCompanyNews, fetchProfile, fetchMetrics } from '../services/stocks.ts';
 import { checkAlerts } from '../services/alerts.ts';
 import { openAlertsModal } from '../ui/alertsModal.ts';
 import * as storage from '../services/storage.ts';
-import type { StocksData, StockQuote, SymbolSearchResult, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
+import type { StocksData, StockQuote, CompanyNews, CompanyProfile, KeyMetrics } from '../types/index.ts';
 
 const WATCHLIST_KEY = 'dashview-watchlist';
 const FAVORITES_KEY = 'dashview-favorites';
 const NAMES_KEY = 'dashview-stock-names';
-const MAX_WATCHLIST = 10;
 const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
 
 const DEFAULT_NAMES: Record<string, string> = {
@@ -33,7 +32,6 @@ export class StocksPanel extends Panel {
   private favorites: Set<string>;
   private nameCache: Record<string, string>;
   private data: StocksData | null = null;
-  private searchTimeout: ReturnType<typeof setTimeout> | null = null;
   private dragFromIndex: number = -1;
   private gripActive: boolean = false;
   private selectedSymbol: string | null = null;
@@ -41,7 +39,6 @@ export class StocksPanel extends Panel {
   private detailLoading: boolean = false;
   private detailProfile: CompanyProfile | null = null;
   private detailMetrics: KeyMetrics | null = null;
-  private searchOutsideHandler: ((e: MouseEvent) => void) | null = null;
 
   constructor() {
     super({
@@ -82,14 +79,6 @@ export class StocksPanel extends Panel {
   }
 
   destroy(): void {
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-      this.searchTimeout = null;
-    }
-    if (this.searchOutsideHandler) {
-      document.removeEventListener('click', this.searchOutsideHandler);
-      this.searchOutsideHandler = null;
-    }
     super.destroy();
   }
 
@@ -139,7 +128,6 @@ export class StocksPanel extends Panel {
         this.contentEl.appendChild(this.createDetailPanel(d.watchlist[i].symbol));
       }
     }
-    this.contentEl.appendChild(this.createSearchRow());
 
     const updated = createElement('div', {
       className: 'stocks-updated',
@@ -283,14 +271,6 @@ export class StocksPanel extends Panel {
       openAlertsModal({ symbol: q.symbol, type: 'stock' });
     });
 
-    const removeBtn = createElement('button', {
-      className: 'stocks-row-remove',
-      textContent: '\u00d7',
-    });
-    removeBtn.addEventListener('click', () => {
-      this.removeSymbol(q.symbol);
-    });
-
     row.appendChild(grip);
     row.appendChild(starBtn);
     row.appendChild(identCol);
@@ -298,148 +278,9 @@ export class StocksPanel extends Panel {
     row.appendChild(changeCol);
     row.appendChild(bellBtn);
     row.appendChild(chevron);
-    row.appendChild(removeBtn);
     return row;
   }
 
-  private createSearchRow(): HTMLElement {
-    const wrapper = createElement('div', { className: 'stocks-search-wrapper' });
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Search ticker or company...';
-    input.className = 'stocks-search-input';
-
-    const dropdown = createElement('div', { className: 'stocks-search-dropdown' });
-    dropdown.style.display = 'none';
-
-    input.addEventListener('input', () => {
-      const query = input.value.trim();
-      if (this.searchTimeout) clearTimeout(this.searchTimeout);
-
-      if (query.length < 1) {
-        dropdown.style.display = 'none';
-        return;
-      }
-
-      this.searchTimeout = setTimeout(() => {
-        void this.performSearch(query, dropdown);
-      }, 300);
-    });
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        input.value = '';
-        dropdown.style.display = 'none';
-      }
-    });
-
-    // Use a single handler reference so we don't leak listeners on re-render
-    const outsideClickHandler = (e: MouseEvent) => {
-      if (!wrapper.contains(e.target as Node)) {
-        dropdown.style.display = 'none';
-      }
-    };
-    // Clean up previous listener if any
-    if (this.searchOutsideHandler) {
-      document.removeEventListener('click', this.searchOutsideHandler);
-    }
-    this.searchOutsideHandler = outsideClickHandler;
-    document.addEventListener('click', outsideClickHandler);
-
-    wrapper.appendChild(input);
-    wrapper.appendChild(dropdown);
-    return wrapper;
-  }
-
-  private async performSearch(query: string, dropdown: HTMLElement): Promise<void> {
-    try {
-      const results = await searchSymbols(query);
-      dropdown.textContent = '';
-
-      if (results.length === 0) {
-        const empty = createElement('div', {
-          className: 'stocks-search-empty',
-          textContent: 'No results found',
-        });
-        dropdown.appendChild(empty);
-      } else {
-        for (const r of results) {
-          dropdown.appendChild(this.createSearchResult(r, dropdown));
-        }
-      }
-
-      dropdown.style.display = '';
-    } catch {
-      dropdown.style.display = 'none';
-    }
-  }
-
-  private createSearchResult(r: SymbolSearchResult, dropdown: HTMLElement): HTMLElement {
-    const row = createElement('div', { className: 'stocks-search-result' });
-    const already = this.watchlist.includes(r.symbol);
-
-    const symbolEl = createElement('span', {
-      className: 'stocks-search-result-symbol',
-      textContent: r.symbol,
-    });
-
-    const nameEl = createElement('span', {
-      className: 'stocks-search-result-name',
-      textContent: r.description,
-    });
-
-    const infoCol = createElement('div', { className: 'stocks-search-result-info' });
-    infoCol.appendChild(symbolEl);
-    infoCol.appendChild(nameEl);
-
-    if (already) {
-      const badge = createElement('span', {
-        className: 'stocks-search-result-added',
-        textContent: 'Added',
-      });
-      row.appendChild(infoCol);
-      row.appendChild(badge);
-    } else {
-      const addBtn = createElement('button', {
-        className: 'stocks-search-result-add',
-        textContent: '+ Add',
-      });
-      addBtn.addEventListener('click', () => {
-        this.addSymbol(r.symbol, r.description);
-        dropdown.style.display = 'none';
-        const input = this.contentEl.querySelector('.stocks-search-input') as HTMLInputElement;
-        if (input) input.value = '';
-      });
-      row.appendChild(infoCol);
-      row.appendChild(addBtn);
-    }
-
-    return row;
-  }
-
-  private addSymbol(symbol: string, name?: string): void {
-    if (this.watchlist.length >= MAX_WATCHLIST) return;
-    if (this.watchlist.includes(symbol)) return;
-    this.watchlist.push(symbol);
-    storage.set(WATCHLIST_KEY, this.watchlist);
-    if (name) {
-      this.nameCache[symbol] = name;
-      storage.set(NAMES_KEY, this.nameCache);
-    }
-    void this.fetchData();
-  }
-
-  private removeSymbol(symbol: string): void {
-    this.watchlist = this.watchlist.filter((s) => s !== symbol);
-    this.favorites.delete(symbol);
-    storage.set(WATCHLIST_KEY, this.watchlist);
-    storage.set(FAVORITES_KEY, [...this.favorites]);
-    if (this.data) {
-      this.data.watchlist = this.data.watchlist.filter((q) => q.symbol !== symbol);
-      this.render(this.data);
-    }
-  }
 
   private reorderWatchlist(from: number, to: number): void {
     const [symbol] = this.watchlist.splice(from, 1);

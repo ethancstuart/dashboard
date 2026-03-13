@@ -383,12 +383,18 @@ export interface EntertainmentData {
 }
 
 // Globe
+export type GlobeNewsCategory = 'world' | 'us' | 'tech' | 'science' | 'markets';
+
+export interface GlobeNewsArticle extends NewsArticle {
+  category: GlobeNewsCategory;
+}
+
 export interface GlobeMarker {
   lat: number;
   lng: number;
   size: number;
   color: string;
-  articles: NewsArticle[];
+  articles: GlobeNewsArticle[];
   label: string;
 }
 

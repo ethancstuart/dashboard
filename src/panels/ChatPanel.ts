@@ -1,8 +1,8 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
-import { sendMessage, storeApiKey, hasApiKey, getProvider, setProvider, PROVIDER_LABELS, PROVIDER_PLACEHOLDERS } from '../services/chat.ts';
+import { sendMessage, hasApiKey, getProvider, PROVIDER_LABELS } from '../services/chat.ts';
 import * as storage from '../services/storage.ts';
-import type { ChatMessage, ChatProvider } from '../types/index.ts';
+import type { ChatMessage } from '../types/index.ts';
 
 const CHAT_KEY = 'dashview-chat-messages';
 const MAX_CHAT_MESSAGES = 50;
@@ -27,11 +27,11 @@ export class ChatPanel extends Panel {
   async fetchData(): Promise<void> {
     this.render(null);
 
-    // Proactively show API key form if no key is stored
+    // Proactively show setup prompt if no key is stored
     if (this.messages.length === 0) {
       const keyExists = await hasApiKey();
       if (!keyExists) {
-        this.showApiKeyForm();
+        this.showSetupPrompt();
       }
     }
   }
@@ -99,7 +99,7 @@ export class ChatPanel extends Panel {
         if (errorMsg.includes('API key configured')) {
           this.messages.pop(); // Remove the user message
           this.saveMessages();
-          this.showApiKeyForm();
+          this.showSetupPrompt();
           return;
         }
         const errChatMsg: ChatMessage = {
@@ -133,7 +133,9 @@ export class ChatPanel extends Panel {
       className: 'chat-provider-badge',
       textContent: PROVIDER_LABELS[getProvider()],
     });
-    providerBadge.addEventListener('click', () => this.showApiKeyForm());
+    providerBadge.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('dashview:open-settings', { detail: { tab: 'personal' } }));
+    });
     bottomBar.appendChild(providerBadge);
 
     if (this.messages.length > 0) {
@@ -155,67 +157,24 @@ export class ChatPanel extends Panel {
     });
   }
 
-  private showApiKeyForm(): void {
+  private showSetupPrompt(): void {
     this.contentEl.textContent = '';
 
     const form = createElement('div', { className: 'chat-key-form' });
-    const title = createElement('div', { className: 'chat-key-title', textContent: 'Set AI Provider & API Key' });
+    const title = createElement('div', { className: 'chat-key-title', textContent: 'Set Up AI Provider' });
     const desc = createElement('div', {
       className: 'chat-key-desc',
-      textContent: 'Choose your AI provider and enter your API key. Keys are stored securely server-side.',
+      textContent: 'Configure your AI provider and API key in Settings to start chatting.',
     });
 
-    // Provider selector
-    const select = document.createElement('select');
-    select.className = 'landing-input';
-    const currentProvider = getProvider();
-    for (const [value, label] of Object.entries(PROVIDER_LABELS)) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      if (value === currentProvider) option.selected = true;
-      select.appendChild(option);
-    }
-
-    const input = document.createElement('input');
-    input.type = 'password';
-    input.placeholder = PROVIDER_PLACEHOLDERS[currentProvider];
-    input.className = 'landing-input';
-
-    select.addEventListener('change', () => {
-      const provider = select.value as ChatProvider;
-      setProvider(provider);
-      input.placeholder = PROVIDER_PLACEHOLDERS[provider];
-    });
-
-    const saveBtn = createElement('button', { className: 'landing-btn landing-btn-primary', textContent: 'Save Key' });
-    const status = createElement('div', { className: 'chat-key-status' });
-
-    saveBtn.addEventListener('click', async () => {
-      const key = input.value.trim();
-      if (!key) return;
-      setProvider(select.value as ChatProvider);
-      saveBtn.textContent = 'Saving...';
-      (saveBtn as HTMLButtonElement).disabled = true;
-      try {
-        await storeApiKey(key);
-        status.textContent = 'Key saved! You can now chat.';
-        status.style.color = 'var(--color-positive)';
-        setTimeout(() => this.render(null), 1500);
-      } catch (err) {
-        status.textContent = err instanceof Error ? err.message : 'Failed to save key';
-        status.style.color = 'var(--color-negative)';
-      }
-      saveBtn.textContent = 'Save Key';
-      (saveBtn as HTMLButtonElement).disabled = false;
+    const openBtn = createElement('button', { className: 'landing-btn landing-btn-primary', textContent: 'Open Settings' });
+    openBtn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('dashview:open-settings', { detail: { tab: 'personal' } }));
     });
 
     form.appendChild(title);
     form.appendChild(desc);
-    form.appendChild(select);
-    form.appendChild(input);
-    form.appendChild(saveBtn);
-    form.appendChild(status);
+    form.appendChild(openBtn);
     this.contentEl.appendChild(form);
   }
 

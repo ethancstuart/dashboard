@@ -33,11 +33,7 @@ const DEFAULT_SPACES: Space[] = [
     name: 'Globe',
     icon: '\uD83C\uDF0D',
     widgets: [
-      { panelId: 'globe', size: 'large', colSpan: 8, position: 0 },
-      { panelId: 'news', size: 'medium', colSpan: 4, position: 1 },
-      { panelId: 'weather', size: 'compact', colSpan: 4, position: 2 },
-      { panelId: 'sports', size: 'compact', colSpan: 4, position: 3 },
-      { panelId: 'entertainment', size: 'compact', colSpan: 4, position: 4 },
+      { panelId: 'globe', size: 'large', colSpan: 12, position: 0 },
     ],
   },
   {
@@ -68,6 +64,14 @@ export function getSpaces(): Space[] {
         }
       }
     }
+
+    // Migrate: old multi-widget Globe space to single-widget
+    const globeSpace = saved.find((s) => s.id === 'globe');
+    if (globeSpace && globeSpace.widgets.length > 1) {
+      globeSpace.widgets = [{ panelId: 'globe', size: 'large', colSpan: 12, position: 0 }];
+      storage.set(SPACES_KEY, saved);
+    }
+
     return saved;
   }
   return DEFAULT_SPACES.map((s) => ({ ...s, widgets: [...s.widgets] }));

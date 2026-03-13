@@ -1,26 +1,45 @@
 import { Panel } from './Panel.ts';
 import { createElement } from '../utils/dom.ts';
 import { buildTerminatorPolygon } from '../utils/terminator.ts';
-import type { NewsArticle, NewsData, WidgetSize, GlobeMarker, GlobeWeatherPin } from '../types/index.ts';
+import { fetchAllNews } from '../services/news.ts';
+import type { GlobeNewsArticle, GlobeNewsCategory, GlobeMarker, GlobeWeatherPin, WidgetSize } from '../types/index.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeInstance = Record<string, (...args: any[]) => any> & ((el: HTMLElement) => GlobeInstance);
 
 const NIGHT_IMAGE_URL = '//unpkg.com/three-globe/example/img/earth-night.jpg';
-const AUTO_ROTATE_SPEED = 0.3; // degrees per frame (~0.3 RPM at 60fps)
+const AUTO_ROTATE_SPEED = 0.3;
 const IDLE_RESUME_MS = 3000;
+
+const CATEGORY_COLORS: Record<GlobeNewsCategory, string> = {
+  world: '#3b82f6',
+  us: '#f59e0b',
+  tech: '#8b5cf6',
+  science: '#10b981',
+  markets: '#ef4444',
+};
+
+const CATEGORY_TABS: { id: GlobeNewsCategory | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'world', label: 'World' },
+  { id: 'us', label: 'US' },
+  { id: 'tech', label: 'Tech' },
+  { id: 'science', label: 'Sci' },
+  { id: 'markets', label: 'Markets' },
+];
 
 export class GlobePanel extends Panel {
   private globe: unknown = null;
   private globeModule: unknown = null;
+  private allArticles: GlobeNewsArticle[] = [];
   private newsMarkers: GlobeMarker[] = [];
   private weatherPins: GlobeWeatherPin[] = [];
-  private animFrameId: number | null = null;
+  private activeCategory: GlobeNewsCategory | 'all' = 'all';
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private isUserInteracting = false;
-  private currentSize: WidgetSize = 'medium';
   private popupEl: HTMLElement | null = null;
-  private sidebarEl: HTMLElement | null = null;
+  private feedListEl: HTMLElement | null = null;
+  private feedCountEl: HTMLElement | null = null;
   private terminatorInterval: ReturnType<typeof setInterval> | null = null;
   private visibilityHandler: (() => void) | null = null;
   private panelDataHandler: ((e: Event) => void) | null = null;
@@ -31,56 +50,62 @@ export class GlobePanel extends Panel {
       id: 'globe',
       title: 'World Monitor',
       enabled: true,
-      refreshInterval: 0, // No own data fetching
+      refreshInterval: 600000,
       priority: 1,
       category: 'world',
-      supportedSizes: ['compact', 'medium', 'large'],
+      supportedSizes: ['large'],
     });
     this.listenForPanelData();
     this.setupVisibilityHandler();
   }
 
-  getLastData(): null {
-    return null;
+  getLastData(): GlobeNewsArticle[] | null {
+    return this.allArticles.length > 0 ? this.allArticles : null;
   }
 
   async fetchData(): Promise<void> {
-    // GlobePanel doesn't fetch — it consumes data from other panels
+    try {
+      this.allArticles = await fetchAllNews();
+    } catch {
+      // Keep existing articles if fetch fails
+      if (this.allArticles.length === 0) {
+        this.allArticles = [];
+      }
+    }
+    this.updateMarkers();
     this.render(null);
+
+    // Dispatch panel-data for Pulse Bar
+    if (this.allArticles.length > 0) {
+      document.dispatchEvent(new CustomEvent('dashview:panel-data', {
+        detail: { panelId: 'globe', data: { articles: this.allArticles, fetchedAt: Date.now() } },
+      }));
+    }
   }
 
   render(_data: unknown): void {
-    this.renderAtSize(this.currentSize);
+    this.renderAtSize('large');
   }
 
-  renderAtSize(size: WidgetSize): void {
-    this.currentSize = size;
+  renderAtSize(_size: WidgetSize): void {
     this.cleanup();
     this.contentEl.textContent = '';
 
-    // Show loading state while globe.gl loads
     const loading = createElement('div', { className: 'globe-loading' });
     loading.textContent = 'Loading globe\u2026';
     this.contentEl.appendChild(loading);
 
-    void this.loadAndInit(size);
+    void this.loadAndInit();
   }
 
-  private async loadAndInit(size: WidgetSize): Promise<void> {
+  private async loadAndInit(): Promise<void> {
     try {
       if (!this.globeModule) {
         this.globeModule = await import('globe.gl');
       }
 
       this.contentEl.textContent = '';
-
-      if (size === 'large') {
-        this.renderLarge();
-      } else if (size === 'compact') {
-        this.renderCompact();
-      } else {
-        this.renderMedium();
-      }
+      this.renderLarge();
     } catch (err) {
       this.contentEl.textContent = '';
       const errMsg = createElement('div', { className: 'globe-loading' });
@@ -90,41 +115,155 @@ export class GlobePanel extends Panel {
     }
   }
 
-  private renderCompact(): void {
-    const container = createElement('div', { className: 'globe-container globe-compact' });
-    this.contentEl.appendChild(container);
-    this.initGlobe(container, false);
-  }
-
-  private renderMedium(): void {
-    const container = createElement('div', { className: 'globe-container globe-medium' });
-    this.contentEl.appendChild(container);
-    this.initGlobe(container, true);
-  }
-
   private renderLarge(): void {
-    const wrap = createElement('div', { className: 'globe-large-wrap' });
+    const wrap = createElement('div', { className: 'globe-monitor-wrap' });
 
-    const container = createElement('div', { className: 'globe-container globe-large' });
+    // Globe container (left pane)
+    const container = createElement('div', { className: 'globe-container' });
     wrap.appendChild(container);
 
-    const sidebar = createElement('div', { className: 'globe-sidebar' });
-    sidebar.innerHTML = '';
-    this.sidebarEl = sidebar;
-    wrap.appendChild(sidebar);
+    // Feed panel (right pane)
+    const feed = createElement('div', { className: 'globe-feed' });
 
+    // Feed header
+    const header = createElement('div', { className: 'globe-feed-header' });
+    const liveDot = createElement('span', { className: 'globe-live-dot' });
+    const headerText = createElement('span', { textContent: 'LIVE FEED' });
+    const countEl = createElement('span', { className: 'globe-feed-header-count' });
+    this.feedCountEl = countEl;
+    header.appendChild(liveDot);
+    header.appendChild(headerText);
+    header.appendChild(countEl);
+    feed.appendChild(header);
+
+    // Category tabs
+    const tabs = createElement('div', { className: 'globe-feed-tabs' });
+    for (const cat of CATEGORY_TABS) {
+      const btn = createElement('button', {
+        className: `globe-feed-tab ${cat.id === this.activeCategory ? 'globe-feed-tab-active' : ''}`,
+      });
+      if (cat.id !== 'all') {
+        const dot = createElement('span', { className: 'globe-feed-tab-dot' });
+        dot.style.background = CATEGORY_COLORS[cat.id as GlobeNewsCategory];
+        btn.appendChild(dot);
+      }
+      btn.appendChild(document.createTextNode(cat.label));
+      btn.addEventListener('click', () => {
+        this.activeCategory = cat.id as GlobeNewsCategory | 'all';
+        this.updateMarkers();
+        this.updateFeedList();
+        // Update tab active states
+        tabs.querySelectorAll('.globe-feed-tab').forEach((t, i) => {
+          t.classList.toggle('globe-feed-tab-active', CATEGORY_TABS[i].id === this.activeCategory);
+        });
+        // Update globe markers
+        if (this.globe) {
+          const g = this.globe as GlobeInstance;
+          g.pointsData(this.newsMarkers);
+        }
+      });
+      tabs.appendChild(btn);
+    }
+    feed.appendChild(tabs);
+
+    // Feed list
+    const feedList = createElement('div', { className: 'globe-feed-list' });
+    this.feedListEl = feedList;
+    feed.appendChild(feedList);
+
+    wrap.appendChild(feed);
     this.contentEl.appendChild(wrap);
-    this.initGlobe(container, true);
-    this.updateSidebar();
+
+    this.initGlobe(container);
+    this.updateFeedList();
   }
 
-  private initGlobe(container: HTMLElement, interactive: boolean): void {
+  private getFilteredArticles(): GlobeNewsArticle[] {
+    if (this.activeCategory === 'all') return this.allArticles;
+    return this.allArticles.filter(a => a.category === this.activeCategory);
+  }
+
+  private updateFeedList(): void {
+    if (!this.feedListEl) return;
+    this.feedListEl.textContent = '';
+
+    const articles = this.getFilteredArticles();
+
+    if (this.feedCountEl) {
+      this.feedCountEl.textContent = `${articles.length} articles`;
+    }
+
+    if (articles.length === 0) {
+      const empty = createElement('div', { className: 'globe-feed-empty' });
+      empty.textContent = 'No articles available';
+      this.feedListEl.appendChild(empty);
+      return;
+    }
+
+    for (let i = 0; i < articles.length; i++) {
+      const article = articles[i];
+      const item = createElement('div', { className: 'globe-feed-item' });
+      item.dataset.index = String(i);
+
+      // Category dot
+      const dot = createElement('div', { className: 'globe-feed-item-dot' });
+      dot.style.background = CATEGORY_COLORS[article.category] || '#3b82f6';
+      item.appendChild(dot);
+
+      // Content
+      const content = createElement('div', { className: 'globe-feed-item-content' });
+
+      const title = createElement('div', { className: 'globe-feed-item-title' });
+      title.textContent = article.title;
+      content.appendChild(title);
+
+      const meta = createElement('div', { className: 'globe-feed-item-meta' });
+      const source = createElement('span', {
+        className: 'globe-feed-item-source',
+        textContent: article.source,
+      });
+      meta.appendChild(source);
+
+      if (article.pubDate) {
+        const time = this.relativeTime(article.pubDate);
+        if (time) {
+          meta.appendChild(document.createTextNode(` \u00B7 ${time}`));
+        }
+      }
+      content.appendChild(meta);
+      item.appendChild(content);
+
+      // Click to fly to location
+      item.addEventListener('click', () => {
+        if (this.globe && article.lat && article.lon) {
+          const g = this.globe as GlobeInstance;
+          if (g.pointOfView) {
+            g.pointOfView({ lat: article.lat, lng: article.lon, altitude: 1.5 }, 1000);
+          }
+        }
+
+        // Highlight this item
+        this.feedListEl?.querySelectorAll('.globe-feed-item-active').forEach(el => {
+          el.classList.remove('globe-feed-item-active');
+        });
+        item.classList.add('globe-feed-item-active');
+
+        // Open article link
+        if (article.link) {
+          window.open(article.link, '_blank', 'noopener');
+        }
+      });
+
+      this.feedListEl.appendChild(item);
+    }
+  }
+
+  private initGlobe(container: HTMLElement): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = this.globeModule as any;
     const GlobeFactory = (mod.default || mod) as (...args: any[]) => GlobeInstance;
     const g: GlobeInstance = GlobeFactory();
 
-    // Configure globe
     g.globeImageUrl(NIGHT_IMAGE_URL)
      .backgroundColor('rgba(0,0,0,0)')
      .atmosphereColor('#3b82f6')
@@ -147,23 +286,19 @@ export class GlobePanel extends Panel {
      .polygonStrokeColor(() => 'rgba(59, 130, 246, 0.15)');
 
     // Weather pins as HTML markers
-    if (interactive && this.weatherPins.length > 0) {
+    if (this.weatherPins.length > 0) {
       g.htmlElementsData(this.weatherPins)
        .htmlLat((d: GlobeWeatherPin) => d.lat)
        .htmlLng((d: GlobeWeatherPin) => d.lng)
        .htmlElement((d: GlobeWeatherPin) => this.createWeatherPinEl(d));
     }
 
-    // Click handler for interactive modes
-    if (interactive) {
-      g.onPointClick((point: GlobeMarker, event: MouseEvent) => {
-        this.showArticlePopup(point.articles, event.clientX, event.clientY);
-      });
-    }
+    // Click marker → scroll feed to matching articles
+    g.onPointClick((point: GlobeMarker) => {
+      this.highlightFeedForMarker(point);
+    });
 
-    // Mount to container
     g(container);
-
     this.globe = g;
 
     // Auto-rotation
@@ -171,29 +306,27 @@ export class GlobePanel extends Panel {
     if (controls) {
       controls.autoRotate = true;
       controls.autoRotateSpeed = AUTO_ROTATE_SPEED;
-      controls.enableZoom = interactive;
-      controls.enablePan = interactive;
-      controls.enableRotate = interactive;
+      controls.enableZoom = true;
+      controls.enablePan = true;
+      controls.enableRotate = true;
 
-      if (interactive) {
-        const el = container.querySelector('canvas');
-        if (el) {
-          el.addEventListener('pointerdown', () => {
-            this.isUserInteracting = true;
-            if (controls) controls.autoRotate = false;
-            if (this.idleTimer) clearTimeout(this.idleTimer);
-          });
-          el.addEventListener('pointerup', () => {
-            this.isUserInteracting = false;
-            this.idleTimer = setTimeout(() => {
-              if (controls) controls.autoRotate = true;
-            }, IDLE_RESUME_MS);
-          });
-        }
+      const el = container.querySelector('canvas');
+      if (el) {
+        el.addEventListener('pointerdown', () => {
+          this.isUserInteracting = true;
+          if (controls) controls.autoRotate = false;
+          if (this.idleTimer) clearTimeout(this.idleTimer);
+        });
+        el.addEventListener('pointerup', () => {
+          this.isUserInteracting = false;
+          this.idleTimer = setTimeout(() => {
+            if (controls) controls.autoRotate = true;
+          }, IDLE_RESUME_MS);
+        });
       }
     }
 
-    // Resize observer for container
+    // Resize observer
     this.resizeObserver = new ResizeObserver(() => {
       const width = container.clientWidth;
       const height = container.clientHeight;
@@ -208,6 +341,39 @@ export class GlobePanel extends Panel {
       const data = this.buildTerminatorData();
       g.polygonsData(data);
     }, 60000);
+  }
+
+  private highlightFeedForMarker(marker: GlobeMarker): void {
+    if (!this.feedListEl) return;
+
+    const articles = this.getFilteredArticles();
+    // Find articles matching this marker's location
+    const matchIndices: number[] = [];
+    for (let i = 0; i < articles.length; i++) {
+      const a = articles[i];
+      if (Math.abs(a.lat - marker.lat) < 1 && Math.abs(a.lon - marker.lng) < 1) {
+        matchIndices.push(i);
+      }
+    }
+
+    // Clear existing highlights
+    this.feedListEl.querySelectorAll('.globe-feed-item-active').forEach(el => {
+      el.classList.remove('globe-feed-item-active');
+    });
+
+    if (matchIndices.length > 0) {
+      const firstIdx = matchIndices[0];
+      const items = this.feedListEl.querySelectorAll('.globe-feed-item');
+      for (const idx of matchIndices) {
+        if (items[idx]) {
+          items[idx].classList.add('globe-feed-item-active');
+        }
+      }
+      // Scroll to first match
+      if (items[firstIdx]) {
+        items[firstIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
   }
 
   private buildTerminatorData(): object[] {
@@ -232,121 +398,11 @@ export class GlobePanel extends Panel {
     return el;
   }
 
-  private showArticlePopup(articles: NewsArticle[], x: number, y: number): void {
-    this.hidePopup();
+  private updateMarkers(): void {
+    const articles = this.getFilteredArticles();
 
-    const popup = createElement('div', { className: 'globe-popup' });
-    popup.style.left = `${x}px`;
-    popup.style.top = `${y}px`;
-
-    for (let i = 0; i < Math.min(articles.length, 5); i++) {
-      const a = articles[i];
-      if (i > 0) {
-        const hr = document.createElement('hr');
-        hr.className = 'globe-popup-divider';
-        popup.appendChild(hr);
-      }
-      const link = document.createElement('a');
-      link.href = a.link;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.className = 'globe-popup-link';
-      link.textContent = a.title;
-      popup.appendChild(link);
-
-      const meta = createElement('div', { className: 'globe-popup-meta' });
-      meta.textContent = a.source;
-      popup.appendChild(meta);
-    }
-
-    document.body.appendChild(popup);
-    this.popupEl = popup;
-
-    // Close on click outside
-    const closeHandler = (e: MouseEvent) => {
-      if (!popup.contains(e.target as Node)) {
-        this.hidePopup();
-        document.removeEventListener('click', closeHandler);
-      }
-    };
-    setTimeout(() => document.addEventListener('click', closeHandler), 10);
-  }
-
-  private hidePopup(): void {
-    if (this.popupEl) {
-      this.popupEl.remove();
-      this.popupEl = null;
-    }
-  }
-
-  private updateSidebar(): void {
-    if (!this.sidebarEl) return;
-    this.sidebarEl.textContent = '';
-
-    const title = createElement('div', { className: 'globe-sidebar-title' });
-    title.textContent = 'REGIONS';
-    this.sidebarEl.appendChild(title);
-
-    // Group markers by region label
-    const regions = new Map<string, GlobeMarker[]>();
-    for (const marker of this.newsMarkers) {
-      const existing = regions.get(marker.label);
-      if (existing) {
-        existing.push(marker);
-      } else {
-        regions.set(marker.label, [marker]);
-      }
-    }
-
-    if (regions.size === 0) {
-      const empty = createElement('div', { className: 'globe-sidebar-empty' });
-      empty.textContent = 'Waiting for news data\u2026';
-      this.sidebarEl.appendChild(empty);
-      return;
-    }
-
-    for (const [label, markers] of regions) {
-      const row = createElement('div', { className: 'globe-sidebar-row' });
-      const name = createElement('span', { className: 'globe-sidebar-name' });
-      name.textContent = label;
-      const count = createElement('span', { className: 'globe-sidebar-count' });
-      const totalArticles = markers.reduce((sum, m) => sum + m.articles.length, 0);
-      count.textContent = `${totalArticles}`;
-      row.appendChild(name);
-      row.appendChild(count);
-
-      // Click to fly to region
-      row.addEventListener('click', () => {
-        if (this.globe) {
-          const g = this.globe as GlobeInstance;
-          const target = markers[0];
-          if (g.pointOfView) {
-            g.pointOfView({ lat: target.lat, lng: target.lng, altitude: 1.5 }, 1000);
-          }
-        }
-      });
-
-      this.sidebarEl.appendChild(row);
-    }
-  }
-
-  private listenForPanelData(): void {
-    this.panelDataHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { panelId: string; data: unknown };
-      if (detail.panelId === 'news') {
-        this.updateMarkers(detail.data as NewsData);
-      } else if (detail.panelId === 'weather') {
-        this.updateWeatherPins(detail.data);
-      }
-    };
-    document.addEventListener('dashview:panel-data', this.panelDataHandler);
-  }
-
-  private updateMarkers(newsData: NewsData): void {
-    if (!newsData?.articles) return;
-
-    const groups = new Map<string, NewsArticle[]>();
-    for (const article of newsData.articles) {
+    const groups = new Map<string, GlobeNewsArticle[]>();
+    for (const article of articles) {
       if (!article.lat || !article.lon) continue;
       const key = `${Math.round(article.lat)},${Math.round(article.lon)}`;
       const group = groups.get(key);
@@ -358,27 +414,47 @@ export class GlobePanel extends Panel {
     }
 
     this.newsMarkers = [];
-    for (const [, articles] of groups) {
-      const first = articles[0];
+    for (const [, groupArticles] of groups) {
+      const first = groupArticles[0];
+      // Use the most common category color in the group
+      const categoryCounts = new Map<GlobeNewsCategory, number>();
+      for (const a of groupArticles) {
+        categoryCounts.set(a.category, (categoryCounts.get(a.category) || 0) + 1);
+      }
+      let topCategory: GlobeNewsCategory = first.category;
+      let topCount = 0;
+      for (const [cat, count] of categoryCounts) {
+        if (count > topCount) {
+          topCategory = cat;
+          topCount = count;
+        }
+      }
+
       this.newsMarkers.push({
         lat: first.lat,
         lng: first.lon,
-        size: Math.min(0.4, 0.15 + articles.length * 0.05),
-        color: '#3b82f6',
-        articles,
+        size: Math.min(0.4, 0.15 + groupArticles.length * 0.05),
+        color: CATEGORY_COLORS[topCategory] || '#3b82f6',
+        articles: groupArticles,
         label: first.sourceCountry || first.source,
       });
     }
 
     // Update globe if initialized
-    if (this.globe && this.currentSize !== 'compact') {
+    if (this.globe) {
       const g = this.globe as GlobeInstance;
       g.pointsData(this.newsMarkers);
     }
+  }
 
-    if (this.sidebarEl) {
-      this.updateSidebar();
-    }
+  private listenForPanelData(): void {
+    this.panelDataHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { panelId: string; data: unknown };
+      if (detail.panelId === 'weather') {
+        this.updateWeatherPins(detail.data);
+      }
+    };
+    document.addEventListener('dashview:panel-data', this.panelDataHandler);
   }
 
   private updateWeatherPins(data: unknown): void {
@@ -399,7 +475,7 @@ export class GlobePanel extends Panel {
         name: w.name || loc.name || 'Location',
       }];
 
-      if (this.globe && this.currentSize !== 'compact') {
+      if (this.globe) {
         const g = this.globe as GlobeInstance;
         g.htmlElementsData(this.weatherPins);
       }
@@ -423,6 +499,20 @@ export class GlobePanel extends Panel {
     document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
+  private relativeTime(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    if (isNaN(then)) return '';
+    const diff = now - then;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
   private cleanup(): void {
     this.hidePopup();
 
@@ -436,17 +526,11 @@ export class GlobePanel extends Panel {
       this.idleTimer = null;
     }
 
-    if (this.animFrameId) {
-      cancelAnimationFrame(this.animFrameId);
-      this.animFrameId = null;
-    }
-
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
 
-    // Dispose Three.js renderer
     if (this.globe) {
       try {
         const g = this.globe as GlobeInstance;
@@ -464,7 +548,15 @@ export class GlobePanel extends Panel {
       this.globe = null;
     }
 
-    this.sidebarEl = null;
+    this.feedListEl = null;
+    this.feedCountEl = null;
+  }
+
+  private hidePopup(): void {
+    if (this.popupEl) {
+      this.popupEl.remove();
+      this.popupEl = null;
+    }
   }
 
   destroy(): void {

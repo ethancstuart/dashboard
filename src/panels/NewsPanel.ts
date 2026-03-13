@@ -85,14 +85,6 @@ export class NewsPanel extends Panel {
       tabsRow.appendChild(btn);
     }
 
-    // Gear button to open feeds modal
-    const gearBtn = createElement('button', { className: 'news-gear-btn', textContent: '\u2699' });
-    gearBtn.title = 'Manage feeds';
-    gearBtn.addEventListener('click', () => {
-      import('../ui/feedsModal.ts').then(m => m.openFeedsModal());
-    });
-    tabsRow.appendChild(gearBtn);
-
     this.contentEl.appendChild(tabsRow);
 
     // X tab: render social posts

@@ -58,16 +58,6 @@ export class SportsPanel extends Panel {
     this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, []));
   }
 
-  private toggleFavorite(abbreviation: string): void {
-    if (this.favorites.has(abbreviation)) {
-      this.favorites.delete(abbreviation);
-    } else {
-      this.favorites.add(abbreviation);
-    }
-    storage.set(FAVORITES_KEY, [...this.favorites]);
-    this.render(this.data);
-  }
-
   async fetchData(): Promise<void> {
     this.data = await fetchScoreboard(this.league);
     this.render(this.data);
@@ -172,17 +162,6 @@ export class SportsPanel extends Panel {
 
   private createTeamRow(team: { name: string; abbreviation: string; logo: string; score: number | null; record?: string }, isLive: boolean): HTMLElement {
     const row = createElement('div', { className: 'sports-team-row' });
-
-    const isFav = this.favorites.has(team.abbreviation);
-    const star = createElement('button', {
-      className: `sports-fav-btn ${isFav ? 'active' : ''}`,
-      textContent: isFav ? '\u2605' : '\u2606',
-    });
-    star.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleFavorite(team.abbreviation);
-    });
-    row.appendChild(star);
 
     const logo = document.createElement('img');
     logo.src = team.logo;
