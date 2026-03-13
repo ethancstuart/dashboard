@@ -16,7 +16,6 @@ const DEFAULT_SPACES: Space[] = [
       { panelId: 'news', size: 'medium', colSpan: 6, position: 3 },
       { panelId: 'sports', size: 'compact', colSpan: 3, position: 4 },
       { panelId: 'entertainment', size: 'compact', colSpan: 3, position: 5 },
-      { panelId: 'globe', size: 'compact', colSpan: 3, position: 6 },
     ],
   },
   {
@@ -30,15 +29,15 @@ const DEFAULT_SPACES: Space[] = [
     ],
   },
   {
-    id: 'world',
-    name: 'World',
+    id: 'globe',
+    name: 'Globe',
     icon: '\uD83C\uDF0D',
     widgets: [
-      { panelId: 'globe', size: 'medium', colSpan: 6, position: 0 },
-      { panelId: 'news', size: 'large', colSpan: 6, position: 1 },
-      { panelId: 'weather', size: 'medium', colSpan: 4, position: 2 },
-      { panelId: 'sports', size: 'medium', colSpan: 4, position: 3 },
-      { panelId: 'entertainment', size: 'medium', colSpan: 4, position: 4 },
+      { panelId: 'globe', size: 'large', colSpan: 8, position: 0 },
+      { panelId: 'news', size: 'medium', colSpan: 4, position: 1 },
+      { panelId: 'weather', size: 'compact', colSpan: 4, position: 2 },
+      { panelId: 'sports', size: 'compact', colSpan: 4, position: 3 },
+      { panelId: 'entertainment', size: 'compact', colSpan: 4, position: 4 },
     ],
   },
   {
@@ -56,7 +55,21 @@ const DEFAULT_SPACES: Space[] = [
 
 export function getSpaces(): Space[] {
   const saved = storage.get<Space[] | null>(SPACES_KEY, null);
-  if (saved && saved.length > 0) return saved;
+  if (saved && saved.length > 0) {
+    // Migrate: replace old 'world' space with 'globe' space
+    const worldIdx = saved.findIndex((s) => s.id === 'world');
+    if (worldIdx !== -1 && !saved.some((s) => s.id === 'globe')) {
+      const globeDefault = DEFAULT_SPACES.find((s) => s.id === 'globe');
+      if (globeDefault) {
+        saved[worldIdx] = { ...globeDefault, widgets: [...globeDefault.widgets] };
+        storage.set(SPACES_KEY, saved);
+        if (storage.get<string>(ACTIVE_SPACE_KEY, '') === 'world') {
+          storage.set(ACTIVE_SPACE_KEY, 'globe');
+        }
+      }
+    }
+    return saved;
+  }
   return DEFAULT_SPACES.map((s) => ({ ...s, widgets: [...s.widgets] }));
 }
 
