@@ -42,13 +42,12 @@
   grid-column: 1 / -1;
   border-radius: 12px;
   overflow: hidden;
-  min-height: 320px;
-  max-height: 380px;
+  height: 350px;
   position: relative;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: 0 0 40px rgba(59, 130, 246, 0.04);
-  transition: max-height 0.4s ease, min-height 0.4s ease, opacity 0.4s ease;
+  transition: height 0.4s ease, opacity 0.4s ease;
 }
 
 .map-hero::after {
@@ -62,8 +61,7 @@
 }
 
 .map-hero.map-collapsed {
-  max-height: 0;
-  min-height: 0 !important;
+  height: 0;
   overflow: hidden;
   border: none;
   opacity: 0;
@@ -214,7 +212,7 @@
     grid-column: span 1 !important;
   }
 
-  .map-hero { min-height: 200px; max-height: 250px; grid-column: span 1; }
+  .map-hero { height: 220px; grid-column: span 1; }
   .map-expand-toggle { grid-column: span 1; }
   .panel-grid {
     grid-template-columns: 1fr;

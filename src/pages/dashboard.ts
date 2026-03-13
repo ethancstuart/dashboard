@@ -96,9 +96,10 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
 
     renderSpace(layout.spaceContent, space, panelMap);
 
-    // Set up map for news panel if in this space
-    if (space.widgets.some((w) => w.panelId === 'news')) {
-      // Insert map hero as first child of space grid so it gets 12-col context
+    // Set up map for news panel — only in spaces where a geo map is relevant
+    const mapSpaces = new Set(['overview', 'world']);
+    const showMap = space.widgets.some((w) => w.panelId === 'news') && mapSpaces.has(space.id);
+    if (showMap) {
       if (layout.mapHero.parentElement !== layout.spaceContent) {
         layout.spaceContent.insertBefore(layout.mapHero, layout.spaceContent.firstChild);
       }
