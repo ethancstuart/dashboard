@@ -66,6 +66,17 @@ vercel             → Deploy to Vercel
 - [x] Notes (localStorage) — core, priority 2, no network
 - [ ] Calendar (Google Calendar API) — opt-in, planned
 
+## Shared Context — home-base
+This project is part of a portfolio managed from ~/Projects/home-base.
+Before planning features or making architectural decisions, reference:
+- `~/Projects/home-base/registry.md` — project registry, status, and cross-project alignment
+- `~/Projects/home-base/apis/catalog.md` — curated API catalog for potential integrations and new panels
+- `~/Projects/home-base/standards/quality.md` — shared quality standards
+- `~/Projects/home-base/standards/design-principles.md` — shared design philosophy
+- `~/Projects/home-base/personal/CLAUDE.local.md` — who Ethan is, how he works
+
+When planning new panels, check the API catalog first — it maps APIs to DashPulse features.
+
 ## Important Notes
 - No React or UI framework — vanilla TypeScript + DOM
 - .env.local for deployer API keys (gitignored), .env.example committed
