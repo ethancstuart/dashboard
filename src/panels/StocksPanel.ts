@@ -50,6 +50,7 @@ export class StocksPanel extends Panel {
       enabled: true,
       refreshInterval: 300000,
       priority: 1,
+      category: 'markets',
     });
 
     this.watchlist = storage.get<string[]>(WATCHLIST_KEY, DEFAULT_WATCHLIST);
@@ -59,6 +60,25 @@ export class StocksPanel extends Panel {
 
   getLastData(): StocksData | null {
     return this.data;
+  }
+
+  renderAtSize(size: import('../types/index.ts').WidgetSize): void {
+    if (size === 'compact' && this.data?.watchlist?.length) {
+      this.contentEl.textContent = '';
+      const top = this.data.watchlist[0];
+      const sign = top.changePercent >= 0 ? '+' : '';
+      const color = top.changePercent >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+      const wrap = createElement('div', { className: 'data-value' });
+      wrap.style.cssText = `text-align:center;padding:8px 0;font-size:18px;color:${color}`;
+      wrap.textContent = `${top.symbol} ${sign}${top.changePercent.toFixed(1)}%`;
+      const price = createElement('div', { className: 'data-value' });
+      price.style.cssText = 'text-align:center;font-size:12px;color:var(--color-text-muted)';
+      price.textContent = `$${top.price.toFixed(2)}`;
+      this.contentEl.appendChild(wrap);
+      this.contentEl.appendChild(price);
+      return;
+    }
+    if (this.data) this.render(this.data);
   }
 
   destroy(): void {

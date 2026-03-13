@@ -2,6 +2,7 @@ import { createElement } from '../utils/dom.ts';
 import { sendMessage } from '../services/chat.ts';
 import { trackFeatureUse } from '../services/analytics.ts';
 import * as storage from '../services/storage.ts';
+import { pushModal, popModal } from './modalManager.ts';
 import type { App } from '../App.ts';
 import type { StocksData, CryptoData, NewsData, SportsData } from '../types/index.ts';
 
@@ -111,6 +112,7 @@ async function showBriefing(): Promise<void> {
   dialog.appendChild(loading);
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
+  pushModal(closeBriefing);
 
   try {
     const context = gatherDashboardContext();
@@ -196,19 +198,13 @@ function renderBriefing(content: string): void {
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
-  // Close on Escape
-  const escHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeBriefing();
-      document.removeEventListener('keydown', escHandler);
-    }
-  };
-  document.addEventListener('keydown', escHandler);
+  pushModal(closeBriefing);
 }
 
 function closeBriefing(): void {
   if (overlay) {
     overlay.remove();
     overlay = null;
+    popModal();
   }
 }

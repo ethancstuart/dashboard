@@ -142,3 +142,238 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* Slide-out settings panel */
+.settings-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 900;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  z-index: 901;
+  display: flex;
+  flex-direction: column;
+  animation: settingsPanelIn 0.2s ease;
+  overflow: hidden;
+}
+
+@keyframes settingsPanelIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.settings-panel-exit {
+  animation: settingsPanelOut 0.2s ease forwards;
+}
+
+@keyframes settingsPanelOut {
+  to { transform: translateX(100%); }
+}
+
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-panel-title {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.settings-panel-close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.settings-panel-close:hover {
+  color: var(--color-text);
+}
+
+.settings-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.settings-panel-section {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding: 12px 16px 4px;
+  font-weight: 600;
+}
+
+.settings-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.settings-panel-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.settings-panel-row input[type="checkbox"] {
+  accent-color: var(--color-accent);
+}
+
+.settings-panel-radio-row {
+  display: flex;
+  gap: 4px;
+  padding: 4px 16px;
+}
+
+.settings-panel-radio {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.settings-panel-radio:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.settings-panel-radio input[type="radio"] {
+  accent-color: var(--color-accent);
+  margin: 0;
+}
+
+.settings-panel-locations {
+  padding: 4px 16px;
+}
+
+.settings-panel-loc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.settings-panel-loc.active {
+  color: var(--color-text);
+}
+
+.settings-panel-loc.active::before {
+  content: '\u25CF';
+  color: var(--color-accent);
+  font-size: 8px;
+}
+
+.settings-panel-loc-remove {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+.settings-panel-loc-remove:hover {
+  opacity: 1;
+  color: var(--color-negative);
+}
+
+.settings-panel-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 4px 16px;
+}
+
+.settings-panel-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  background: var(--color-surface-sunken, var(--color-bg));
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 12px;
+  outline: none;
+}
+
+.settings-panel-input:focus {
+  border-color: var(--color-accent);
+}
+
+.settings-panel-btn {
+  padding: 4px 10px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.settings-panel-action {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-panel-action:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.settings-panel-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 8px 16px;
+}
+
+.settings-panel-stat {
+  text-align: center;
+}
+
+.settings-panel-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-accent);
+  font-family: var(--font-mono, monospace);
+}
+
+.settings-panel-stat-label {
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}

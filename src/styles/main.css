@@ -26,4 +26,8 @@
 @import './toast.css';
 @import './calendar.css';
 @import './entertainment.css';
+@import './space-bar.css';
+@import './ai-bar.css';
+@import './ai-overlay.css';
+@import './pulse-bar.css';
 @import './theme-light.css';

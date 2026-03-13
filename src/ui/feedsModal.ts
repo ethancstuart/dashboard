@@ -1,6 +1,7 @@
 import { createElement } from '../utils/dom.ts';
 import { getCustomFeeds, saveCustomFeeds } from '../services/news.ts';
 import { getCurrentTier } from '../services/tier.ts';
+import { pushModal, popModal } from './modalManager.ts';
 import type { CustomFeed } from '../types/index.ts';
 
 let overlay: HTMLElement | null = null;
@@ -299,19 +300,13 @@ export function openFeedsModal(): void {
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
-  // Close on Escape
-  const escHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeFeedsModal();
-      document.removeEventListener('keydown', escHandler);
-    }
-  };
-  document.addEventListener('keydown', escHandler);
+  pushModal(closeFeedsModal);
 }
 
 export function closeFeedsModal(): void {
   if (overlay) {
     overlay.remove();
     overlay = null;
+    popModal();
   }
 }

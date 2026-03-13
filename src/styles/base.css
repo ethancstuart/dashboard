@@ -43,3 +43,9 @@ a:focus:not(:focus-visible),
 input:focus:not(:focus-visible) {
   outline: none;
 }
+
+/* Terminal data values */
+.data-value {
+  font-family: var(--font-mono, 'JetBrains Mono', 'SF Mono', monospace);
+  font-variant-numeric: tabular-nums;
+}

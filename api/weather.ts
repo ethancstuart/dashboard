@@ -85,12 +85,14 @@ async function handleWeather(req: VercelRequest, res: VercelResponse, apiKey: st
     return res.status(400).json({ error: 'Invalid lat/lon values' });
   }
 
+  const units = req.query.units === 'metric' ? 'metric' : 'imperial';
+
   const [currentRes, forecastRes] = await Promise.all([
     fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=imperial&appid=${apiKey}`,
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${apiKey}`,
     ),
     fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=imperial&appid=${apiKey}`,
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=${units}&appid=${apiKey}`,
     ),
   ]);
 

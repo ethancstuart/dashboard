@@ -21,7 +21,7 @@ const CATEGORIES: { id: NewsCategory; label: string }[] = [
 ];
 
 export class NewsPanel extends Panel {
-  private category: NewsCategory;
+  private newsCategory: NewsCategory;
   private data: NewsData | null = null;
   private socialPosts: SocialPost[] = [];
   private map: L.Map | null = null;
@@ -38,12 +38,13 @@ export class NewsPanel extends Panel {
       enabled: true,
       refreshInterval: 600000,
       priority: 1,
+      category: 'world',
     });
-    this.category = storage.get<NewsCategory>(CATEGORY_KEY, 'us');
+    this.newsCategory = storage.get<NewsCategory>(CATEGORY_KEY, 'us');
     // Migrate old 'business' category to 'markets'
-    if ((this.category as string) === 'business') {
-      this.category = 'markets';
-      storage.set(CATEGORY_KEY, this.category);
+    if ((this.newsCategory as string) === 'business') {
+      this.newsCategory = 'markets';
+      storage.set(CATEGORY_KEY, this.newsCategory);
     }
     void this.checkMapboxAvailable();
     onThemeChange(() => this.updateTileLayer());
@@ -74,7 +75,7 @@ export class NewsPanel extends Panel {
   }
 
   async fetchData(): Promise<void> {
-    if (this.category === 'x') {
+    if (this.newsCategory === 'x') {
       try {
         this.socialPosts = await fetchSocialFeed();
       } catch {
@@ -83,7 +84,7 @@ export class NewsPanel extends Panel {
       this.render(null);
       return;
     }
-    this.data = await fetchNews(this.category);
+    this.data = await fetchNews(this.newsCategory);
     this.render(this.data);
   }
 
@@ -112,13 +113,13 @@ export class NewsPanel extends Panel {
     const tabsRow = createElement('div', { className: 'news-tabs' });
     for (const cat of allCategories) {
       const btn = createElement('button', {
-        className: `news-tab ${cat.id === this.category ? 'news-tab-active' : ''}`,
+        className: `news-tab ${cat.id === this.newsCategory ? 'news-tab-active' : ''}`,
         textContent: cat.label,
       });
       btn.addEventListener('click', () => {
-        if (cat.id === this.category) return;
-        this.category = cat.id;
-        storage.set(CATEGORY_KEY, this.category);
+        if (cat.id === this.newsCategory) return;
+        this.newsCategory = cat.id;
+        storage.set(CATEGORY_KEY, this.newsCategory);
         void this.fetchData();
       });
       tabsRow.appendChild(btn);
@@ -135,7 +136,7 @@ export class NewsPanel extends Panel {
     this.contentEl.appendChild(tabsRow);
 
     // X tab: render social posts
-    if (this.category === 'x') {
+    if (this.newsCategory === 'x') {
       this.renderSocialFeed();
       this.initHeroMap([]);
       return;

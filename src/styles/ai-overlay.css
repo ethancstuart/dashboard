@@ -1,0 +1,72 @@
+/* AI overlay — transient response card below AI bar */
+.ai-overlay {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  width: 90%;
+  max-width: 500px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  animation: aiOverlayIn 0.2s ease;
+}
+
+@keyframes aiOverlayIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.ai-overlay-exit {
+  animation: aiOverlayOut 0.2s ease forwards;
+}
+
+@keyframes aiOverlayOut {
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+.ai-overlay-text {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.ai-overlay-action {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--color-accent);
+  margin-top: 4px;
+}
+
+.ai-overlay-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.ai-overlay-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-accent);
+  border-radius: 0 0 8px 8px;
+  transition: width 0.1s linear;
+}

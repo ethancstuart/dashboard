@@ -1,8 +1,11 @@
 import { createElement } from '../utils/dom.ts';
-import { initPanelDrag } from './dragController.ts';
 
 export interface LayoutContainers {
   root: HTMLElement;
+  aiBarSlot: HTMLElement;
+  spaceBarSlot: HTMLElement;
+  spaceContent: HTMLElement;
+  pulseBarSlot: HTMLElement;
   mapHero: HTMLElement;
   panelGrid: HTMLElement;
   predictionBanner: HTMLElement;
@@ -31,15 +34,24 @@ export function createLayout(): LayoutContainers {
   root.setAttribute('role', 'main');
   root.id = 'main-content';
 
+  // AI Bar slot (filled by aiBar.ts)
+  const aiBarSlot = createElement('div', { className: 'ai-bar-slot' });
+
+  // Space Bar slot
+  const spaceBarSlot = createElement('div', { className: 'space-bar-slot' });
+
+  // Prediction banner
   const predictionBanner = createElement('div', { className: 'prediction-banner' });
-  root.appendChild(predictionBanner);
 
-  // Panel grid — responsive, all panels are equal citizens
-  const panelGrid = createElement('div', { className: 'panel-grid' });
-  panelGrid.setAttribute('role', 'region');
-  panelGrid.setAttribute('aria-label', 'Dashboard panels');
+  // Space content — 12-column grid for widgets
+  const spaceContent = createElement('div', { className: 'space-grid' });
+  spaceContent.setAttribute('role', 'region');
+  spaceContent.setAttribute('aria-label', 'Dashboard widgets');
 
-  // Map card — lives inside the panel grid, spans 2 columns
+  // Pulse bar slot
+  const pulseBarSlot = createElement('div', { className: 'pulse-bar-slot' });
+
+  // Map hero (used by news panel, sits inside space content when needed)
   const mapHero = createElement('div', { className: 'map-hero' });
   mapHero.setAttribute('aria-label', 'News map');
 
@@ -54,7 +66,6 @@ export function createLayout(): LayoutContainers {
   });
   mapHero.appendChild(mapToggle);
 
-  // Expand button also inside the grid so it takes the map's grid slot
   const mapExpand = createElement('button', { className: 'map-expand-toggle' });
   mapExpand.setAttribute('aria-label', 'Show map');
   mapExpand.textContent = 'Show Map';
@@ -72,16 +83,26 @@ export function createLayout(): LayoutContainers {
     mapExpand.style.display = 'none';
   }
 
-  panelGrid.appendChild(mapHero);
-  panelGrid.appendChild(mapExpand);
-  root.appendChild(panelGrid);
+  // Legacy panel grid (for backwards-compat with embed mode)
+  const panelGrid = createElement('div', { className: 'panel-grid' });
+  panelGrid.setAttribute('role', 'region');
+  panelGrid.setAttribute('aria-label', 'Dashboard panels');
 
-  return { root, mapHero, panelGrid, predictionBanner };
+  // Assemble layout
+  root.appendChild(predictionBanner);
+  root.appendChild(spaceContent);
+  root.appendChild(pulseBarSlot);
+
+  return { root, aiBarSlot, spaceBarSlot, spaceContent, pulseBarSlot, mapHero, panelGrid, predictionBanner };
 }
 
-export function enablePanelDrag(grid: HTMLElement): void {
-  initPanelDrag(grid, (newOrder) => {
-    savePanelOrder(newOrder);
-    document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:panel-order', action: 'set' } }));
+export function enablePanelDrag(_grid: HTMLElement): void {
+  // Drag is now handled by widgetGrid.ts within the space system
+  // This function is kept for backwards compatibility (embed page)
+  import('./dragController.ts').then((m) => {
+    m.initPanelDrag(_grid, (newOrder) => {
+      savePanelOrder(newOrder);
+      document.dispatchEvent(new CustomEvent('dashview:storage-changed', { detail: { key: 'dashview:panel-order', action: 'set' } }));
+    });
   });
 }

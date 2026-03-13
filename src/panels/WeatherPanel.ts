@@ -26,6 +26,7 @@ export class WeatherPanel extends Panel {
       enabled: true,
       refreshInterval: 1800000,
       priority: 0,
+      category: 'world',
     });
 
     const saved = storage.get<WeatherLocations | null>(LOCATIONS_KEY, null);
@@ -152,6 +153,26 @@ export class WeatherPanel extends Panel {
     });
   }
 
+  getLastData(): WeatherData | null {
+    return this.data;
+  }
+
+  renderAtSize(size: import('../types/index.ts').WidgetSize): void {
+    if (size === 'compact' && this.data) {
+      this.contentEl.textContent = '';
+      const wrap = createElement('div', { className: 'data-value' });
+      wrap.style.cssText = 'text-align:center;padding:8px 0;font-size:20px';
+      wrap.textContent = `${Math.round(this.data.current.temp)}\u00B0 ${this.data.current.icon || ''}`;
+      const name = createElement('div', {});
+      name.style.cssText = 'text-align:center;font-size:11px;color:var(--color-text-muted)';
+      name.textContent = this.data.name;
+      this.contentEl.appendChild(wrap);
+      this.contentEl.appendChild(name);
+      return;
+    }
+    if (this.data) this.render(this.data);
+  }
+
   async fetchData(): Promise<void> {
     const prefs = getPreferences();
     const units = prefs.tempUnit === 'C' ? 'metric' : 'imperial';
@@ -209,9 +230,12 @@ export class WeatherPanel extends Panel {
     // Current weather row: temp + icon/condition
     const currentRow = createElement('div', { className: 'weather-current' });
 
+    const prefs = getPreferences();
+    const unitSuffix = prefs.tempUnit === 'C' ? '°C' : '°F';
+
     const tempEl = createElement('span', {
       className: 'weather-temp',
-      textContent: `${w.current.temp}°`,
+      textContent: `${w.current.temp}${unitSuffix}`,
     });
 
     const infoCol = createElement('div', { className: 'weather-info' });
@@ -260,7 +284,7 @@ export class WeatherPanel extends Panel {
 
     const statItems = [
       { icon: '\uD83D\uDCA7', text: `${w.current.humidity}%` },
-      { icon: '\uD83D\uDCA8', text: `${w.current.windSpeed}mph ${windDir}` },
+      { icon: '\uD83D\uDCA8', text: `${w.current.windSpeed}${prefs.tempUnit === 'C' ? 'km/h' : 'mph'} ${windDir}` },
       { icon: '\u2600\uFE0F', text: sunriseTime },
       { icon: '\uD83C\uDF19', text: sunsetTime },
     ];

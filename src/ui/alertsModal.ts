@@ -8,6 +8,7 @@ import {
   getAlertLimit,
   requestNotificationPermission,
 } from '../services/alerts.ts';
+import { pushModal, popModal } from './modalManager.ts';
 import type { PriceAlert } from '../types/index.ts';
 
 let overlay: HTMLElement | null = null;
@@ -55,20 +56,14 @@ export function openAlertsModal(prefill?: { symbol: string; type: 'stock' | 'cry
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
-  // Close on Escape
-  const escHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeAlertsModal();
-      document.removeEventListener('keydown', escHandler);
-    }
-  };
-  document.addEventListener('keydown', escHandler);
+  pushModal(closeAlertsModal);
 }
 
 export function closeAlertsModal(): void {
   if (overlay) {
     overlay.remove();
     overlay = null;
+    popModal();
   }
 }
 

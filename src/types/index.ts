@@ -1,9 +1,37 @@
+export type WidgetSize = 'compact' | 'medium' | 'large';
+export type PanelCategory = 'markets' | 'world' | 'personal' | 'dev' | 'utility';
+
+export interface SpaceWidget {
+  panelId: string;
+  size: WidgetSize;
+  colSpan: number;    // 2-12
+  position: number;   // order in grid
+}
+
+export interface Space {
+  id: string;
+  name: string;
+  icon: string;
+  widgets: SpaceWidget[];
+}
+
+export interface PulseItem {
+  id: string;
+  type: 'market' | 'weather' | 'news' | 'sports' | 'calendar' | 'crypto';
+  priority: number;   // 0=critical, 1=important, 2=info
+  text: string;
+  icon: string;
+  panelId?: string;
+  expiry?: number;
+}
+
 export interface PanelConfig {
   id: string;
   title: string;
   enabled: boolean;
   refreshInterval: number;
   priority?: number;
+  category?: PanelCategory;
 }
 
 export interface PanelSettings {
@@ -288,7 +316,7 @@ export interface ChatSession {
 }
 
 // Auth
-export type UserTier = 'guest' | 'free' | 'premium';
+export type UserTier = 'free' | 'premium';
 
 export interface User {
   id: string;

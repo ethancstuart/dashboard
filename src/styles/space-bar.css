@@ -1,0 +1,114 @@
+/* Space bar — horizontal tabs */
+.space-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--color-border-subtle, var(--color-border));
+  background: var(--color-surface-sunken, var(--color-bg));
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.space-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.space-bar-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.space-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  opacity: 0.6;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.space-tab:hover {
+  opacity: 0.85;
+}
+
+.space-tab-active {
+  opacity: 1;
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+
+.space-tab-icon {
+  font-size: 13px;
+}
+
+.space-tab-name {
+  font-size: 11px;
+}
+
+.space-tab-add {
+  font-size: 16px;
+  padding: 4px 10px;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.space-tab-add:hover {
+  opacity: 0.7;
+}
+
+/* Context menu */
+.space-context-menu {
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 140px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.space-context-item {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: 12px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.space-context-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.space-context-danger {
+  color: var(--color-negative);
+}
+
+@media (max-width: 768px) {
+  .space-bar {
+    padding: 4px 8px;
+  }
+
+  .space-tab {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}

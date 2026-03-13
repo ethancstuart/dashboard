@@ -44,6 +44,19 @@ export function createTicker(): HTMLElement & { destroy(): void } {
     clearInterval(intervalId);
   };
 
+  // Auto-cleanup when ticker is removed from DOM (SPA navigation)
+  requestAnimationFrame(() => {
+    if (bar.parentNode) {
+      const observer = new MutationObserver(() => {
+        if (!bar.isConnected) {
+          clearInterval(intervalId);
+          observer.disconnect();
+        }
+      });
+      observer.observe(bar.parentNode, { childList: true });
+    }
+  });
+
   return bar;
 }
 

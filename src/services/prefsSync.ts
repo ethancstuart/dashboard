@@ -18,7 +18,7 @@ let active = false;
 
 export function initPrefsSync(): void {
   onAuthChange((user) => {
-    if (user && user.tier !== 'guest') {
+    if (user) {
       startSync();
     } else {
       stopSync();
@@ -27,7 +27,7 @@ export function initPrefsSync(): void {
 
   // If already logged in, start immediately
   const user = getUser();
-  if (user && user.tier !== 'guest') {
+  if (user) {
     startSync();
   }
 }

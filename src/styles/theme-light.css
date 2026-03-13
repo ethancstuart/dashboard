@@ -1,3 +1,12 @@
+/* Light theme overrides for new surface properties */
+[data-theme="light"] .panel-card:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+[data-theme="light"] .panel-last-updated {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
 /* Light theme overrides for hardcoded dark values */
 [data-theme="light"] .settings-text-input,
 [data-theme="light"] .stocks-search-input {

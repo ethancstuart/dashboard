@@ -23,7 +23,7 @@ export function renderLanding(root: HTMLElement): void {
   githubLink.className = 'landing-nav-link';
   githubLink.textContent = 'GitHub';
 
-  // Sign In button with provider dropdown
+  // Sign In buttons
   const signInWrap = createElement('div', { className: 'landing-sign-in-wrap' });
   const signInBtn = createElement('button', { className: 'landing-btn landing-btn-outline landing-sign-in-btn', textContent: 'Sign In' });
   const dropdown = createElement('div', { className: 'landing-sign-in-dropdown' });
@@ -40,25 +40,10 @@ export function renderLanding(root: HTMLElement): void {
     if (!signInWrap.contains(e.target as Node)) dropdown.classList.remove('open');
   });
 
-  // Check if already logged in — show avatar instead
+  // Check if already logged in — redirect to dashboard
   void checkSession().then((user) => {
     if (user) {
-      signInWrap.textContent = '';
-      const avatar = document.createElement('a');
-      avatar.href = '#/app';
-      avatar.className = 'landing-user-avatar';
-      if (user.avatar && /^https:\/\/(lh3\.googleusercontent\.com|avatars\.githubusercontent\.com)\//i.test(user.avatar)) {
-        const img = document.createElement('img');
-        img.src = user.avatar;
-        img.alt = user.name;
-        img.width = 32;
-        img.height = 32;
-        img.style.borderRadius = '50%';
-        avatar.appendChild(img);
-      }
-      const name = createElement('span', { className: 'landing-nav-link', textContent: user.name });
-      avatar.appendChild(name);
-      signInWrap.appendChild(avatar);
+      window.location.hash = '#/app';
     }
   });
 
@@ -77,26 +62,34 @@ export function renderLanding(root: HTMLElement): void {
   const heroTitle = createElement('h1', { className: 'landing-hero-title', textContent: 'DashPulse' });
   const heroTagline = createElement('p', {
     className: 'landing-hero-tagline',
-    textContent: 'Your real-time intelligence dashboard. Weather, markets, news, sports \u2014 all in one futuristic command center.',
+    textContent: 'Your personal intelligence terminal.',
+  });
+  const heroSub = createElement('p', {
+    className: 'landing-hero-sub',
+    textContent: 'Weather, markets, news, sports, and AI \u2014 organized into customizable spaces with a keyboard-driven interface.',
   });
 
   const heroCtas = createElement('div', { className: 'landing-hero-ctas' });
-  const tryBtn = document.createElement('a');
-  tryBtn.href = '#/app';
-  tryBtn.className = 'landing-btn landing-btn-primary';
-  tryBtn.textContent = 'Try Dashboard';
 
-  const waitlistBtn = createElement('button', { className: 'landing-btn landing-btn-outline', textContent: 'Join Waitlist' });
-  waitlistBtn.addEventListener('click', () => {
-    const waitlistSection = page.querySelector('.landing-waitlist');
-    waitlistSection?.scrollIntoView({ behavior: 'smooth' });
+  // Google login button (primary CTA)
+  const googleLoginBtn = createElement('button', {
+    className: 'landing-btn landing-btn-primary',
+    textContent: 'Sign in with Google',
   });
+  googleLoginBtn.addEventListener('click', () => login('google'));
 
-  heroCtas.appendChild(tryBtn);
-  heroCtas.appendChild(waitlistBtn);
+  const githubLoginBtn = createElement('button', {
+    className: 'landing-btn landing-btn-outline',
+    textContent: 'Sign in with GitHub',
+  });
+  githubLoginBtn.addEventListener('click', () => login('github'));
+
+  heroCtas.appendChild(googleLoginBtn);
+  heroCtas.appendChild(githubLoginBtn);
 
   hero.appendChild(heroTitle);
   hero.appendChild(heroTagline);
+  hero.appendChild(heroSub);
   hero.appendChild(heroCtas);
   page.appendChild(hero);
 
@@ -107,12 +100,12 @@ export function renderLanding(root: HTMLElement): void {
 
   const featureGrid = createElement('div', { className: 'landing-feature-grid' });
   const featureItems = [
-    { icon: '\u2601', title: 'Weather', desc: 'Hyperlocal forecasts with hourly sparklines, live map overlay, and auto-detected location.' },
-    { icon: '\uD83D\uDCC8', title: 'Markets & Crypto', desc: 'Real-time stocks and top 10 crypto with sparklines, price alerts, and detail views.' },
-    { icon: '\uD83C\uDF10', title: 'News & Sports', desc: 'Global headlines mapped on an interactive globe. Live scores from NBA, NFL, MLB, and EPL.' },
-    { icon: '\uD83E\uDD16', title: 'AI Chat & Briefing', desc: 'Multi-provider AI chat and daily intelligence briefings generated from your live dashboard data.' },
-    { icon: '\uD83D\uDD0D', title: 'Command Palette', desc: 'Cmd+K to search commands, jump to panels, switch themes, manage alerts, and trigger actions.' },
-    { icon: '\uD83D\uDCF2', title: 'Install as App', desc: 'Works offline as a PWA. Install DashPulse on any device for a native app experience.' },
+    { icon: '\u26A1', title: 'Spaces', desc: 'Organize your data into customizable spaces \u2014 Markets, World, Personal, or create your own.' },
+    { icon: '\uD83E\uDD16', title: 'AI Bar', desc: 'Natural language commands and AI-powered dashboard control. Ask anything or type / for commands.' },
+    { icon: '\uD83D\uDCC8', title: 'Real-Time Data', desc: 'Stocks, crypto, weather, news, sports, entertainment \u2014 all updating live in your terminal.' },
+    { icon: '\u2328\uFE0F', title: 'Keyboard-Driven', desc: 'Cmd+K command palette, keyboard shortcuts, and slash commands for power users.' },
+    { icon: '\uD83D\uDCA1', title: 'Pulse Bar', desc: 'Cross-panel intelligence strip shows what matters NOW \u2014 market moves, weather alerts, live games.' },
+    { icon: '\uD83D\uDCF2', title: 'PWA', desc: 'Install as a native app. Works offline with automatic data syncing across devices.' },
   ];
   for (const f of featureItems) {
     const card = createElement('div', { className: 'landing-feature-card' });
@@ -127,71 +120,14 @@ export function renderLanding(root: HTMLElement): void {
   features.appendChild(featureGrid);
   page.appendChild(features);
 
-  // Waitlist section
-  const waitlist = createElement('section', { className: 'landing-waitlist' });
-  const waitlistTitle = createElement('h2', { className: 'landing-section-title', textContent: 'Get Early Access' });
-  const waitlistDesc = createElement('p', {
-    className: 'landing-waitlist-desc',
-    textContent: 'Join the waitlist for premium features: AI chat, calendar integration, drag-and-drop layout, and more.',
+  // Pricing hint
+  const pricing = createElement('section', { className: 'landing-pricing' });
+  const pricingText = createElement('p', {
+    className: 'landing-pricing-text',
+    textContent: 'Free to use. Premium unlocks unlimited spaces, AI queries, and more.',
   });
-
-  const form = createElement('div', { className: 'landing-waitlist-form' });
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Your name';
-  nameInput.className = 'landing-input';
-
-  const emailInput = document.createElement('input');
-  emailInput.type = 'email';
-  emailInput.placeholder = 'Your email';
-  emailInput.className = 'landing-input';
-
-  const submitBtn = createElement('button', { className: 'landing-btn landing-btn-primary', textContent: 'Join Waitlist' });
-  const formMessage = createElement('div', { className: 'landing-waitlist-message' });
-
-  submitBtn.addEventListener('click', async () => {
-    const name = nameInput.value.trim();
-    const email = emailInput.value.trim();
-    if (!name || !email) {
-      formMessage.textContent = 'Please fill in both fields.';
-      formMessage.className = 'landing-waitlist-message landing-waitlist-error';
-      return;
-    }
-    submitBtn.textContent = 'Joining...';
-    (submitBtn as HTMLButtonElement).disabled = true;
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        formMessage.textContent = data.message || "You're on the list! We'll be in touch.";
-        formMessage.className = 'landing-waitlist-message landing-waitlist-success';
-        nameInput.value = '';
-        emailInput.value = '';
-      } else {
-        formMessage.textContent = data.error || 'Something went wrong.';
-        formMessage.className = 'landing-waitlist-message landing-waitlist-error';
-      }
-    } catch {
-      formMessage.textContent = 'Network error. Please try again.';
-      formMessage.className = 'landing-waitlist-message landing-waitlist-error';
-    }
-    submitBtn.textContent = 'Join Waitlist';
-    (submitBtn as HTMLButtonElement).disabled = false;
-  });
-
-  form.appendChild(nameInput);
-  form.appendChild(emailInput);
-  form.appendChild(submitBtn);
-
-  waitlist.appendChild(waitlistTitle);
-  waitlist.appendChild(waitlistDesc);
-  waitlist.appendChild(form);
-  waitlist.appendChild(formMessage);
-  page.appendChild(waitlist);
+  pricing.appendChild(pricingText);
+  page.appendChild(pricing);
 
   // Footer
   const footer = createElement('footer', { className: 'landing-footer' });

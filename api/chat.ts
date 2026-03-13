@@ -42,7 +42,7 @@ async function decryptKey(ciphertext: string, secret: string): Promise<string> {
 }
 
 function buildSystemMessage(context?: string): string {
-  const base = 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called DashView.';
+  const base = 'You are a helpful AI assistant integrated into a real-time intelligence dashboard called DashPulse.';
   if (context) {
     return `${base} Here is the current dashboard context:\n${context}\n\nUse this context to provide relevant, data-aware responses.`;
   }

@@ -1,4 +1,4 @@
-import type { PanelConfig, UserTier } from '../types/index.ts';
+import type { PanelConfig, UserTier, WidgetSize, PanelCategory } from '../types/index.ts';
 import { createElement, qs } from '../utils/dom.ts';
 import { hasAccess } from '../services/tier.ts';
 import { trackPanelView } from '../services/analytics.ts';
@@ -10,21 +10,26 @@ export abstract class Panel {
   refreshInterval: number;
   readonly requiredTier: UserTier;
   readonly priority: number;
+  readonly category: PanelCategory;
+  readonly supportedSizes: WidgetSize[];
   collapsed: boolean;
   lastUpdated: number | null = null;
+  private isFetching = false;
   container: HTMLElement;
   protected contentEl: HTMLElement;
   protected errorEl: HTMLElement;
   private collapseBtn: HTMLElement;
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
-  constructor(config: PanelConfig & { requiredTier?: UserTier }) {
+  constructor(config: PanelConfig & { requiredTier?: UserTier; supportedSizes?: WidgetSize[] }) {
     this.id = config.id;
     this.title = config.title;
     this.enabled = config.enabled;
     this.refreshInterval = config.refreshInterval;
-    this.requiredTier = config.requiredTier || 'guest';
+    this.requiredTier = config.requiredTier || 'free';
     this.priority = config.priority ?? 1;
+    this.category = config.category ?? 'utility';
+    this.supportedSizes = config.supportedSizes ?? ['compact', 'medium', 'large'];
     this.collapsed = false;
     this.container = this.createContainer();
     this.contentEl = qs<HTMLElement>('.panel-content', this.container)!;
@@ -35,6 +40,7 @@ export abstract class Panel {
   private createContainer(): HTMLElement {
     const card = createElement('div', { className: 'panel-card' });
     card.dataset.panelId = this.id;
+    card.dataset.category = this.category;
     card.setAttribute('role', 'region');
     const titleId = `panel-title-${this.id}`;
     card.setAttribute('aria-labelledby', titleId);
@@ -75,6 +81,13 @@ export abstract class Panel {
   abstract fetchData(): Promise<void>;
   abstract render(data: unknown): void;
 
+  renderAtSize(size: WidgetSize): void {
+    void size;
+    // Default: just call render with last data
+    const data = this.getLastData();
+    if (data) this.render(data);
+  }
+
   getLastData(): unknown {
     return null;
   }
@@ -89,7 +102,7 @@ export abstract class Panel {
       return;
     }
 
-    if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) {
+    if (!hasAccess(this.requiredTier)) {
       this.showLocked();
       return;
     }
@@ -99,7 +112,7 @@ export abstract class Panel {
 
   async startDataCycle(): Promise<void> {
     if (!this.enabled) return;
-    if (this.requiredTier !== 'guest' && !hasAccess(this.requiredTier)) return;
+    if (!hasAccess(this.requiredTier)) return;
     trackPanelView(this.id);
     await this.refresh();
     this.startInterval();
@@ -182,14 +195,25 @@ export abstract class Panel {
   }
 
   async refresh(): Promise<void> {
+    if (this.isFetching) return;
+    this.isFetching = true;
     try {
       this.showLoading();
       await this.fetchData();
       this.lastUpdated = Date.now();
       this.renderLastUpdated();
+      // Dispatch panel data event for intelligence/pulse system
+      const lastData = this.getLastData();
+      if (lastData) {
+        document.dispatchEvent(new CustomEvent('dashview:panel-data', {
+          detail: { panelId: this.id, data: lastData },
+        }));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load data';
       this.showError(msg);
+    } finally {
+      this.isFetching = false;
     }
   }
 

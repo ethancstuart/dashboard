@@ -21,6 +21,26 @@ export class EntertainmentPanel extends Panel {
     return this.data;
   }
 
+  renderAtSize(size: import('../types/index.ts').WidgetSize): void {
+    if (size === 'compact' && this.data?.items?.length) {
+      this.contentEl.textContent = '';
+      const top = this.data.items[0];
+      const wrap = createElement('div', {});
+      wrap.style.cssText = 'text-align:center;padding:8px 0';
+      const title = createElement('div', {});
+      title.style.cssText = 'font-size:13px;font-weight:600';
+      title.textContent = top.title;
+      const meta = createElement('div', {});
+      meta.style.cssText = 'font-size:11px;color:var(--color-text-muted)';
+      meta.textContent = `${top.year} \u00B7 ${top.rating.toFixed(1)}\u2605`;
+      wrap.appendChild(title);
+      wrap.appendChild(meta);
+      this.contentEl.appendChild(wrap);
+      return;
+    }
+    if (this.data) this.render(this.data);
+  }
+
   constructor() {
     super({
       id: 'entertainment',
@@ -28,6 +48,7 @@ export class EntertainmentPanel extends Panel {
       enabled: true,
       refreshInterval: 300000,
       priority: 2,
+      category: 'world',
     });
     this.tab = storage.get<EntertainmentTab>(TAB_KEY, 'trending');
   }

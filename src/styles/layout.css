@@ -1,4 +1,29 @@
-/* Layout — Responsive panel grid with inline map */
+/* Layout — Full page with named zones */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* 12-column widget grid */
+.space-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 12px;
+  padding: 16px;
+  align-content: start;
+  flex: 1;
+}
+
+.space-grid > .panel-card {
+  min-height: 0;
+  max-height: 600px;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Legacy panel grid (backwards compat for embed) */
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -129,7 +154,48 @@
   background: var(--color-hover, #252525) !important;
 }
 
+/* Widget resize handle */
+.widget-resize-handle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--color-text-muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.panel-card:hover .widget-resize-handle {
+  opacity: 0.4;
+}
+
+.widget-resize-handle:hover {
+  opacity: 0.8 !important;
+}
+
+/* Widget size menu (shares context menu styles) */
+.widget-size-menu {
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive breakpoints for 12-col grid */
 @media (max-width: 1200px) {
+  .space-grid {
+    grid-template-columns: repeat(8, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
   .map-hero { min-height: 240px; max-height: 300px; }
   .panel-grid {
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -137,6 +203,17 @@
 }
 
 @media (max-width: 768px) {
+  .space-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 8px;
+  }
+
+  /* All widgets go full-width on mobile */
+  .space-grid > .panel-card {
+    grid-column: span 1 !important;
+  }
+
   .map-hero { min-height: 200px; max-height: 250px; grid-column: span 1; }
   .map-expand-toggle { grid-column: span 1; }
   .panel-grid {

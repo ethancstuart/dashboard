@@ -452,7 +452,7 @@ export function createHeader(app: App): HTMLElement {
   clock.textContent = formatClock(new Date());
   const clockInterval = setInterval(() => {
     clock.textContent = formatClock(new Date());
-  }, 1000);
+  }, 30000);
 
   // Clean up interval when header is removed from DOM
   const observer = new MutationObserver(() => {

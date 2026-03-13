@@ -15,6 +15,7 @@ export class CalendarPanel extends Panel {
       refreshInterval: 600000,
       priority: 1,
       requiredTier: 'premium',
+      category: 'personal',
     });
   }
 

@@ -1,11 +1,11 @@
 import type { UserTier } from '../types/index.ts';
 import { getUser } from './auth.ts';
 
-const TIER_HIERARCHY: UserTier[] = ['guest', 'free', 'premium'];
+const TIER_HIERARCHY: UserTier[] = ['free', 'premium'];
 
 export function getCurrentTier(): UserTier {
   const user = getUser();
-  return user?.tier || 'guest';
+  return user?.tier || 'free';
 }
 
 export function hasAccess(requiredTier: UserTier): boolean {
@@ -21,5 +21,5 @@ export function isAdmin(): boolean {
 }
 
 export function getAlertLimit(): number {
-  return getCurrentTier() === 'premium' ? Infinity : 3;
+  return getCurrentTier() === 'premium' ? Infinity : 5;
 }

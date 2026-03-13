@@ -1,0 +1,165 @@
+/* AI Bar — persistent top bar */
+.ai-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.ai-bar-input-wrap {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+
+.ai-bar-input {
+  width: 100%;
+  padding: 6px 12px;
+  background: var(--color-surface-sunken, var(--color-bg));
+  border: 1px solid var(--color-border-subtle, var(--color-border));
+  border-radius: 6px;
+  color: var(--color-text);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.ai-bar-input:focus {
+  border-color: var(--color-accent);
+}
+
+.ai-bar-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.ai-bar-kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  pointer-events: none;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+
+/* Status pills (right side) */
+.ai-bar-pills {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ai-bar-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.ai-bar-pill-positive {
+  color: var(--color-positive);
+}
+
+.ai-bar-pill-negative {
+  color: var(--color-negative);
+}
+
+/* Right controls */
+.ai-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ai-bar-btn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.ai-bar-btn:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ai-bar-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Command autocomplete dropdown */
+.ai-bar-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--color-surface-elevated, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.ai-bar-autocomplete-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ai-bar-autocomplete-item:hover,
+.ai-bar-autocomplete-item-active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* AI query counter */
+.ai-bar-counter {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .ai-bar {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .ai-bar-pills {
+    display: none;
+  }
+
+  .ai-bar-input {
+    font-size: 14px; /* prevent iOS zoom */
+  }
+}

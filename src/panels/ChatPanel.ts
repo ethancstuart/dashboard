@@ -19,6 +19,7 @@ export class ChatPanel extends Panel {
       refreshInterval: 0,
       priority: 2,
       requiredTier: 'premium',
+      category: 'personal',
     });
     this.messages = storage.get<ChatMessage[]>(CHAT_KEY, []).slice(-MAX_CHAT_MESSAGES);
   }

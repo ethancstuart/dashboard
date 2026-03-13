@@ -1,4 +1,4 @@
-/* Onboarding overlay */
+/* Onboarding overlay — terminal aesthetic */
 .onboarding-overlay {
   position: fixed;
   inset: 0;
@@ -17,7 +17,7 @@
 }
 
 .onboarding-container {
-  max-width: 440px;
+  max-width: 480px;
   width: 100%;
   padding: 0 24px;
 }
@@ -37,23 +37,25 @@
 }
 
 .onboarding-title {
-  font-size: 28px;
-  font-weight: 300;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 24px;
+  font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--color-text);
 }
 
 .onboarding-desc {
-  font-size: 15px;
+  font-size: 14px;
   color: var(--color-text-muted);
   line-height: 1.6;
-  max-width: 380px;
+  max-width: 400px;
 }
 
 .onboarding-label {
-  font-size: 11px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   font-weight: 600;
   color: var(--color-text-muted);
   margin-top: 8px;
@@ -67,23 +69,30 @@
 
 .onboarding-btn {
   padding: 10px 24px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 4px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .onboarding-btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: var(--color-accent);
   color: #fff;
-  border: none;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  border: 1px solid var(--color-accent);
 }
 
 .onboarding-btn-primary:hover {
-  box-shadow: 0 4px 30px rgba(59, 130, 246, 0.5);
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.onboarding-btn-primary[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .onboarding-btn-ghost {
@@ -97,6 +106,7 @@
   color: var(--color-text);
 }
 
+/* Option pickers */
 .onboarding-option-row {
   display: flex;
   gap: 8px;
@@ -105,12 +115,12 @@
 
 .onboarding-option {
   padding: 8px 18px;
-  border-radius: 8px;
+  border-radius: 4px;
   border: 1px solid var(--color-border);
   background: transparent;
   color: var(--color-text-muted);
-  font-family: inherit;
-  font-size: 13px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -131,30 +141,111 @@
   color: #fff;
 }
 
-.onboarding-preview {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
+/* AI prompt area */
+.onboarding-ai-prompt {
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface-sunken, rgba(0, 0, 0, 0.2));
+  width: 100%;
+  max-width: 400px;
 }
 
-.onboarding-tag {
-  padding: 4px 12px;
-  border-radius: 6px;
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--color-accent);
+.onboarding-ai-label {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 13px;
-  font-weight: 600;
+  color: var(--color-accent);
+  margin-bottom: 6px;
 }
 
+.onboarding-ai-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.onboarding-ai-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 14px;
+  background: var(--color-surface, #111);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.onboarding-ai-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.5;
+}
+
+.onboarding-ai-input:focus {
+  border-color: var(--color-accent);
+}
+
+.onboarding-ai-result {
+  display: none;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-surface-sunken, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--color-border);
+  border-left: 2px solid var(--color-accent);
+  border-radius: 4px;
+  padding: 12px 14px;
+  text-align: left;
+  width: 100%;
+  max-width: 400px;
+  line-height: 1.5;
+}
+
+/* Interest pills */
+.onboarding-interests-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 400px;
+}
+
+.onboarding-interest-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.onboarding-interest-pill:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.onboarding-interest-pill.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Progress dots */
 .onboarding-dots {
   display: flex;
   gap: 8px;
 }
 
 .onboarding-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-border);
   transition: background 0.2s;

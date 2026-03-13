@@ -15,6 +15,7 @@ export class NotesPanel extends Panel {
       enabled: true,
       refreshInterval: 0,
       priority: 2,
+      category: 'utility',
     });
     this.notes = storage.get<Note[]>(STORAGE_KEY, []);
   }

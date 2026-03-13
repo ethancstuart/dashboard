@@ -18,7 +18,7 @@ export function initPanelDrag(grid: HTMLElement, onReorder: (newOrder: string[])
     grip.setAttribute('aria-label', 'Drag to reorder');
 
     grip.addEventListener('mousedown', () => { gripActive = true; });
-    grip.addEventListener('touchstart', (e) => { handleTouchStart(e, panel as HTMLElement); }, { passive: false });
+    grip.addEventListener('touchstart', (e) => { handleTouchStart(e, panel as HTMLElement); });
 
     header.insertBefore(grip, header.firstChild);
 
@@ -107,40 +107,52 @@ export function initPanelDrag(grid: HTMLElement, onReorder: (newOrder: string[])
   let touchStartY = 0;
   let touchStartX = 0;
 
+  let touchDragActive = false;
+  const DRAG_THRESHOLD = 10;
+
   function handleTouchStart(e: TouchEvent, panel: HTMLElement) {
     if (!panel.dataset.panelId) return;
-    e.preventDefault();
+    // Don't preventDefault on touchstart — allow scroll to begin naturally
 
     touchSrcEl = panel;
+    touchDragActive = false;
     const touch = e.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
-
-    // Create floating clone
-    touchClone = panel.cloneNode(true) as HTMLElement;
-    touchClone.className = 'panel-card panel-dragging panel-drag-clone';
-    touchClone.style.cssText = `
-      position: fixed;
-      z-index: 10000;
-      width: ${panel.offsetWidth}px;
-      pointer-events: none;
-      opacity: 0.8;
-      left: ${panel.getBoundingClientRect().left}px;
-      top: ${panel.getBoundingClientRect().top}px;
-    `;
-    document.body.appendChild(touchClone);
-    panel.classList.add('panel-dragging');
 
     document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd);
   }
 
   function handleTouchMove(e: TouchEvent) {
-    e.preventDefault();
-    if (!touchClone || !touchSrcEl) return;
+    if (!touchSrcEl) return;
     const touch = e.touches[0];
     const dx = touch.clientX - touchStartX;
     const dy = touch.clientY - touchStartY;
+
+    // Only activate drag after exceeding threshold
+    if (!touchDragActive) {
+      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
+      touchDragActive = true;
+
+      // Create floating clone once threshold is met
+      touchClone = touchSrcEl.cloneNode(true) as HTMLElement;
+      touchClone.className = 'panel-card panel-dragging panel-drag-clone';
+      touchClone.style.cssText = `
+        position: fixed;
+        z-index: 10000;
+        width: ${touchSrcEl.offsetWidth}px;
+        pointer-events: none;
+        opacity: 0.8;
+        left: ${touchSrcEl.getBoundingClientRect().left}px;
+        top: ${touchSrcEl.getBoundingClientRect().top}px;
+      `;
+      document.body.appendChild(touchClone);
+      touchSrcEl.classList.add('panel-dragging');
+    }
+
+    e.preventDefault();
+    if (!touchClone) return;
 
     touchClone.style.transform = `translate(${dx}px, ${dy}px)`;
 
@@ -176,6 +188,13 @@ export function initPanelDrag(grid: HTMLElement, onReorder: (newOrder: string[])
       touchClone.remove();
       touchClone = null;
     }
+
+    if (!touchDragActive) {
+      touchSrcEl = null;
+      touchDragActive = false;
+      return;
+    }
+    touchDragActive = false;
 
     // Find the drop target
     const touch = e.changedTouches[0];

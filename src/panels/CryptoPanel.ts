@@ -17,11 +17,31 @@ export class CryptoPanel extends Panel {
       enabled: true,
       refreshInterval: 120000,
       priority: 1,
+      category: 'markets',
     });
   }
 
   getLastData(): CryptoData | null {
     return this.data;
+  }
+
+  renderAtSize(size: import('../types/index.ts').WidgetSize): void {
+    if (size === 'compact' && this.data?.coins?.length) {
+      this.contentEl.textContent = '';
+      const btc = this.data.coins.find((c) => c.symbol === 'btc') || this.data.coins[0];
+      const sign = btc.change24h >= 0 ? '+' : '';
+      const color = btc.change24h >= 0 ? 'var(--color-positive)' : 'var(--color-negative)';
+      const wrap = createElement('div', { className: 'data-value' });
+      wrap.style.cssText = `text-align:center;padding:8px 0;font-size:18px;color:${color}`;
+      wrap.textContent = `BTC ${sign}${btc.change24h.toFixed(1)}%`;
+      const price = createElement('div', { className: 'data-value' });
+      price.style.cssText = 'text-align:center;font-size:12px;color:var(--color-text-muted)';
+      price.textContent = `$${btc.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+      this.contentEl.appendChild(wrap);
+      this.contentEl.appendChild(price);
+      return;
+    }
+    if (this.data) this.render(this.data);
   }
 
   async fetchData(): Promise<void> {

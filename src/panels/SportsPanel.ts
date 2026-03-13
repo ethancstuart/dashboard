@@ -23,6 +23,28 @@ export class SportsPanel extends Panel {
     return this.data;
   }
 
+  renderAtSize(size: import('../types/index.ts').WidgetSize): void {
+    if (size === 'compact' && this.data?.games?.length) {
+      this.contentEl.textContent = '';
+      const live = this.data.games.filter((g) => g.status === 'in_progress');
+      const wrap = createElement('div', { className: 'data-value' });
+      wrap.style.cssText = 'text-align:center;padding:8px 0;font-size:16px';
+      if (live.length > 0) {
+        const g = live[0];
+        wrap.textContent = `${g.awayTeam.abbreviation} ${g.awayTeam.score ?? 0}-${g.homeTeam.score ?? 0} ${g.homeTeam.abbreviation}`;
+      } else {
+        wrap.textContent = `${this.data.games.length} games today`;
+      }
+      const label = createElement('div', {});
+      label.style.cssText = 'text-align:center;font-size:10px;color:var(--color-text-muted);text-transform:uppercase';
+      label.textContent = this.data.league.toUpperCase();
+      this.contentEl.appendChild(wrap);
+      this.contentEl.appendChild(label);
+      return;
+    }
+    if (this.data) this.render(this.data);
+  }
+
   constructor() {
     super({
       id: 'sports',
@@ -30,6 +52,7 @@ export class SportsPanel extends Panel {
       enabled: true,
       refreshInterval: 60000,
       priority: 2,
+      category: 'world',
     });
     this.league = storage.get<SportsLeague>(LEAGUE_KEY, 'nba');
     this.favorites = new Set(storage.get<string[]>(FAVORITES_KEY, []));

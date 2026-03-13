@@ -1,0 +1,95 @@
+/* Pulse bar — intelligence strip at bottom */
+.pulse-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  min-height: 32px;
+}
+
+.pulse-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.pulse-bar-empty {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.3;
+}
+
+.pulse-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle, var(--color-border));
+  border-radius: 4px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+  animation: pulseItemIn 0.3s ease;
+}
+
+@keyframes pulseItemIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.pulse-item:hover {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+}
+
+/* Category-colored left borders */
+.pulse-item[data-type="market"] {
+  border-left: 2px solid var(--color-accent);
+}
+
+.pulse-item[data-type="crypto"] {
+  border-left: 2px solid var(--color-accent);
+}
+
+.pulse-item[data-type="weather"] {
+  border-left: 2px solid var(--color-positive);
+}
+
+.pulse-item[data-type="news"] {
+  border-left: 2px solid var(--color-positive);
+}
+
+.pulse-item[data-type="sports"] {
+  border-left: 2px solid #8b5cf6;
+}
+
+.pulse-item[data-type="calendar"] {
+  border-left: 2px solid var(--color-text-muted);
+}
+
+.pulse-item-icon {
+  font-size: 12px;
+}
+
+.pulse-item-text {
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .pulse-bar {
+    padding: 4px 8px;
+  }
+}

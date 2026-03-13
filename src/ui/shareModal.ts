@@ -1,12 +1,13 @@
 import { createElement } from '../utils/dom.ts';
 import { shareConfig, importSharedConfig, applySharedConfig } from '../services/configSync.ts';
+import { pushModal, popModal } from './modalManager.ts';
 
 let overlay: HTMLElement | null = null;
 
 export function openShareModal(): void {
   closeShareModal();
 
-  overlay = createElement('div', { className: 'feeds-modal-overlay' });
+  overlay = createElement('div', { className: 'share-modal-overlay' });
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeShareModal();
   });
@@ -192,14 +193,7 @@ export function openShareModal(): void {
   overlay.appendChild(dialog);
   document.body.appendChild(overlay);
 
-  // Close on Escape
-  const escHandler = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      closeShareModal();
-      document.removeEventListener('keydown', escHandler);
-    }
-  };
-  document.addEventListener('keydown', escHandler);
+  pushModal(closeShareModal);
 }
 
 export function openImportModal(code: string): void {
@@ -228,5 +222,6 @@ function closeShareModal(): void {
   if (overlay) {
     overlay.remove();
     overlay = null;
+    popModal();
   }
 }

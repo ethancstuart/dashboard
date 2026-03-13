@@ -1,8 +1,9 @@
-/* Landing page */
+/* Landing page — terminal aesthetic */
 .landing-page, .roadmap-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--color-bg);
 }
 
 .landing-nav {
@@ -14,9 +15,11 @@
 }
 
 .landing-nav-brand {
-  font-size: 20px;
-  font-weight: 300;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-accent);
 }
 
@@ -27,9 +30,12 @@
 }
 
 .landing-nav-link {
-  font-size: 14px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
   color: var(--color-text-muted);
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   transition: color 0.15s;
 }
 
@@ -43,7 +49,10 @@
 
 .landing-sign-in-btn {
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: 12px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .landing-sign-in-dropdown {
@@ -51,9 +60,9 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: #1a1a2e;
+  background: var(--color-surface-elevated, #1a1a1a);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 4px;
   min-width: 140px;
   z-index: 100;
@@ -69,25 +78,19 @@
   background: none;
   border: none;
   color: var(--color-text);
-  font-family: inherit;
-  font-size: 13px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 2px;
   text-align: left;
   transition: background 0.15s;
 }
 
 .landing-sign-in-option:hover {
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(59, 130, 246, 0.15);
 }
 
-.landing-user-avatar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-}
-
+/* Hero */
 .landing-hero {
   display: flex;
   flex-direction: column;
@@ -106,24 +109,38 @@
   transform: translate(-50%, -50%);
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .landing-hero-title {
-  font-size: 64px;
-  font-weight: 300;
-  letter-spacing: 0.12em;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-accent);
-  text-shadow: 0 0 60px rgba(59, 130, 246, 0.3);
+  text-shadow: 0 0 40px rgba(59, 130, 246, 0.2);
   position: relative;
   margin-bottom: 16px;
 }
 
 .landing-hero-tagline {
-  font-size: 18px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 16px;
   color: var(--color-text-muted);
   max-width: 560px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  position: relative;
+  letter-spacing: 0.02em;
+}
+
+.landing-hero-sub {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  max-width: 520px;
   line-height: 1.6;
   margin-bottom: 40px;
   position: relative;
@@ -131,34 +148,36 @@
 
 .landing-hero-ctas {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   position: relative;
 }
 
+/* Buttons */
 .landing-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 28px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 500;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .landing-btn-primary {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: var(--color-accent);
   color: #fff;
-  border: none;
-  box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+  border: 1px solid var(--color-accent);
 }
 
 .landing-btn-primary:hover {
-  box-shadow: 0 4px 30px rgba(59, 130, 246, 0.5);
-  transform: translateY(-1px);
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .landing-btn-outline {
@@ -172,6 +191,7 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+/* Features */
 .landing-features {
   padding: 80px 32px;
   max-width: 1000px;
@@ -180,9 +200,12 @@
 }
 
 .landing-section-title {
-  font-size: 28px;
-  font-weight: 400;
-  color: var(--color-text);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
   text-align: center;
   margin-bottom: 40px;
 }
@@ -190,32 +213,35 @@
 .landing-feature-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  gap: 16px;
 }
 
 .landing-feature-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 24px;
-  transition: border-color 0.2s, transform 0.2s;
+  border-radius: 4px;
+  padding: 20px;
+  border-left: 2px solid var(--color-border);
+  transition: border-color 0.15s;
 }
 
 .landing-feature-card:hover {
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: translateY(-2px);
+  border-left-color: var(--color-accent);
 }
 
 .landing-feature-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  font-size: 24px;
+  margin-bottom: 10px;
 }
 
 .landing-feature-title {
-  font-size: 16px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--color-text);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .landing-feature-desc {
@@ -224,64 +250,21 @@
   line-height: 1.5;
 }
 
-.landing-waitlist {
-  padding: 80px 32px;
+/* Pricing hint */
+.landing-pricing {
+  padding: 48px 32px;
   text-align: center;
-  background: rgba(59, 130, 246, 0.02);
   border-top: 1px solid var(--color-border);
 }
 
-.landing-waitlist-desc {
-  font-size: 15px;
+.landing-pricing-text {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 13px;
   color: var(--color-text-muted);
-  margin-bottom: 32px;
-  max-width: 480px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.5;
+  letter-spacing: 0.02em;
 }
 
-.landing-waitlist-form {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  max-width: 500px;
-  margin: 0 auto;
-  flex-wrap: wrap;
-}
-
-.landing-input {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 10px 16px;
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 14px;
-  outline: none;
-  flex: 1;
-  min-width: 140px;
-  transition: border-color 0.15s;
-}
-
-.landing-input::placeholder {
-  color: var(--color-text-muted);
-  opacity: 0.6;
-}
-
-.landing-input:focus {
-  border-color: var(--color-accent);
-}
-
-.landing-waitlist-message {
-  margin-top: 16px;
-  font-size: 14px;
-  min-height: 20px;
-}
-
-.landing-waitlist-success { color: var(--color-positive); }
-.landing-waitlist-error { color: var(--color-negative); }
-
+/* Footer */
 .landing-footer {
   padding: 24px 32px;
   border-top: 1px solid var(--color-border);
@@ -297,9 +280,12 @@
 }
 
 .landing-footer-link {
-  font-size: 13px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
   color: var(--color-text-muted);
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .landing-footer-link:hover {
@@ -307,18 +293,18 @@
 }
 
 .landing-footer-copy {
-  font-size: 12px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
   color: var(--color-text-muted);
   opacity: 0.5;
 }
 
 @media (max-width: 768px) {
   .landing-hero { padding: 80px 16px 60px; }
-  .landing-hero-title { font-size: 36px; }
-  .landing-hero-tagline { font-size: 15px; }
-  .landing-hero-ctas { flex-direction: column; }
+  .landing-hero-title { font-size: 32px; }
+  .landing-hero-tagline { font-size: 14px; }
+  .landing-hero-ctas { flex-direction: column; width: 100%; max-width: 280px; }
   .landing-features { padding: 48px 16px; }
-  .landing-waitlist { padding: 48px 16px; }
-  .landing-waitlist-form { flex-direction: column; }
+  .landing-pricing { padding: 32px 16px; }
   .landing-footer { flex-direction: column; gap: 12px; text-align: center; }
 }
