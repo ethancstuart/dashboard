@@ -15,12 +15,13 @@ interface IndexQuote {
   changePercent: number;
 }
 
+// ETFs that track major indices (free tier compatible)
 const INDICES = [
-  { symbol: 'SPX', name: 'S&P 500' },
-  { symbol: 'IXIC', name: 'NASDAQ' },
-  { symbol: 'DJI', name: 'DOW' },
-  { symbol: 'UKX', name: 'FTSE 100' },
-  { symbol: 'NI225', name: 'Nikkei 225' },
+  { symbol: 'SPY', name: 'S&P 500' },
+  { symbol: 'QQQ', name: 'NASDAQ' },
+  { symbol: 'DIA', name: 'DOW' },
+  { symbol: 'EWU', name: 'FTSE 100' },
+  { symbol: 'EWJ', name: 'Nikkei 225' },
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -45,11 +46,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const idx of INDICES) {
       const quote = data[idx.symbol] || data;
-      if (quote && quote.close) {
+      if (quote && quote.close && !quote.code) {
         const price = parseFloat(quote.close);
-        const prevClose = parseFloat(quote.previous_close || quote.close);
-        const change = price - prevClose;
-        const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
+        const change = parseFloat(quote.change || '0');
+        const changePercent = parseFloat(quote.percent_change || '0');
 
         quotes.push({
           symbol: idx.symbol,
@@ -57,15 +57,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           price,
           change,
           changePercent,
-        });
-      } else {
-        // Include with zero values if data unavailable
-        quotes.push({
-          symbol: idx.symbol,
-          name: idx.name,
-          price: 0,
-          change: 0,
-          changePercent: 0,
         });
       }
     }
