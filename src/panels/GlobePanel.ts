@@ -7,7 +7,7 @@ import type { GlobeNewsArticle, GlobeNewsCategory, GlobeMarker, GlobeWeatherPin,
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeInstance = Record<string, (...args: any[]) => any> & ((el: HTMLElement) => GlobeInstance);
 
-const NIGHT_IMAGE_URL = '//unpkg.com/three-globe/example/img/earth-night.jpg';
+const GLOBE_IMAGE_URL = '//unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
 const AUTO_ROTATE_SPEED = 0.3;
 const IDLE_RESUME_MS = 3000;
 
@@ -156,10 +156,12 @@ export class GlobePanel extends Panel {
         tabs.querySelectorAll('.globe-feed-tab').forEach((t, i) => {
           t.classList.toggle('globe-feed-tab-active', CATEGORY_TABS[i].id === this.activeCategory);
         });
-        // Update globe markers
+        // Update globe markers, labels, and rings
         if (this.globe) {
           const g = this.globe as GlobeInstance;
           g.pointsData(this.newsMarkers);
+          g.ringsData(this.newsMarkers);
+          this.updateLabels(g);
         }
       });
       tabs.appendChild(btn);
@@ -264,10 +266,10 @@ export class GlobePanel extends Panel {
     const GlobeFactory = (mod.default || mod) as (...args: any[]) => GlobeInstance;
     const g: GlobeInstance = GlobeFactory();
 
-    g.globeImageUrl(NIGHT_IMAGE_URL)
+    g.globeImageUrl(GLOBE_IMAGE_URL)
      .backgroundColor('rgba(0,0,0,0)')
-     .atmosphereColor('#3b82f6')
-     .atmosphereAltitude(0.15)
+     .atmosphereColor('#60a5fa')
+     .atmosphereAltitude(0.25)
      .showAtmosphere(true);
 
     // Points (news markers)
@@ -278,10 +280,22 @@ export class GlobePanel extends Panel {
      .pointRadius((d: GlobeMarker) => d.size)
      .pointColor((d: GlobeMarker) => d.color);
 
+    // Labels — top markers by article count
+    this.updateLabels(g);
+
+    // Pulsing rings at marker locations
+    g.ringsData(this.newsMarkers)
+     .ringLat((d: GlobeMarker) => d.lat)
+     .ringLng((d: GlobeMarker) => d.lng)
+     .ringColor(() => (t: number) => `rgba(59, 130, 246, ${1 - t})`)
+     .ringMaxRadius(3)
+     .ringPropagationSpeed(1)
+     .ringRepeatPeriod(2000);
+
     // Day/night terminator polygon
     const terminatorData = this.buildTerminatorData();
     g.polygonsData(terminatorData)
-     .polygonCapColor(() => 'rgba(0, 0, 0, 0.3)')
+     .polygonCapColor(() => 'rgba(0, 0, 0, 0.15)')
      .polygonSideColor(() => 'rgba(0, 0, 0, 0)')
      .polygonStrokeColor(() => 'rgba(59, 130, 246, 0.15)');
 
@@ -341,6 +355,31 @@ export class GlobePanel extends Panel {
       const data = this.buildTerminatorData();
       g.polygonsData(data);
     }, 60000);
+  }
+
+  private updateLabels(g: GlobeInstance): void {
+    const topMarkers = [...this.newsMarkers]
+      .sort((a, b) => b.articles.length - a.articles.length)
+      .slice(0, 12);
+
+    const labelData = topMarkers.map(m => ({
+      lat: m.lat,
+      lng: m.lng,
+      text: m.articles[0].title.length > 40
+        ? m.articles[0].title.slice(0, 40) + '\u2026'
+        : m.articles[0].title,
+      color: m.color,
+      size: 0.4,
+    }));
+
+    g.labelsData(labelData)
+     .labelLat((d: { lat: number }) => d.lat)
+     .labelLng((d: { lng: number }) => d.lng)
+     .labelText((d: { text: string }) => d.text)
+     .labelSize((d: { size: number }) => d.size)
+     .labelColor((d: { color: string }) => d.color)
+     .labelResolution(2)
+     .labelAltitude(0.01);
   }
 
   private highlightFeedForMarker(marker: GlobeMarker): void {
@@ -433,7 +472,7 @@ export class GlobePanel extends Panel {
       this.newsMarkers.push({
         lat: first.lat,
         lng: first.lon,
-        size: Math.min(0.4, 0.15 + groupArticles.length * 0.05),
+        size: Math.min(0.8, 0.3 + groupArticles.length * 0.1),
         color: CATEGORY_COLORS[topCategory] || '#3b82f6',
         articles: groupArticles,
         label: first.sourceCountry || first.source,
@@ -444,6 +483,8 @@ export class GlobePanel extends Panel {
     if (this.globe) {
       const g = this.globe as GlobeInstance;
       g.pointsData(this.newsMarkers);
+      g.ringsData(this.newsMarkers);
+      this.updateLabels(g);
     }
   }
 

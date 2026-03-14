@@ -4,7 +4,6 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 900;
-  backdrop-filter: blur(2px);
 }
 
 .settings-modal {

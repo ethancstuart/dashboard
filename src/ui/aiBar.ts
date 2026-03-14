@@ -164,10 +164,7 @@ export function createAIBar(_app: App, callbacks: AIBarCallbacks): HTMLElement {
   const pills = createElement('div', { className: 'ai-bar-pills' });
   const weatherPill = createElement('span', { className: 'ai-bar-pill' });
   weatherPill.id = 'ai-bar-weather';
-  const marketPill = createElement('span', { className: 'ai-bar-pill' });
-  marketPill.id = 'ai-bar-market';
   pills.appendChild(weatherPill);
-  pills.appendChild(marketPill);
   bar.appendChild(pills);
 
   // Update pills from panel data
@@ -176,13 +173,6 @@ export function createAIBar(_app: App, callbacks: AIBarCallbacks): HTMLElement {
     if (detail.panelId === 'weather' && detail.data?.current) {
       const w = detail.data.current;
       weatherPill.textContent = `${w.icon || '\u2600\uFE0F'} ${Math.round(w.temp)}\u00B0`;
-    }
-    if (detail.panelId === 'stocks' && detail.data?.watchlist?.length) {
-      const top = detail.data.watchlist[0];
-      const sign = top.changePercent >= 0 ? '\u25B2' : '\u25BC';
-      const cls = top.changePercent >= 0 ? 'ai-bar-pill-positive' : 'ai-bar-pill-negative';
-      marketPill.className = `ai-bar-pill ${cls}`;
-      marketPill.textContent = `${top.symbol} ${sign}${Math.abs(top.changePercent).toFixed(1)}%`;
     }
   });
 

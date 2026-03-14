@@ -1,5 +1,6 @@
 import { App } from '../App.ts';
 import { createAIBar, registerCommands } from '../ui/aiBar.ts';
+import { createTicker } from '../ui/ticker.ts';
 import { createSpaceBar } from '../ui/spaceBar.ts';
 import { createLayout } from '../ui/layout.ts';
 import { renderSpace } from '../ui/widgetGrid.ts';
@@ -121,8 +122,12 @@ export async function renderDashboard(root: HTMLElement): Promise<void> {
   // Pulse Bar
   const pulseBar = createPulseBar();
 
+  // Ticker strip
+  const ticker = createTicker();
+
   // Assemble page
   root.appendChild(aiBar);
+  root.appendChild(ticker);
   root.appendChild(spaceBar);
   root.appendChild(layout.root);
   layout.pulseBarSlot.appendChild(pulseBar);
@@ -241,8 +246,24 @@ function executeSlashCommand(cmd: string, app: App, rerender: () => void): void 
     case 'shortcuts':
       document.dispatchEvent(new KeyboardEvent('keydown', { key: '?', bubbles: true }));
       break;
-    default:
+    default: {
+      // Panel-name aliases: /weather → /go-to-weather, etc.
+      const panelAliases: Record<string, string> = {
+        weather: 'weather', stocks: 'stocks', news: 'news',
+        sports: 'sports', chat: 'chat', calendar: 'calendar',
+        crypto: 'crypto', globe: 'globe', notes: 'notes',
+        entertainment: 'entertainment',
+      };
+      if (command && panelAliases[command]) {
+        const panel = app.getPanel(panelAliases[command]);
+        if (panel) {
+          if (!panel.enabled) app.togglePanel(panel.id, true);
+          panel.container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          break;
+        }
+      }
       showAIOverlay(`Unknown command: /${command}`);
+    }
   }
 }
 
