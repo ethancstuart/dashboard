@@ -156,7 +156,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta name="twitter:image" content="${ogImage}">
   <link rel="canonical" href="${url}">
   <script type="application/ld+json">${jsonLd}</script>
-  <meta http-equiv="refresh" content="2;url=https://nexuswatch.dev/#/brief-country/${code}">
+  <!-- No meta refresh. Google follows a refresh and passes indexing to the
+       target, which was a hash fragment and therefore not indexable — so all
+       86 of these pages indexed as nothing. This page is the destination. -->
   <style>
     body { background: #0a0a0a; color: #e0e0e0; font-family: 'JetBrains Mono', monospace; margin: 0; padding: 40px; }
     h1 { color: #ff6600; font-size: 24px; letter-spacing: 0.05em; }
@@ -165,7 +167,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .components { list-style: none; padding: 0; }
     .components li { padding: 4px 0; font-size: 13px; border-bottom: 1px solid #1a1a1a; }
     a { color: #ff6600; }
-    .redirect { color: #555; font-size: 12px; margin-top: 24px; }
   </style>
 </head>
 <body>
@@ -174,14 +175,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <div class="severity">${severity} — updated ${date}</div>
   <h2 style="font-size:14px;color:#888;margin-top:24px;letter-spacing:0.1em;">COMPONENTS</h2>
   <ul class="components">${componentHtml || '<li>No component data available</li>'}</ul>
-  <p>Data sources: ACLED, USGS, NASA FIRMS, GDACS, GDELT, NOAA, V-Dem, OFAC, Copernicus, and more.</p>
-  <p><a href="https://nexuswatch.dev/#/brief-country/${code}">View full interactive analysis →</a></p>
-  <p><a href="https://nexuswatch.dev/#/accuracy">Prediction accuracy ledger →</a></p>
-  <p class="redirect">Redirecting to interactive view...</p>
-  <script>
-    // Immediate redirect for JS-enabled browsers (crawlers don't execute JS)
-    window.location.replace('https://nexuswatch.dev/#/brief-country/${code}');
-  </script>
+  <!-- V-Dem and Copernicus were listed here and on the landing page, but
+       vdem_indicators and copernicus_damage both hold zero rows: the collectors
+       are scheduled and returning nothing. Naming a source we do not actually
+       ingest is the one claim a transparency product cannot afford. Restored
+       when the collectors produce data. -->
+  <p>Data sources: ACLED, USGS, NASA FIRMS, GDACS, GDELT, NOAA, OFAC, OONI, UNHCR.</p>
+  <p><a href="https://nexuswatch.dev/brief-country/${code}">View full interactive analysis →</a></p>
+  <p><a href="https://nexuswatch.dev/accuracy">Prediction accuracy ledger →</a></p>
 </body>
 </html>`;
 

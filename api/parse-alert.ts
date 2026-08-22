@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
 
 const CORS_ORIGIN = 'https://nexuswatch.dev';
 function setCors(res: VercelResponse): VercelResponse {
@@ -75,7 +76,11 @@ Respond with ONLY valid JSON matching this schema:
       return res.status(response.status).json({ error: 'AI parsing failed' });
     }
 
-    const data = (await response.json()) as { content: Array<{ text: string }> };
+    const data = (await response.json()) as {
+      content: Array<{ text: string }>;
+      usage?: AnthropicUsage;
+    };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', data.usage, 'parse-alert');
     const rawText = data.content?.[0]?.text || '';
 
     // Extract JSON from response (handle markdown code blocks)

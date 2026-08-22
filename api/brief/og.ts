@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { markdownToHtml, markdownToText } from '../_lib/markdown.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 10 };
 
@@ -72,8 +73,10 @@ function renderShell(opts: {
   imageUrl: string;
   canonicalUrl: string;
   spaRedirectUrl: string;
+  /** Full brief, already rendered to semantic HTML. Empty when unavailable. */
+  bodyHtml?: string;
 }): string {
-  const { date, title, description, imageUrl, canonicalUrl, spaRedirectUrl } = opts;
+  const { date, title, description, imageUrl, canonicalUrl, spaRedirectUrl, bodyHtml } = opts;
   const t = escapeHtml(title);
   const d = escapeHtml(description);
   const img = escapeHtml(imageUrl);
@@ -124,11 +127,21 @@ function renderShell(opts: {
   }
   </script>
 
-  <!-- Bounce humans into the SPA. Crawlers ignore the refresh. -->
-  <meta http-equiv="refresh" content="0; url=${redirect}">
+  <!-- No meta refresh. Google treats a zero-second refresh as a redirect and
+       passes indexing to the target, which was a hash fragment and therefore
+       not indexable — so 132 briefs of real daily writing indexed as nothing.
+       The full brief is rendered below instead; this page IS the article. -->
   <style>
     body { background: #faf8f3; color: #12161c; font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif; margin: 0; }
-    .wrap { max-width: 560px; margin: 96px auto; padding: 0 32px; text-align: center; }
+    .wrap { max-width: 680px; margin: 64px auto; padding: 0 32px; }
+    .brief { text-align: left; }
+    .brief h2 { font-family: 'Tiempos Headline', Georgia, serif; font-size: 22px; margin: 40px 0 12px; }
+    .brief h3 { font-size: 17px; margin: 28px 0 8px; }
+    .brief p, .brief li { font-size: 17px; line-height: 1.62; color: #12161c; }
+    .brief ul, .brief ol { padding-left: 22px; }
+    .brief li { margin: 0 0 8px; }
+    .brief hr { border: 0; border-top: 1px solid #c9c3b4; margin: 40px 0; }
+    .more { margin-top: 48px; }
     .kicker { font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; color: #9a1b1b; text-transform: uppercase; margin-bottom: 12px; }
     h1 { font-family: 'Tiempos Headline', Georgia, serif; font-size: 32px; font-weight: 600; margin: 0 0 16px 0; }
     p { font-size: 15px; line-height: 1.6; color: #3b4252; margin: 0 0 24px 0; }
@@ -137,21 +150,12 @@ function renderShell(opts: {
   </style>
 </head>
 <body>
-  <noscript>
-    <meta http-equiv="refresh" content="0; url=${redirect}">
-  </noscript>
-  <div class="wrap">
+  <article class="wrap">
     <div class="kicker">SITUATION BRIEF · ${escapeHtml(date)}</div>
     <h1>${t}</h1>
-    <p>${d}</p>
-    <a href="${redirect}">Open the full brief →</a>
-  </div>
-  <script>
-    // Belt-and-suspenders redirect — crawlers ignore this.
-    if (typeof window !== 'undefined') {
-      window.location.replace(${JSON.stringify(spaRedirectUrl)});
-    }
-  </script>
+    ${bodyHtml ? `<div class="brief">${bodyHtml}</div>` : `<p>${d}</p>`}
+    <p class="more"><a href="${redirect}">Open NexusWatch →</a></p>
+  </article>
 </body>
 </html>`;
 }
@@ -179,7 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           'NexusWatch publishes a daily three-minute geopolitical intelligence scan every morning at 5 AM ET.',
         imageUrl: 'https://nexuswatch.dev/api/brief/screenshot?size=og',
         canonicalUrl: 'https://nexuswatch.dev/briefs',
-        spaRedirectUrl: 'https://nexuswatch.dev/#/briefs',
+        spaRedirectUrl: 'https://nexuswatch.dev/briefs',
       }),
     );
   }
@@ -193,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         description: 'Daily geopolitical intelligence from NexusWatch.',
         imageUrl: `https://nexuswatch.dev/api/brief/screenshot?date=${encodeURIComponent(date)}&size=og`,
         canonicalUrl: `https://nexuswatch.dev/brief/${date}`,
-        spaRedirectUrl: `https://nexuswatch.dev/#/brief/${date}`,
+        spaRedirectUrl: 'https://nexuswatch.dev/briefs',
       }),
     );
   }
@@ -210,6 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let title = `NexusWatch Situation Brief · ${date}`;
     let description =
       'Daily geopolitical intelligence from NexusWatch — what changed overnight, why it matters, what to watch.';
+    let bodyHtml = '';
 
     if (rows.length > 0) {
       const row = rows[0];
@@ -226,6 +231,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (content.briefText) {
         const hook = extractHook(content.briefText);
         if (hook) description = hook;
+        // The whole point: the article is the page, not a teaser in front of a
+        // redirect. markdownToText is the fallback description when there is no
+        // "Good Morning" hook to extract.
+        bodyHtml = markdownToHtml(content.briefText);
+        if (!hook) description = markdownToText(content.briefText).slice(0, 200);
       }
 
       const top = content.topRiskCountries?.[0];
@@ -241,7 +251,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         description,
         imageUrl: `https://nexuswatch.dev/api/brief/screenshot?date=${encodeURIComponent(date)}&size=og`,
         canonicalUrl: `https://nexuswatch.dev/brief/${date}`,
-        spaRedirectUrl: `https://nexuswatch.dev/#/brief/${date}`,
+        spaRedirectUrl: 'https://nexuswatch.dev/briefs',
+        bodyHtml,
       }),
     );
   } catch (err) {
@@ -254,7 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         description: 'Daily geopolitical intelligence from NexusWatch.',
         imageUrl: `https://nexuswatch.dev/api/brief/screenshot?date=${encodeURIComponent(date)}&size=og`,
         canonicalUrl: `https://nexuswatch.dev/brief/${date}`,
-        spaRedirectUrl: `https://nexuswatch.dev/#/brief/${date}`,
+        spaRedirectUrl: 'https://nexuswatch.dev/briefs',
       }),
     );
   }

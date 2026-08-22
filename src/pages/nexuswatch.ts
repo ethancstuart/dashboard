@@ -109,6 +109,7 @@ import { createUserMenu } from '../ui/userMenu.ts';
 import { copyShareUrl, getViewStateFromUrl, type ViewState } from '../services/shareView.ts';
 import { createMapStyleToggle } from '../map/MapStyleToggle.ts';
 import type { IntelItem, MapLayerCategory } from '../types/index.ts';
+import { readRouteParams } from '../router.ts';
 
 let nwAbort: AbortController | null = null;
 
@@ -125,30 +126,22 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
     <div class="nw-loading-content">
       <div class="nw-loading-logo">NexusWatch</div>
       <div class="nw-loading-subtitle">GEOPOLITICAL INTELLIGENCE PLATFORM</div>
-      <div class="nw-loading-stats">
-        <span class="nw-loading-stat" id="load-layers">0 layers</span>
-        <span class="nw-loading-divider">·</span>
-        <span class="nw-loading-stat" id="load-countries">0 countries</span>
-        <span class="nw-loading-divider">·</span>
-        <span class="nw-loading-stat" id="load-sources">0 sources</span>
-      </div>
       <div class="nw-loading-bar"><div class="nw-loading-bar-fill"></div></div>
       <div class="nw-loading-text">Connecting to intelligence feeds...</div>
     </div>
   `;
-  // Animate stats during load
+  // The stat row that used to sit here counted up "30 layers · 50 countries ·
+  // 13 sources" on a 400ms timer, unrelated to anything actually loading — and
+  // every one of those numbers was wrong (85 countries are scored, the brief
+  // reads 5 feeds). A product whose pitch is a published track record cannot
+  // fabricate a number on its own loading screen. The phase captions below are
+  // real stages, so they stay; the invented counters are gone.
   const animateLoadStats = () => {
-    const layers = loadingOverlay.querySelector('#load-layers');
-    const countries = loadingOverlay.querySelector('#load-countries');
-    const sources = loadingOverlay.querySelector('#load-sources');
     const text = loadingOverlay.querySelector('.nw-loading-text');
     const bar = loadingOverlay.querySelector('.nw-loading-bar-fill') as HTMLElement;
     let step = 0;
     const tick = setInterval(() => {
       step++;
-      if (layers) layers.textContent = `${Math.min(step * 5, 30)} layers`;
-      if (countries) countries.textContent = `${Math.min(step * 8, 50)} countries`;
-      if (sources) sources.textContent = `${Math.min(step * 2, 13)} sources`;
       if (bar) bar.style.width = `${Math.min(step * 15, 90)}%`;
       if (step === 2 && text) text.textContent = 'Loading map tiles...';
       if (step === 4 && text) text.textContent = 'Initializing data layers...';
@@ -859,7 +852,7 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
   }
 
   // ── Country deep-link (/#/intel?country=UA) ──
-  const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+  const hashParams = readRouteParams();
   const deepLinkCountry = hashParams.get('country');
   if (deepLinkCountry && !sharedView) {
     const code = deepLinkCountry.toUpperCase();

@@ -10,6 +10,7 @@
  */
 
 import { timeCursor } from '../state/timeCursor.ts';
+import { readRouteParams } from '../router.ts';
 
 export type ScrubRange = '24h' | '7d' | '30d' | '1y';
 
@@ -107,23 +108,23 @@ export class TimeScrubber {
     if (this.opts.syncUrl) this.writeUrl(date);
   }
 
+  // Paths, not fragments — the router is path-first (see src/router.ts).
+  // The old `hash.split('?')[0]` base is '' on a clean URL, which made
+  // clearUrl() a no-op: replaceState('') resolves to the current URL.
   private writeUrl(date: Date): void {
-    const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    const params = readRouteParams();
     params.set('t', date.toISOString());
     params.set('range', this.currentRange);
-    const base = window.location.hash.split('?')[0];
-    window.history.replaceState(null, '', `${base}?${params.toString()}`);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
   }
 
   private clearUrl(): void {
-    const base = window.location.hash.split('?')[0];
-    window.history.replaceState(null, '', base);
+    window.history.replaceState(null, '', window.location.pathname);
   }
 
   private applyFromUrl(): void {
-    const query = window.location.hash.split('?')[1];
-    if (!query) return;
-    const params = new URLSearchParams(query);
+    const params = readRouteParams();
+    if (!params.has('t') && !params.has('range')) return;
     const r = params.get('range') as ScrubRange | null;
     if (r && RANGE_MS[r] != null) {
       this.currentRange = r;

@@ -134,6 +134,61 @@ export function estimateAnthropicCost(
 }
 
 /**
+ * Map a full Anthropic model id to a pricing family.
+ *
+ * Call sites hold ids like `claude-sonnet-4-5-20250929`, not the bare
+ * family, so every one of them would otherwise hand-write this mapping.
+ *
+ * An UNRECOGNISED model is priced as `opus` — the most expensive family —
+ * on purpose. This feeds a kill-switch, and the two ways to be wrong are
+ * not symmetrical: over-estimating trips the cap early and someone
+ * investigates, while under-estimating lets real spend through invisibly,
+ * which is the failure this whole module exists to prevent. A new model id
+ * should cost us a false alarm, never a blind spot.
+ */
+export function anthropicFamily(model: string): 'sonnet' | 'opus' | 'haiku' {
+  const m = model.toLowerCase();
+  if (m.includes('haiku')) return 'haiku';
+  if (m.includes('sonnet')) return 'sonnet';
+  return 'opus';
+}
+
+/** The `usage` block Anthropic returns on a successful /v1/messages call. */
+export interface AnthropicUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cached_input_tokens?: number;
+}
+
+/**
+ * Record the spend of one Anthropic call from its response `usage` block.
+ *
+ * This exists so that recording is a ONE-LINE change at a call site. The
+ * convention in this file's header — check, call, record — was documented
+ * from the start and followed by 2 of 12 call sites; a convention that
+ * costs five lines to honour is a convention that gets skipped. Pair it
+ * with scripts/check-llm-spend.ts, which fails CI when a new call site
+ * does not record.
+ *
+ * Safe to await unconditionally: recordSpend swallows its own errors and
+ * no-ops when DATABASE_URL is unset.
+ */
+export async function recordAnthropicSpend(
+  model: string,
+  usage: AnthropicUsage | undefined,
+  endpoint: string,
+): Promise<void> {
+  if (!usage) return;
+  const cost = estimateAnthropicCost(anthropicFamily(model), {
+    input_tokens: usage.input_tokens,
+    output_tokens: usage.output_tokens,
+    cached_input_tokens: usage.cache_read_input_tokens ?? usage.cached_input_tokens,
+  });
+  await recordSpend(cost, endpoint);
+}
+
+/**
  * Estimate USD spend for OpenAI tts-1: $15 / 1M chars.
  */
 export function estimateOpenAiTtsCost(chars: number): number {

@@ -34,6 +34,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { recordAnthropicSpend, type AnthropicUsage } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -198,6 +199,7 @@ Return ONLY a JSON object with exactly this shape (no prose, no markdown):
 
 interface ClaudeResponse {
   content?: { type: string; text: string }[];
+  usage?: AnthropicUsage;
 }
 
 async function callSemanticCheck(
@@ -232,6 +234,7 @@ Score this draft against the NexusWatch voice model v1. Return the JSON object o
   }
 
   const body = (await res.json()) as ClaudeResponse;
+  await recordAnthropicSpend('claude-haiku-4-5-20251001', body.usage, 'voice-eval');
   const text = (body.content || [])
     .filter((b) => b.type === 'text')
     .map((b) => b.text)

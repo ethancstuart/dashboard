@@ -26,7 +26,7 @@ const STEPS: TourStep[] = [
   },
   {
     target: '.nw-country-panel, .nw-cii-panel, [class*="country-panel"], [class*="cii"]',
-    text: 'Country Instability Index — a 0-100 risk score for 150+ nations. Built from conflict data, disaster feeds, sentiment, infrastructure, governance, and market exposure. Click any country for the full breakdown.',
+    text: 'Country Instability Index — a 0-100 risk score for 85 nations. Built from conflict data, disaster feeds, sentiment, infrastructure, governance, and market exposure. Click any country for the full breakdown.',
     position: 'left',
   },
   {

@@ -6,10 +6,15 @@ import { registerCommandPalette } from './ui/commandPalette.ts';
 import { registerPwaInstall } from './ui/pwaInstall.ts';
 import { initDataToasts } from './ui/dataToast.ts';
 import { initSentry, captureError } from './services/sentry.ts';
+import { initWebAnalytics } from './services/webAnalytics.ts';
 
 applyTheme();
 applyDensity();
 initDataToasts();
+// Aggregate traffic for nexuswatch.dev. Reports hash-route changes itself —
+// inject() alone has no route support. Inert until Web Analytics is enabled
+// for the project in the Vercel dashboard.
+initWebAnalytics();
 
 // 2026-05-02: defer Sentry init off the critical path. Saves ~400KB parse cost
 // from first paint. We still capture errors that fire before idle via the
@@ -47,12 +52,11 @@ function transition(root: HTMLElement): Promise<void> {
 function showRouteError(root: HTMLElement, err: unknown, retryFn?: (() => void) | null) {
   // Default retry: reload the current route
   if (retryFn === undefined) {
+    // The router is path-first now (src/router.ts), so the old
+    // clear-the-hash-and-set-it-back trick would navigate to '/' instead of
+    // re-rendering the current route. Reload the route we are actually on.
     retryFn = () => {
-      const hash = window.location.hash || '#/';
-      window.location.hash = '';
-      requestAnimationFrame(() => {
-        window.location.hash = hash;
-      });
+      window.location.reload();
     };
   }
   root.textContent = '';

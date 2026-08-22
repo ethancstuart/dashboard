@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { recordAnthropicSpend, type AnthropicUsage } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -99,7 +100,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('[alerts/compile] model error:', resp.status, err.slice(0, 200));
       return res.status(502).json({ error: 'model_error', status: resp.status });
     }
-    const data = (await resp.json()) as { content: Array<{ type: string; text?: string }> };
+    const data = (await resp.json()) as {
+      content: Array<{ type: string; text?: string }>;
+      usage?: AnthropicUsage;
+    };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', data.usage, 'alerts-compile');
     const raw = data.content
       .filter((b) => b.type === 'text')
       .map((b) => b.text ?? '')

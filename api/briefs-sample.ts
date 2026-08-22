@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kvCached } from './_lib/kvCache.js';
 import { rateLimit, applyRateLimitHeaders } from './_lib/rateLimit.js';
+import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 25 };
 
@@ -64,6 +65,7 @@ interface ClaudeContentBlock {
 
 interface ClaudeResponse {
   content?: ClaudeContentBlock[];
+  usage?: AnthropicUsage;
 }
 
 async function fetchTopMovers(host: string): Promise<CIIScore[]> {
@@ -129,6 +131,7 @@ ${moversText}`;
     });
     if (!res.ok) return null;
     const data = (await res.json()) as ClaudeResponse;
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', data.usage, 'briefs-sample');
     const text = (data.content || [])
       .filter((b) => b.type === 'text')
       .map((b) => b.text || '')

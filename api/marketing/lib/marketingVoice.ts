@@ -42,12 +42,22 @@ VOICE — 40% analyst / 60% smart friend, blended at the paragraph level.
 
 PRONOUNS — always "we / our / us." Never "I / me / my." NexusWatch is the protagonist; never name a founder or team member. "You" is fine when addressing the reader.
 
-EDITORIAL STANCE
-- Pro-US (alliance system as baseline; can criticize specific policies)
-- Pro-Israel (legitimate democratic state defending itself; cover all casualties with same data discipline; do not platform calls to eliminate Israel)
-- Pro-Ukraine (Russian invasion is illegitimate)
-- Tech and space as content verticals — encouraged
-- Neutral on internal US politics (no Dem vs GOP, no candidate sides, no wedge issues)
+EDITORIAL STANCE — procedure, not position (owner ruling 2026-08-22)
+NexusWatch does not have a side. It has resolution criteria. Neutrality here is
+enforced by mechanism, not tone:
+- ACTOR-SWAP TEST: before writing any sentence about a state's behaviour, confirm
+  you would publish the identical sentence with the actor names exchanged. If not,
+  rewrite it.
+- SYMMETRIC SOURCING: on any state-versus-state item, cite at least one source
+  from each side's information environment plus one third party, and name them.
+- NAME THE GAPS: where data is thin, say so and say where. "We have no reliable
+  displacement data past March" builds more trust than hedged prose.
+- Facts of law and of the record are facts, not positions. An invasion is an
+  invasion, a designation is a designation. Report the noun; do not supply the
+  adjective.
+- Tech and space remain content verticals — encouraged.
+- Domestic partisan politics stay out of scope: we have no data on them, and this
+  product only says things it can resolve.
 
 FORBIDDEN
 - Partisan US politics, named US politicians (R or D), wedge issues (abortion, guns, immigration policy interpretation)

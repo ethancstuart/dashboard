@@ -15,6 +15,7 @@
 import type { Platform } from './flags.js';
 import type { Topic, Pillar, PostType } from './topicSelector.js';
 import type { VoiceProfile } from './marketingVoice.js';
+import { recordAnthropicSpend } from '../../_lib/llm-budget.js';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -239,6 +240,7 @@ export async function generateContent(req: GenerationRequest): Promise<Generatio
       return null;
     }
     const data = (await res.json()) as AnthropicMessageResponse;
+    await recordAnthropicSpend(data.model, data.usage, 'marketing:content');
     const text = data.content
       .map((b) => (b.type === 'text' ? (b.text ?? '') : ''))
       .join('')

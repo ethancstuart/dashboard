@@ -1,3 +1,4 @@
+import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
 export const config = { runtime: 'edge' };
 
 const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://nexuswatch.dev' };
@@ -108,7 +109,11 @@ RULES:
         });
       }
 
-      const result = (await res.json()) as { content?: { type: string; text: string }[] };
+      const result = (await res.json()) as {
+        content?: { type: string; text: string }[];
+        usage?: AnthropicUsage;
+      };
+      await recordAnthropicSpend('claude-haiku-4-5-20251001', result.usage, 'sitrep');
       const text = (result.content || [])
         .filter((b: { type: string }) => b.type === 'text')
         .map((b: { text: string }) => b.text)
@@ -209,7 +214,11 @@ Rules:
       return new Response(JSON.stringify({ error: `AI error: ${res.status}` }), { status: 502, headers: CORS_HEADERS });
     }
 
-    const result = (await res.json()) as { content?: { type: string; text: string }[] };
+    const result = (await res.json()) as {
+      content?: { type: string; text: string }[];
+      usage?: AnthropicUsage;
+    };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', result.usage, 'sitrep:narrate');
     const text = (result.content || [])
       .filter((b: { type: string }) => b.type === 'text')
       .map((b: { text: string }) => b.text)

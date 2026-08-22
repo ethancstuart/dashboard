@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -203,7 +204,9 @@ async function handleBuffered(
     const data = (await response.json()) as {
       content: Array<{ type: string; text?: string; name?: string; input?: Record<string, unknown>; id?: string }>;
       stop_reason: string;
+      usage?: AnthropicUsage;
     };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', data.usage, 'ai-analyst');
 
     if (data.stop_reason === 'tool_use') {
       const dbUrl = process.env.DATABASE_URL;
@@ -247,7 +250,9 @@ async function handleBuffered(
 
       const followUpData = (await followUp.json()) as {
         content: Array<{ type: string; text?: string }>;
+        usage?: AnthropicUsage;
       };
+      await recordAnthropicSpend('claude-haiku-4-5-20251001', followUpData.usage, 'ai-analyst:tool-followup');
 
       const text = followUpData.content
         .filter((b) => b.type === 'text')
@@ -314,7 +319,9 @@ async function handleStreaming(
     const firstData = (await firstRes.json()) as {
       content: Array<{ type: string; text?: string; name?: string; input?: Record<string, unknown>; id?: string }>;
       stop_reason: string;
+      usage?: AnthropicUsage;
     };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', firstData.usage, 'ai-analyst:stream-first');
 
     // No tool use — just emit the text and done.
     if (firstData.stop_reason !== 'tool_use') {
@@ -382,6 +389,12 @@ async function handleStreaming(
     const reader = followRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    // A streamed response has no JSON body to read usage from: Anthropic
+    // reports input_tokens on `message_start` and output_tokens on
+    // `message_delta`. Accumulate as the frames go past and record once the
+    // stream closes — otherwise the most expensive path in this file (a
+    // tool-using, streamed answer) would be the one that spends silently.
+    const streamUsage: AnthropicUsage = {};
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -398,7 +411,15 @@ async function handleStreaming(
           const ev = JSON.parse(json) as {
             type: string;
             delta?: { type?: string; text?: string };
+            message?: { usage?: AnthropicUsage };
+            usage?: AnthropicUsage;
           };
+          if (ev.type === 'message_start' && ev.message?.usage) {
+            streamUsage.input_tokens = ev.message.usage.input_tokens;
+            streamUsage.cache_read_input_tokens = ev.message.usage.cache_read_input_tokens;
+          } else if (ev.type === 'message_delta' && ev.usage) {
+            streamUsage.output_tokens = ev.usage.output_tokens;
+          }
           if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
             sseSend('token', { text: ev.delta.text });
           }
@@ -408,6 +429,7 @@ async function handleStreaming(
       }
     }
 
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', streamUsage, 'ai-analyst:stream-followup');
     sseSend('done', { toolsUsed });
     res.end();
   } catch (err) {
