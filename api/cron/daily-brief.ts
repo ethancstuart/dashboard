@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
+import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
 
@@ -770,7 +771,7 @@ ${(() => {
       try {
         // beehiiv rejects a malformed publication id with an opaque 400 that
         // names a regex and nothing else. Production ran that 400 every day
-        // for 26 consecutive days (brief_delivery_log, 2026-07-27 .. 08-22)
+        // for 34 consecutive days (brief_delivery_log, since 2026-07-09)
         // because the error was recorded and never surfaced. Check the shape
         // ourselves and say which env var is wrong and what it should look
         // like — a config error should read as a config error.
@@ -1113,6 +1114,69 @@ ${(() => {
           latencyMs: Date.now() - notionT0,
         });
       }
+    }
+
+    // === Delivery-channel health check ===
+    // Runs last, once every channel above has recorded its outcome. Recording
+    // a failure is not the same as reporting one: beehiiv 400'd on every run
+    // for 34 consecutive days (since 2026-07-09) and the only witness was a
+    // Postgres row nobody read.
+    //
+    // NOTE the ::text cast. `brief_date` is a TEXT column, not a date — the
+    // obvious `brief_date > CURRENT_DATE - INTERVAL '45 days'` raises
+    // "operator does not exist: text > timestamp", and the catch below would
+    // have swallowed it. A silent failure inside the thing built to stop
+    // silent failures. Caught by running this query against production.
+    //
+    // Swallows its own errors — a broken alert must never break a brief.
+    try {
+      const recent = (await sql`
+        SELECT channel, brief_date::text AS brief_date, status, error
+        FROM brief_delivery_log
+        WHERE brief_date > (CURRENT_DATE - INTERVAL '45 days')::text
+      `) as Array<{ channel: string; brief_date: string; status: string; error: string | null }>;
+
+      const broken = channelsToAlert(recent);
+      if (broken.length > 0) {
+        const admins = (process.env.ADMIN_EMAILS || '')
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean);
+        const alertKey = process.env.RESEND_API_KEY;
+        const body = formatAlertBody(broken);
+        console.error('[daily-brief] delivery channel alert:\n' + body);
+
+        if (alertKey && admins.length > 0) {
+          const subject =
+            broken.length === 1
+              ? `NexusWatch: ${broken[0].channel} delivery has failed ${broken[0].streak} days running`
+              : `NexusWatch: ${broken.length} delivery channels are failing`;
+          const alertRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${alertKey}` },
+            body: JSON.stringify({
+              from: 'NexusWatch Alerts <alerts@nexuswatch.dev>',
+              to: admins,
+              subject,
+              text: body,
+            }),
+            signal: AbortSignal.timeout(10000),
+          });
+          if (!alertRes.ok) {
+            console.error('[daily-brief] delivery alert email failed:', alertRes.status);
+          }
+        } else {
+          console.error(
+            '[daily-brief] delivery alert NOT emailed: ' +
+              (admins.length === 0 ? 'ADMIN_EMAILS is empty' : 'RESEND_API_KEY is unset'),
+          );
+        }
+      }
+    } catch (healthErr) {
+      console.error(
+        '[daily-brief] delivery health check failed (non-fatal):',
+        healthErr instanceof Error ? healthErr.message : healthErr,
+      );
     }
 
     return res.json({ success: true, date: today, briefLength: briefHtml.length, ai: aiDebug });
