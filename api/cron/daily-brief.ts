@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
+import { recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
 
@@ -680,7 +681,14 @@ ${(() => {
         });
 
         if (aiRes.ok) {
-          const aiData = (await aiRes.json()) as { content: Array<{ text: string }> };
+          const aiData = (await aiRes.json()) as {
+            content: Array<{ text: string }>;
+            usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number };
+          };
+          // The single largest, most reliable Anthropic spend in the system —
+          // a full Sonnet brief, every day at 10:00 UTC — and until now it
+          // recorded nothing, leaving the $9/day kill-switch blind to it.
+          await recordAnthropicSpend('claude-sonnet-4-5-20250929', aiData.usage, 'daily-brief');
           briefText = aiData.content?.[0]?.text || '';
           if (!briefText) {
             aiDebug = 'ai-empty-response';

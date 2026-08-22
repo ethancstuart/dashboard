@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
@@ -218,6 +219,7 @@ CRITICAL RULES:
       usage?: { input_tokens: number; output_tokens: number };
     };
 
+    await recordAnthropicSpend('claude-sonnet-4-5', result.usage, 'intelligence-report');
     const reportText = result.content?.[0]?.text || '';
     const tokens = result.usage;
 

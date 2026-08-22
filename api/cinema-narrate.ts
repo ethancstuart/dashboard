@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
 
 const CORS_ORIGIN = 'https://nexuswatch.dev';
 function setCors(res: VercelResponse): VercelResponse {
@@ -59,7 +60,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const data = (await response.json()) as {
       content: Array<{ type: string; text: string }>;
+      usage?: AnthropicUsage;
     };
+    await recordAnthropicSpend('claude-haiku-4-5-20251001', data.usage, 'cinema-narrate');
 
     const narration = data.content?.[0]?.text || '';
 
