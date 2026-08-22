@@ -4,122 +4,423 @@
     "env": {}
   },
   "functions": {
-    "api/v2/council.ts": { "maxDuration": 60 },
-    "api/cron/export-parquet.ts": { "maxDuration": 300 },
-    "api/cron/forecast-record.ts": { "maxDuration": 300 },
-    "api/cron/forecast-backtest.ts": { "maxDuration": 180 },
-    "api/cron/audio-brief.ts": { "maxDuration": 300 },
-    "api/voice/ask.ts": { "maxDuration": 30 }
+    "api/v2/council.ts": {
+      "maxDuration": 60
+    },
+    "api/cron/export-parquet.ts": {
+      "maxDuration": 300
+    },
+    "api/cron/forecast-record.ts": {
+      "maxDuration": 300
+    },
+    "api/cron/forecast-backtest.ts": {
+      "maxDuration": 180
+    },
+    "api/cron/audio-brief.ts": {
+      "maxDuration": 300
+    },
+    "api/voice/ask.ts": {
+      "maxDuration": 30
+    }
   },
   "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/feed.xml", "destination": "/api/feed" },
-    { "source": "/rss.xml", "destination": "/api/feed" },
-    { "source": "/atom.xml", "destination": "/api/atom" },
-    { "source": "/rss/cii", "destination": "/api/rss/cii" },
-    { "source": "/country/:code", "destination": "/api/country/:code" },
-    { "source": "/brief/:date(\\d{4}-\\d{2}-\\d{2})", "destination": "/api/brief/og?date=:date" },
-    { "source": "/intel", "destination": "/index.html" },
-    { "source": "/briefs", "destination": "/index.html" },
-    { "source": "/methodology", "destination": "/index.html" },
-    { "source": "/accuracy", "destination": "/index.html" },
-    { "source": "/portfolio", "destination": "/index.html" },
-    { "source": "/watchlist", "destination": "/index.html" },
-    { "source": "/feed", "destination": "/index.html" },
-    { "source": "/compare", "destination": "/index.html" },
-    { "source": "/entities", "destination": "/index.html" },
-    { "source": "/audit", "destination": "/index.html" },
-    { "source": "/audit/:country", "destination": "/index.html" },
-    { "source": "/about", "destination": "/index.html" },
-    { "source": "/why-free", "destination": "/index.html" },
-    { "source": "/api-docs", "destination": "/index.html" },
-    { "source": "/mcp", "destination": "/index.html" },
-    { "source": "/live-brief/:code", "destination": "/index.html" },
-    { "source": "/what-if", "destination": "/index.html" },
-    { "source": "/what-if/:id", "destination": "/index.html" },
-    { "source": "/cinematic", "destination": "/index.html" },
-    { "source": "/lab", "destination": "/index.html" },
-    { "source": "/audio", "destination": "/index.html" },
-    { "source": "/globe", "destination": "/index.html" },
-    { "source": "/data/manifest.json", "destination": "/api/data/manifest" },
-    { "source": "/podcast.xml", "destination": "/api/podcast.xml" },
-    { "source": "/whats-new", "destination": "/index.html" },
-    { "source": "/status", "destination": "/index.html" },
-    { "source": "/faq", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" },
-    { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/security", "destination": "/index.html" },
-    { "source": "/settings", "destination": "/index.html" }
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/feed.xml",
+      "destination": "/api/feed"
+    },
+    {
+      "source": "/rss.xml",
+      "destination": "/api/feed"
+    },
+    {
+      "source": "/atom.xml",
+      "destination": "/api/atom"
+    },
+    {
+      "source": "/rss/cii",
+      "destination": "/api/rss/cii"
+    },
+    {
+      "source": "/country/:code",
+      "destination": "/api/country/:code"
+    },
+    {
+      "source": "/brief/:date(\\d{4}-\\d{2}-\\d{2})",
+      "destination": "/api/brief/og?date=:date"
+    },
+    {
+      "source": "/intel",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/briefs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/methodology",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/accuracy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/portfolio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/watchlist",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/feed",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/compare",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/entities",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/audit",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/audit/:country",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/why-free",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/api-docs",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/live-brief/:code",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/what-if",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/what-if/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/cinematic",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/lab",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/audio",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/globe",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/data/manifest.json",
+      "destination": "/api/data/manifest"
+    },
+    {
+      "source": "/podcast.xml",
+      "destination": "/api/podcast.xml"
+    },
+    {
+      "source": "/whats-new",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/index.html"
+    }
   ],
   "crons": [
-    { "path": "/api/cron/compute-cii", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/snapshot", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/cii-snapshot", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/daily-brief", "schedule": "0 10 * * *" },
-    { "path": "/api/cron/deliver-briefs", "schedule": "0 * * * *" },
-    { "path": "/api/cron/alert-dispatch", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/marketing-instagram", "schedule": "0 14,20 * * *" },
-    { "path": "/api/cron/source-fx-rates", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/source-eia-commodities", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/source-fred-yields", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/source-wikipedia-pageviews", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/source-ooni", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/source-promed", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/source-unhcr", "schedule": "0 3 15 * *" },
-    { "path": "/api/cron/source-reliefweb", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/alert-x", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/dark-vessels", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/data-lake", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/data-health", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/social-send", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/competitive-scan", "schedule": "0 9 * * 1" },
-    { "path": "/api/cron/weekly-recap", "schedule": "0 15 * * 0" },
-    { "path": "/api/cron/marketing-x", "schedule": "0 */3 * * *" },
-    { "path": "/api/cron/marketing-linkedin", "schedule": "0 11 * * 1-5" },
-    { "path": "/api/cron/marketing-substack", "schedule": "0 12 * * 0,3" },
-    { "path": "/api/cron/marketing-medium", "schedule": "0 14 * * 0" },
-    { "path": "/api/cron/marketing-bluesky", "schedule": "0 13,19 * * *" },
-    { "path": "/api/cron/marketing-threads", "schedule": "0 23 * * *" },
-    { "path": "/api/cron/marketing-engagement-poll", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/marketing-voice-learn", "schedule": "0 4 * * 1" },
-    { "path": "/api/cron/marketing-abtest-promote", "schedule": "0 5 * * 1" },
-    { "path": "/api/cron/crisis-detection", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/slack-alerts", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/record-assessments", "schedule": "30 10 * * *" },
-    { "path": "/api/cron/score-assessments", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/source-ofac", "schedule": "0 */6 * * *" },
-    { "path": "/api/cron/source-noaa-storms", "schedule": "0 * * * *" },
-    { "path": "/api/cron/source-copernicus", "schedule": "0 12 * * *" },
-    { "path": "/api/cron/source-vdem", "schedule": "0 3 1 * *" },
-    { "path": "/api/cron/scheduled-emails", "schedule": "0 * * * *" },
-    { "path": "/api/cron/cron-health", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/cache-warm", "schedule": "*/45 * * * *" },
-    { "path": "/api/cron/cost-summary", "schedule": "0 9 * * 1" },
-    { "path": "/api/cron/export-parquet", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/forecast-record", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/forecast-backtest", "schedule": "0 6 * * 0" },
-    { "path": "/api/cron/audio-brief", "schedule": "30 10 * * *" }
+    {
+      "path": "/api/cron/compute-cii",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/snapshot",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/cii-snapshot",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/daily-brief",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/deliver-briefs",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/alert-dispatch",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/marketing-instagram",
+      "schedule": "0 14,20 * * *"
+    },
+    {
+      "path": "/api/cron/source-fx-rates",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/source-eia-commodities",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/source-fred-yields",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/source-wikipedia-pageviews",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/source-ooni",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/source-promed",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/source-unhcr",
+      "schedule": "0 3 15 * *"
+    },
+    {
+      "path": "/api/cron/source-reliefweb",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/alert-x",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/dark-vessels",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/data-lake",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/data-health",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/social-send",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/competitive-scan",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/weekly-recap",
+      "schedule": "0 15 * * 0"
+    },
+    {
+      "path": "/api/cron/marketing-x",
+      "schedule": "0 */3 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-linkedin",
+      "schedule": "0 11 * * 1-5"
+    },
+    {
+      "path": "/api/cron/marketing-substack",
+      "schedule": "0 12 * * 0,3"
+    },
+    {
+      "path": "/api/cron/marketing-medium",
+      "schedule": "0 14 * * 0"
+    },
+    {
+      "path": "/api/cron/marketing-bluesky",
+      "schedule": "0 13,19 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-threads",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-engagement-poll",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/marketing-voice-learn",
+      "schedule": "0 4 * * 1"
+    },
+    {
+      "path": "/api/cron/marketing-abtest-promote",
+      "schedule": "0 5 * * 1"
+    },
+    {
+      "path": "/api/cron/crisis-detection",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/slack-alerts",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/record-assessments",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/score-assessments",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/source-ofac",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/source-noaa-storms",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/source-copernicus",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/source-vdem",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/scheduled-emails",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/cron-health",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/cache-warm",
+      "schedule": "*/45 * * * *"
+    },
+    {
+      "path": "/api/cron/cost-summary",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/export-parquet",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/forecast-record",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/forecast-backtest",
+      "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/audio-brief",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/record-calls",
+      "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/resolve-calls",
+      "schedule": "45 9 * * *"
+    }
   ],
   "headers": [
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Service-Worker-Allowed", "value": "/" },
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-        { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(self), geolocation=(self)" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(self), geolocation=(self)"
+        },
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'sha256-31fQF/g9KGmEnutu6M7cTHdK4cN5J5z5NRerO5mFMfQ='; style-src 'self' https://fonts.googleapis.com https://unpkg.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com https://*.basemaps.cartocdn.com; img-src 'self' data: https:; media-src 'self' https://*.public.blob.vercel-storage.com; connect-src 'self' https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://nominatim.openstreetmap.org https://gibs.earthdata.nasa.gov https://cdn.jsdelivr.net https://*.public.blob.vercel-storage.com; worker-src 'self' blob:; frame-src https://www.youtube.com https://*.windy.com https://livefromiceland.is https://*.skylinewebcams.com https://eol.jsc.nasa.gov; frame-ancestors 'self'; base-uri 'self'"
