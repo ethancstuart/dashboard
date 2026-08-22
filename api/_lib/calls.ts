@@ -233,6 +233,48 @@ export function blendRates(recent: number, longRun: number, recentWeight = 0.6):
   return clampProbability(w * recent + (1 - w) * longRun);
 }
 
+/**
+ * The standing line at the top of every brief.
+ *
+ * This is the habit mechanic, not a stat. A reader who saw a call made has a
+ * stake in it resolving, and the resolution arrives on a schedule they do not
+ * control — the same open-loop shape that makes people come back to a fixture
+ * list. It also drags the differentiator out of a page nobody visits and into
+ * the one surface with demonstrated daily engagement.
+ *
+ * Honest on day one: with nothing resolved yet it reports the open book rather
+ * than inventing a record, and says so.
+ */
+export function formatLedgerSummary(opts: {
+  resolvedToday: Call[];
+  allScored: ScoredCall[];
+  openCount: number;
+  nextResolvesOn?: string | null;
+}): string {
+  const { resolvedToday, allScored, openCount, nextResolvesOn } = opts;
+  const parts: string[] = [];
+
+  if (resolvedToday.length > 0) {
+    const hits = resolvedToday.filter((c) => c.status === 'hit').length;
+    parts.push(`${resolvedToday.length} call${resolvedToday.length === 1 ? '' : 's'} resolved · ${hits} hit`);
+  }
+
+  if (allScored.length > 0) {
+    const bs = brierScore(allScored);
+    const skill = brierSkillScore(allScored);
+    parts.push(`Brier ${bs.toFixed(3)} over ${allScored.length}`);
+    if (!Number.isNaN(skill)) {
+      parts.push(`${skill >= 0 ? '+' : ''}${(skill * 100).toFixed(0)}% vs base rate`);
+    }
+  }
+
+  if (openCount > 0) {
+    parts.push(nextResolvesOn ? `${openCount} open, next resolves ${nextResolvesOn}` : `${openCount} open`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : 'No calls on the book yet.';
+}
+
 /** A one-line summary for the brief's ledger section. */
 export function formatLedgerLine(resolved: Call[], calls: ScoredCall[]): string {
   if (resolved.length === 0) return 'No calls resolved today.';

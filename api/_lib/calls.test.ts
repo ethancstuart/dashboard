@@ -10,6 +10,7 @@ import {
   clampProbability,
   blendRates,
   formatLedgerLine,
+  formatLedgerSummary,
   type ScoredCall,
   type Call,
 } from './calls.js';
@@ -218,5 +219,65 @@ describe('blendRates', () => {
   it('never states an unfalsifiable certainty', () => {
     expect(blendRates(1, 1)).toBeLessThan(1);
     expect(blendRates(0, 0)).toBeGreaterThan(0);
+  });
+});
+
+describe('formatLedgerSummary — the standing line at the top of the brief', () => {
+  const mk = (status: Call['status']): Call => ({
+    madeOn: '2026-08-08',
+    kind: 'censorship_event',
+    countryCode: 'IR',
+    probability: 0.84,
+    horizonDays: 14,
+    resolvesOn: '2026-08-22',
+    claim: 'x',
+    resolver: 'OONI',
+    status,
+  });
+
+  it('is honest on day one instead of inventing a record', () => {
+    expect(formatLedgerSummary({ resolvedToday: [], allScored: [], openCount: 0 })).toBe('No calls on the book yet.');
+  });
+
+  it('reports the open book before anything has resolved', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [],
+      allScored: [],
+      openCount: 39,
+      nextResolvesOn: '2026-09-05',
+    });
+    expect(line).toBe('39 open, next resolves 2026-09-05');
+  });
+
+  it('leads with what resolved once there is a record', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [mk('hit'), mk('miss')],
+      allScored: [c(0.84, 1), c(0.2, 0)],
+      openCount: 37,
+      nextResolvesOn: '2026-09-06',
+    });
+    expect(line).toContain('2 calls resolved · 1 hit');
+    expect(line).toContain('Brier');
+    expect(line).toContain('37 open');
+  });
+
+  it('prints a negative skill score rather than omitting it', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [mk('miss')],
+      allScored: [c(0.9, 0), c(0.1, 1)],
+      openCount: 1,
+    });
+    expect(line).toContain('-');
+    expect(line).toContain('vs base rate');
+  });
+
+  it('omits skill rather than printing NaN when every outcome is identical', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [mk('hit')],
+      allScored: [c(0.8, 1), c(0.7, 1)],
+      openCount: 0,
+    });
+    expect(line).not.toContain('NaN');
+    expect(line).toContain('Brier');
   });
 });

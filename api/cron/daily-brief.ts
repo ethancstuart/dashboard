@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
+import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
 import { recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
@@ -710,6 +711,59 @@ ${(() => {
     } else {
       aiDebug = 'no-api-key';
       briefText = buildFallbackText(briefData);
+    }
+
+    // === The Ledger line (Phase 2) ===
+    // Goes at the very top of the brief, above everything the model wrote.
+    // This is the habit mechanic: a reader who saw a call made has a stake in
+    // it resolving, and the resolution lands on a schedule they do not
+    // control. It also drags the differentiator out of a page nobody visits
+    // and into the one surface with demonstrated daily engagement.
+    //
+    // Non-fatal by construction — a brief must still go out if the ledger
+    // query fails, and it must never claim a record it does not have.
+    try {
+      const resolvedToday = (await sql`
+        SELECT country_code, status, probability::float AS probability
+        FROM calls
+        WHERE resolved_at::date = CURRENT_DATE AND status <> 'pending'
+      `) as unknown as Array<{ country_code: string; status: string; probability: number }>;
+
+      const allScoredRows = (await sql`
+        SELECT probability::float AS probability, status
+        FROM calls
+        WHERE status <> 'pending'
+      `) as unknown as Array<{ probability: number; status: string }>;
+
+      const openRows = (await sql`
+        SELECT COUNT(*)::int AS n, MIN(resolves_on)::text AS next_resolves
+        FROM calls WHERE status = 'pending'
+      `) as unknown as Array<{ n: number; next_resolves: string | null }>;
+
+      const allScored: ScoredCall[] = allScoredRows.map((r) => ({
+        probability: r.probability,
+        outcome: r.status === 'hit' ? 1 : 0,
+      }));
+
+      const ledger = formatLedgerSummary({
+        resolvedToday: resolvedToday as unknown as Call[],
+        allScored,
+        openCount: openRows[0]?.n ?? 0,
+        nextResolvesOn: openRows[0]?.next_resolves ?? null,
+      });
+
+      // Insert immediately after the H1 so it is the first thing read.
+      const lines = briefText.split('\n');
+      const h1 = lines.findIndex((l) => l.startsWith('# '));
+      const block = ['', `> **The Ledger** — ${ledger}`, ''];
+      if (h1 >= 0) lines.splice(h1 + 1, 0, ...block);
+      else lines.unshift(...block);
+      briefText = lines.join('\n');
+    } catch (ledgerErr) {
+      console.error(
+        '[daily-brief] ledger line skipped (non-fatal):',
+        ledgerErr instanceof Error ? ledgerErr.message : ledgerErr,
+      );
     }
 
     // === Render Light Intel Dossier (Track B.3) ===

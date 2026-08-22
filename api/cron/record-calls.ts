@@ -102,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
            resolves_on, resolver, threshold, base_rate)
         VALUES
           (CURRENT_DATE, ${KIND}, ${r.country_code}, ${claim}, ${probability}, ${HORIZON_DAYS},
-           CURRENT_DATE + ${HORIZON_DAYS}, ${RESOLVER}, ${THRESHOLD}, ${longRun})
+           CURRENT_DATE + (${HORIZON_DAYS}::int), ${RESOLVER}, ${THRESHOLD}, ${longRun})
         ON CONFLICT (made_on, kind, country_code) DO UPDATE
           SET probability = EXCLUDED.probability,
               base_rate   = EXCLUDED.base_rate,
