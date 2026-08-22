@@ -52,12 +52,11 @@ function transition(root: HTMLElement): Promise<void> {
 function showRouteError(root: HTMLElement, err: unknown, retryFn?: (() => void) | null) {
   // Default retry: reload the current route
   if (retryFn === undefined) {
+    // The router is path-first now (src/router.ts), so the old
+    // clear-the-hash-and-set-it-back trick would navigate to '/' instead of
+    // re-rendering the current route. Reload the route we are actually on.
     retryFn = () => {
-      const hash = window.location.hash || '#/';
-      window.location.hash = '';
-      requestAnimationFrame(() => {
-        window.location.hash = hash;
-      });
+      window.location.reload();
     };
   }
   root.textContent = '';

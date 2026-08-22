@@ -42,7 +42,9 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
-    <link rel="canonical" href="https://nexuswatch.dev/" />
+    <!-- No static canonical: it applied to every route and collapsed the whole
+         site to one page for crawlers. src/utils/seo.ts setPageSeo() writes the
+         correct per-route canonical, creating the tag when absent. -->
     <link rel="alternate" type="application/atom+xml" title="NexusWatch Intelligence Brief (Atom)" href="/api/atom" />
 
     <!-- Open Graph / Social -->
@@ -58,8 +60,8 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="https://nexuswatch.dev/" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@nexuswatch_io" />
-    <meta name="twitter:creator" content="@nexuswatch_io" />
+    <meta name="twitter:site" content="@NexusWatchDev" />
+    <meta name="twitter:creator" content="@NexusWatchDev" />
     <meta name="twitter:title" content="NexusWatch · Real-Time Geopolitical Intelligence" />
     <meta
       name="twitter:description"
@@ -96,7 +98,7 @@
             "name": "NexusWatch",
             "url": "https://nexuswatch.dev/",
             "logo": "https://nexuswatch.dev/icons/icon-512.svg",
-            "sameAs": ["https://twitter.com/nexuswatch_io", "https://github.com/ethancstuart/nexus-watch"]
+            "sameAs": ["https://twitter.com/NexusWatchDev", "https://github.com/ethancstuart/nexus-watch"]
           }
         ]
       }

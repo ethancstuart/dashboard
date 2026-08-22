@@ -68,7 +68,7 @@ export function renderLanding(root: HTMLElement): void {
         <h1 class="nw-hero-headline word-stagger" aria-label="The world, watched.">
           <span>The</span> <span>world,</span> <span>watched<span class="nw-hero-period">.</span></span>
         </h1>
-        <p class="nw-hero-sub">45+ live data layers. 158 countries scored. Daily AI briefs. Free.</p>
+        <p class="nw-hero-sub">45+ live data layers. 85 countries scored. Daily AI briefs. Free.</p>
         <a href="#/intel" class="nw-hero-cta" data-cta="hero-primary">
           Open the dashboard <span class="nw-hero-cta-arrow" aria-hidden="true">→</span>
         </a>
@@ -90,7 +90,7 @@ export function renderLanding(root: HTMLElement): void {
           <p class="nw-feature-desc">Earthquakes, conflict, sanctions, shipping, satellites, AI sentiment, dark vessels, undersea cables, and thirty-seven more — refreshed continuously.</p>
         </article>
         <article class="nw-feature">
-          <span class="nw-feature-label">86 Countries</span>
+          <span class="nw-feature-label">85 Countries</span>
           <h3 class="nw-feature-title">A scored world.</h3>
           <p class="nw-feature-desc">The Country Instability Index decomposes into six weighted components with evidence chains and confidence badges. Click a number, see the data behind it.</p>
         </article>
