@@ -91,33 +91,62 @@ never like a report with a joke stapled to the front.
 
 ---
 
-## Editorial stance
+## Editorial stance — procedure, not position
 
-Codified from `feedback_nexuswatch_stance.md`. These are not secret preferences —
-they're how we write, and they go in the spec because the drafting engine needs
-to know them.
+**Owner ruling, 2026-08-22.** This section previously declared a position —
+Pro-US, Pro-Israel, Pro-Ukraine — introduced with the line "these are not secret
+preferences." It was true that they were not secret: this file is tracked, and
+the repository is public and MIT-licensed. Meanwhile `api/cron/daily-brief.ts`
+instructed the brief writer "EDITORIAL STANCE: neutral, data-driven — frame from
+evidence, not ideology."
 
-- **Pro-US.** We cover US interests, allies, and adversaries from a position
-  that treats the US alliance system as the baseline for the global order. We
-  can be critical of specific US policies while remaining pro-US.
-- **Pro-Israel.** We cover the Israel-Hamas and wider regional conflicts with
-  the understanding that Israel is a US ally and a legitimate democratic state
-  defending itself. We cover casualties on all sides with the same data
-  discipline, but we do not platform calls to eliminate Israel or frame the
-  conflict as colonialist.
-- **Pro-Ukraine (as an extension of pro-US alliance stance).** We cover the
-  Ukraine war with the assumption that the Russian invasion is illegitimate.
-- **Tech and space as content verticals.** SpaceX launches, starlink outages,
-  satellite intelligence, and frontier tech built by US and allied companies
-  are on-topic and encouraged as a softer entry point into hard geopolitics.
-- **Neutral on internal US politics.** We do not take sides on domestic US
-  partisan fights (Dem vs GOP, candidate A vs candidate B). This is the one
-  place our voice is explicitly quiet.
+Both were public, in the same repository, on the same day. A reader who found
+this file would have been right to treat the neutrality claim as discredited,
+and that is a worse outcome than either honest position on its own. The ruling
+was to keep neutrality and delete the position, because **the product's whole
+claim is a scored, falsifiable record, and a declared alignment is incompatible
+with asking people to trust a score.**
 
-The editorial stance is a filter, not a megaphone. We are not a commentary
-account. The voice is still 40/60 analyst/smart-friend; the stance just tells
-us which conflicts we cover as democracies defending themselves and which ones
-we cover as aggressor actions.
+Neutrality is not a tone and cannot be achieved by banning adjectives. It is
+enforced by five mechanisms, each of which a reader can check:
+
+1. **Pre-registered resolution criteria.** Every call states "resolves YES if
+   [named external source] reports [threshold] by [date]" before the outcome is
+   known. You cannot spin a claim you committed to in advance. See
+   `api/_lib/calls.ts`.
+
+2. **The scoreboard, misses included.** Bias is a systematic error, and a
+   systematic error shows up in a Brier decomposition. Publishing reliability,
+   resolution and uncertainty means a reader can DETECT our bias without having
+   to trust us about it.
+
+3. **Symmetric sourcing.** On any state-versus-state item, cite at least one
+   source from each side's information environment plus one third party, and
+   name them in the brief. Mechanically checkable by the reader.
+
+4. **The actor-swap test.** Before writing any sentence about a state's
+   behaviour, confirm you would publish the identical sentence with the actor
+   names exchanged. If not, rewrite it. This is a procedure rather than a
+   sentiment, which is why it works.
+
+5. **Named gaps.** Where the data is thin, say so and say where. "We have no
+   reliable displacement data past March; treat this as low confidence" builds
+   more trust than hedged prose.
+
+**What this does not change.** Facts of international law and of the record are
+facts, not positions: an invasion is an invasion, a designation is a
+designation, a court ruling is a court ruling. Neutrality means we do not
+supply the adjective, not that we decline to report the noun.
+
+**Tech and space** remain on-topic content verticals — launches, outages,
+satellite intelligence — as a softer entry point into hard geopolitics.
+
+**Domestic partisan politics** remain out of scope. Not because our voice is
+quiet there, but because we have no data on it and this product only says
+things it can resolve.
+
+The line, when someone asks: **we do not have a side, we have resolution
+criteria.**
 
 ---
 
