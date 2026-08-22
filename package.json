@@ -15,9 +15,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "validate": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:llm-spend",
+    "validate": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run check:llm-spend && npm run check:collectors",
     "perf": "ANALYZE=1 npm run build",
-    "check:llm-spend": "tsx scripts/check-llm-spend.ts"
+    "check:llm-spend": "tsx scripts/check-llm-spend.ts",
+    "check:collectors": "tsx scripts/check-collectors.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -175,17 +175,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <div class="severity">${severity} — updated ${date}</div>
   <h2 style="font-size:14px;color:#888;margin-top:24px;letter-spacing:0.1em;">COMPONENTS</h2>
   <ul class="components">${componentHtml || '<li>No component data available</li>'}</ul>
-  <!-- V-Dem and Copernicus were listed here and on the landing page, but
-       vdem_indicators and copernicus_damage both hold zero rows: the collectors
-       are scheduled and returning nothing. Naming a source we do not actually
-       ingest is the one claim a transparency product cannot afford. Restored
-       when the collectors produce data. -->
   <p>Data sources: ACLED, USGS, NASA FIRMS, GDACS, GDELT, NOAA, OFAC, OONI, UNHCR.</p>
   <p><a href="https://nexuswatch.dev/brief-country/${code}">View full interactive analysis →</a></p>
   <p><a href="https://nexuswatch.dev/accuracy">Prediction accuracy ledger →</a></p>
 </body>
 </html>`;
 
+  // NOTE on the source list above: V-Dem and Copernicus used to be named there
+  // and on the landing page. vdem_indicators and copernicus_damage both hold
+  // zero rows — the collectors are scheduled and returning nothing — so naming
+  // them was a false claim on a public page. They go back when the collectors
+  // produce data. This reasoning lives here rather than in an HTML comment
+  // because an HTML comment ships to every visitor.
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=7200');
   return res.send(html);

@@ -37,5 +37,8 @@ jobs:
       - name: LLM spend recording
         run: npm run check:llm-spend
 
+      - name: Collector health (structural)
+        run: npm run check:collectors
+
       - name: Build
         run: npm run build
