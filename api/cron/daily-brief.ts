@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
 
@@ -767,6 +768,21 @@ ${(() => {
     if (beehiivKey && beehiivPubId) {
       const beehiivT0 = Date.now();
       try {
+        // beehiiv rejects a malformed publication id with an opaque 400 that
+        // names a regex and nothing else. Production ran that 400 every day
+        // for 26 consecutive days (brief_delivery_log, 2026-07-27 .. 08-22)
+        // because the error was recorded and never surfaced. Check the shape
+        // ourselves and say which env var is wrong and what it should look
+        // like — a config error should read as a config error.
+        if (!/^pub_[0-9a-fA-F-]+$/.test(beehiivPubId)) {
+          throw new Error(
+            'BEEHIIV_PUB_ID is malformed: expected the publication id in the ' +
+              'form pub_<uuid> (copy it from beehiiv → Settings → API). ' +
+              `Got a ${beehiivPubId.length}-character value starting ` +
+              `"${beehiivPubId.slice(0, 4)}". Fix the env var in Vercel; ` +
+              'no request was sent.',
+          );
+        }
         // Extract Good Morning line for subtitle
         const subtitleMatch = briefText.match(/## ☕ Good Morning\n+([\s\S]*?)(?=\n##|\n\n##)/);
         const subtitle = subtitleMatch
@@ -858,13 +874,17 @@ ${(() => {
               .slice(0, 180) || ''
           : '';
 
-        const postText = [
-          `☕ ${goodMorning.slice(0, 220)}`,
-          topStory ? `\n\n📍 ${topStory}` : '',
-          `\n\nFull brief → brief.nexuswatch.dev`,
-        ]
-          .join('')
-          .slice(0, 280);
+        // NOT `.slice(0, 280)`. X counts weighted characters — the ☕ and 📍
+        // weigh 2 each and the trailing link weighs a flat 23 — so a string
+        // sliced to 280 JS characters measures over 280 at X and Buffer
+        // rejects the whole post. See api/_lib/x-post.ts.
+        const postText = truncateForX(
+          [
+            `☕ ${goodMorning.slice(0, 220)}`,
+            topStory ? `\n\n📍 ${topStory}` : '',
+            `\n\nFull brief → brief.nexuswatch.dev`,
+          ].join(''),
+        );
 
         // Create and queue the post on @NexusWatchDev
         const bufferRes = await fetch('https://api.buffer.com', {
@@ -901,6 +921,7 @@ ${(() => {
         // Buffer returns 200 even on GraphQL-level errors — inspect the body.
         let bufferPostId: string | undefined;
         let bufferMutationError: string | undefined;
+        let bufferDuplicate = false;
         try {
           const bufferData = (await bufferRes.json()) as {
             data?: { createPost?: { post?: { id?: string }; message?: string } };
@@ -913,15 +934,38 @@ ${(() => {
         }
 
         if (bufferMutationError) {
-          throw new Error(`buffer mutation: ${bufferMutationError}`);
+          // Buffer refuses an identical post already queued for the same
+          // window. That is the pipeline behaving correctly, not a delivery
+          // failure — recording it as `failed` buried the ONE error in this
+          // channel that actually needed a human (the 280-char rejection)
+          // among six that never did. Distinguish them.
+          if (/already got this one scheduled or posted/i.test(bufferMutationError)) {
+            console.log('[daily-brief] buffer duplicate — already queued, skipping.');
+            await logDelivery({
+              channel: 'buffer',
+              status: 'partial',
+              latencyMs: Date.now() - bufferT0,
+              metadata: { reason: 'duplicate_content' },
+            });
+            bufferMutationError = undefined;
+            bufferDuplicate = true;
+          } else {
+            throw new Error(`buffer mutation: ${bufferMutationError}`);
+          }
         }
 
-        await logDelivery({
-          channel: 'buffer',
-          status: 'success',
-          latencyMs: Date.now() - bufferT0,
-          metadata: { post_id: bufferPostId, post_length: postText.length },
-        });
+        if (bufferPostId !== undefined || !bufferDuplicate) {
+          await logDelivery({
+            channel: 'buffer',
+            status: 'success',
+            latencyMs: Date.now() - bufferT0,
+            metadata: {
+              post_id: bufferPostId,
+              post_length: postText.length,
+              post_weighted_length: xWeightedLength(postText),
+            },
+          });
+        }
 
         // === Track C.2 — Also enqueue the X thread draft for
         // human-in-loop review via the Track C.1 social queue.
