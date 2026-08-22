@@ -281,7 +281,9 @@ export function renderLanding(root: HTMLElement): void {
         <li>WHO</li>
         <li>AIS / Marine Traffic</li>
         <li>Polymarket</li>
-        <li>V-Dem</li>
+        <li>OFAC Sanctions</li>
+        <li>OONI</li>
+        <li>UNHCR</li>
         <li>Cloudflare Radar</li>
       </ul>
     </section>
