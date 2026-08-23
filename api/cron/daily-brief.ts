@@ -225,10 +225,33 @@ If it's a quiet day, lead with the most interesting pattern or trend from the CI
 ## 🌍 CII Movers
 
 The countries that moved the most in the last 24 hours. This is data, not narrative.
-Format each mover as: **Country** CII_SCORE (▲+N or ▼-N) — one-line driver.
+Format each mover as: **Country** CII_SCORE (▲+N or ▼-N) — driver.
 Show 4-6 countries. Sort by absolute change (biggest move first).
-Use the CII data from the context. If a country is on a multi-day trend, note it.
-Example: **Sudan** 78 (▲+8) — RSF advances in El Fasher triggered new displacement.
+
+THE DRIVER MUST COME FROM THE CONTEXT OR NOT BE GIVEN. This is the strictest
+rule in the brief and it overrides every stylistic instruction above.
+
+- A driver is permitted ONLY when a named, dated item in the data context
+  supports it — a headline, a censorship measurement, a sanctions event, a
+  quake. Name that source in the line.
+- If nothing in the context explains the move, write exactly:
+  "driver not identified in today's data." Then stop. Do not speculate, do not
+  offer alternatives, do not write "likely", "possible", "or", or "awaiting
+  confirmation". An unexplained move is a true and publishable thing to report.
+- Most CII moves have no external driver. Several components are static
+  baselines and the disasters component decays as a rolling 24-hour feed ages
+  out, so a fall is usually decay rather than de-escalation. Never narrate
+  decay as an event.
+
+Correct, with evidence:  **Iran** 61 (▲+4) — OONI recorded 1,611 confirmed blocking measurements this week, up from 340.
+Correct, without:        **South Korea** 13 (▲+8) — driver not identified in today's data.
+
+Previously this section supplied a worked example that invented a cause
+("RSF advances in El Fasher triggered new displacement") for a number with no
+explanation available. Published briefs consequently asserted a Turkish-brokered
+ceasefire in Idlib, a South Korean political crisis, and reduced drone activity
+over Helmand — none of which were in any input, and the last of which described
+a hardcoded constant changing.
 
 ## ⚠️ Crisis Watch
 
@@ -239,8 +262,18 @@ Only include genuine crises (CII > 65 or active conflict/disaster). Skip if no a
 ## 📈 Markets & Exposure
 
 Combines energy, commodities, and market signal. 3-4 sentences total.
+
+THE MARKET LINES ARE ETF SHARE PRICES, NOT THE UNDERLYING. They are labelled as
+such in the context — "Crude oil ETF (USO)", "Dollar index ETF (UUP)". Never
+restate one as the underlying's level: USO's share price is not the price of a
+barrel and UUP's is not the dollar index. Quote the instrument as named, or
+describe the direction and size of the move without asserting a level.
+Percentage moves in a share price are PERCENT, never "basis points" — basis
+points measure yield, and using them for an equity price move is both wrong and
+the fastest way to lose a reader who trades.
+
 Required elements:
-- Oil/energy price + driver + reversal trigger
+- Energy move + driver + reversal trigger
 - 1-2 market moves connected to geopolitical developments
 - Reference chokepoints (Hormuz, Bab el-Mandeb, Suez, Malacca) when relevant
 What's priced in vs. what's a surprise? Be specific with numbers.
@@ -251,15 +284,23 @@ One what-if scenario of the day. Pick the most relevant based on current data.
 Format:
 - **Scenario name** (e.g., "What if Hormuz closes?")
 - 2-3 sentences: what would happen, which countries' CII would move, what cascades
-- Historical precedent if one exists (e.g., "In 2019 tanker attacks, oil spiked 15% in 48h")
-Make this forward-looking and analytical. This is where NexusWatch's scenario engine shines.
+NO HISTORICAL PRECEDENTS. Do not cite past events, past price moves, or past
+NexusWatch observations here or anywhere else in the brief. This section
+previously carried a worked example — "In 2019 tanker attacks, oil spiked 15%
+in 48h" — which is itself wrong (Brent moved ~2% on 13 June 2019 and ~4% on
+19 June), and the model reproduced it verbatim as fact. A precedent recalled
+from memory is unverifiable, and the ATTRIBUTION rule below forbids hedging it,
+so the two instructions together manufacture confident false statements.
+Make this forward-looking and conditional. Nothing retrospective.
 
 ## 💬 One More Thing
 
 Quick hit — 1-2 sentences. One of these:
-- A data source we just added or a tool worth knowing about
 - A prediction market divergence worth watching (NexusWatch CII vs. Polymarket)
 - A quiet signal that hasn't made headlines yet
+Never an advertisement for our own map, methodology page or tooling. A section
+inside the product that tells the reader to go look at the product is not a
+section.
 - On Fridays: highlight one NexusWatch feature that helped analysts this week
 End with energy. Leave the reader wanting to open the map.`;
 }

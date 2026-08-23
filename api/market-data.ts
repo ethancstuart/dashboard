@@ -26,29 +26,47 @@ interface MarketSnapshot {
   timestamp: number;
 }
 
-// Symbols to track — covers major indices, commodities, FX, crypto
+// Symbols to track.
+//
+// EVERY EQUITY LINE HERE IS AN ETF, AND EACH IS NAMED AS ONE. They were
+// previously labelled with the name of the thing they track — 'Crude Oil',
+// 'Gold', 'S&P 500', 'US Dollar Index' — and the brief then printed the ETF's
+// share price as the underlying's level. That produced published sentences
+// like "energy flows are already priced tight at $130/barrel" (USO's share
+// price) and "USD Index: $27.91" (UUP, against a DXY near 100). A markets
+// reader stops at the first one of those and does not come back, and they are
+// right to.
+//
+// USO in particular is a futures-roll product whose multi-day percentage
+// change does not track spot crude under contango, so it cannot stand in for
+// the barrel even directionally over a week.
+//
+// FXY WAS ALSO INVERTED. It holds yen, so FXY rising means a STRONGER yen,
+// which is USD/JPY going DOWN. It was labelled 'USD/JPY', so every sentence
+// derived from it had the direction backwards. Same for FXE and FXB, which
+// hold EUR and GBP respectively.
 const SYMBOLS = {
   indices: [
-    { symbol: 'SPY', name: 'S&P 500' },
-    { symbol: 'QQQ', name: 'Nasdaq 100' },
-    { symbol: 'DIA', name: 'Dow Jones' },
-    { symbol: 'EWJ', name: 'Japan (Nikkei)' },
-    { symbol: 'FXI', name: 'China (CSI)' },
-    { symbol: 'EWZ', name: 'Brazil' },
+    { symbol: 'SPY', name: 'S&P 500 ETF (SPY)' },
+    { symbol: 'QQQ', name: 'Nasdaq 100 ETF (QQQ)' },
+    { symbol: 'DIA', name: 'Dow Jones ETF (DIA)' },
+    { symbol: 'EWJ', name: 'Japan equities ETF (EWJ)' },
+    { symbol: 'FXI', name: 'China large-cap ETF (FXI)' },
+    { symbol: 'EWZ', name: 'Brazil equities ETF (EWZ)' },
   ],
   commodities: [
-    { symbol: 'USO', name: 'Crude Oil' },
-    { symbol: 'GLD', name: 'Gold' },
-    { symbol: 'SLV', name: 'Silver' },
-    { symbol: 'UNG', name: 'Natural Gas' },
-    { symbol: 'WEAT', name: 'Wheat' },
-    { symbol: 'CPER', name: 'Copper' },
+    { symbol: 'USO', name: 'Crude oil ETF (USO)' },
+    { symbol: 'GLD', name: 'Gold ETF (GLD)' },
+    { symbol: 'SLV', name: 'Silver ETF (SLV)' },
+    { symbol: 'UNG', name: 'Natural gas ETF (UNG)' },
+    { symbol: 'WEAT', name: 'Wheat ETF (WEAT)' },
+    { symbol: 'CPER', name: 'Copper ETF (CPER)' },
   ],
   fx: [
-    { symbol: 'UUP', name: 'US Dollar Index' },
-    { symbol: 'FXE', name: 'EUR/USD' },
-    { symbol: 'FXY', name: 'USD/JPY' },
-    { symbol: 'FXB', name: 'GBP/USD' },
+    { symbol: 'UUP', name: 'Dollar index ETF (UUP)' },
+    { symbol: 'FXE', name: 'Euro ETF (FXE, up = stronger EUR)' },
+    { symbol: 'FXY', name: 'Yen ETF (FXY, up = stronger JPY)' },
+    { symbol: 'FXB', name: 'Sterling ETF (FXB, up = stronger GBP)' },
   ],
   crypto: [
     { symbol: 'BTC-USD', name: 'Bitcoin' },
