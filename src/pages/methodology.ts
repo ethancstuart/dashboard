@@ -27,24 +27,24 @@ export function renderMethodology(root: HTMLElement): void {
       <p class="method-lede">Data sources, trust layer, and verification methodology behind every CII score.</p>
 
       <h2 class="brief-section-header">The Trust Layer</h2>
-      <p>Every NexusWatch number is <strong>auditable</strong>. Click any CII score in the platform and you'll see the exact data points that computed it — which ACLED events, which USGS quakes, which GDELT articles. Alongside, we publish:</p>
+      <p>Every NexusWatch number is <strong>auditable</strong>. Click any CII score in the platform and you'll see the data points that computed it — USGS quakes, OONI censorship measurements, GDELT-derived signals — and, just as importantly, which components are static baselines rather than live feeds. Alongside, we publish:</p>
       <ul class="method-list">
         <li><strong>Confidence levels</strong> (HIGH/MEDIUM/LOW) based on source count, freshness, and data volume</li>
         <li><strong>Verification badges</strong> — events are CONFIRMED (3+ sources), CORROBORATED (2), UNVERIFIED (1), or CONTESTED</li>
         <li><strong>Explicit data gaps</strong> — we show you what we DON'T have, not just what we do</li>
         <li><strong>Source freshness</strong> — live/recent/stale/offline indicators on every feed</li>
-        <li><strong>Prediction ledger</strong> — public accuracy tracking at <a class="method-link" href="#/accuracy">/#/accuracy</a></li>
+        <li><strong>The Ledger</strong> — every dated, falsifiable call, resolved against external sources, at <a class="method-link" href="#/ledger">/ledger</a></li>
       </ul>
 
       <h2 class="brief-section-header">What is CII?</h2>
       <p>The Country Instability Index (CII) is a composite score from <strong>0 to 100</strong> that quantifies a country's instability across 6 risk dimensions. It's computed every 5 minutes from live data feeds and updated continuously.</p>
-      <p>NexusWatch currently monitors <strong>150+ countries</strong> across three tiers (Core, Extended, Monitor) — prioritizing conflict zones, strategic chokepoints, major economies, and regions with high geopolitical volatility. Every country's tier is visible in the sidebar.</p>
+      <p>NexusWatch keeps <strong>scored daily history for 85 countries</strong> — the set every forecast, snapshot and ledger call runs on. The map additionally displays client-computed estimates for roughly 157 countries across three tiers (Core, Extended, Monitor); those estimates carry no scored history and are labelled accordingly.</p>
       <p>CII powers the daily intelligence brief, correlation detection engine, scenario simulation, verification engine, and portfolio exposure calculations.</p>
 
       <h2 class="brief-section-header">Data Sources (12 primary)</h2>
       <p>Every CII component and every layer displays which sources contributed. Current primary sources:</p>
       <ul class="method-list">
-        <li><strong>ACLED</strong> — armed conflict events, fatality counts (hourly refresh)</li>
+        <li><strong>Conflict signal</strong> — currently GDELT-derived headline classification plus per-country baseline floors. The ACLED API feed is offline (the endpoint no longer resolves) and is not an input today; this line previously claimed an hourly ACLED refresh.</li>
         <li><strong>USGS</strong> — earthquake hazards feed (60s refresh)</li>
         <li><strong>NASA FIRMS</strong> — active fire hotspots via MODIS/VIIRS (10min)</li>
         <li><strong>GDELT</strong> — global news events with tone analysis, 65+ languages (15min)</li>
@@ -67,7 +67,7 @@ export function renderMethodology(root: HTMLElement): void {
             <span class="method-component-name">Conflict</span>
             <span class="method-component-range">0–20 pts</span>
           </div>
-          <p>Armed conflict intensity. Combines <strong>live ACLED data</strong> (event counts + fatalities within geographic radius) with <strong>baseline conflict scores</strong> for countries with known active wars. The baseline ensures countries like Ukraine, Sudan, and Yemen never show low conflict scores even when ACLED data is delayed.</p>
+          <p>Armed conflict intensity. Today this is a <strong>hand-set baseline floor</strong> per country with active conflict, plus a GDELT-derived headline signal. The live ACLED feed this component was designed around is offline and contributes nothing; until a real event feed is restored, treat the conflict component as a slow-moving editorial floor, not a live measurement. That is also why we are rebuilding the index around externally-resolved calls rather than composite scores.</p>
           <p class="method-formula">Score = max(live_conflict, baseline) where live = (events/5 × 8) + (fatalities/50 × 12), capped at 20</p>
         </div>
 
@@ -131,7 +131,7 @@ export function renderMethodology(root: HTMLElement): void {
 
       <h2 class="brief-section-header">Data Sources</h2>
       <table class="method-table">
-        <tr><td>ACLED</td><td>Armed conflict events, fatalities, actor data</td><td>Real-time</td></tr>
+        <tr><td>ACLED</td><td>Armed conflict events — <strong>feed offline</strong>; conflict currently baseline + GDELT-derived</td><td>Unavailable</td></tr>
         <tr><td>USGS</td><td>Earthquake events, magnitude, location</td><td>Every 5 min</td></tr>
         <tr><td>IODA</td><td>Internet outage monitoring by country</td><td>Hourly</td></tr>
         <tr><td>NexusWatch Baselines</td><td>Conflict, governance, market exposure weights</td><td>Updated monthly</td></tr>

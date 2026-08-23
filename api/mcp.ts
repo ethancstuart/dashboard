@@ -176,28 +176,14 @@ const TOOLS: ToolDef[] = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'get_sanctions_attribution',
-    description: 'Cross-reference OFAC/UN sanctions events with ACLED conflict data and crisis triggers for a country.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        country_code: { type: 'string', description: "ISO-2 code (e.g. 'RU', 'IR')", minLength: 2, maxLength: 2 },
-        days: { type: 'number', description: 'Lookback days (1-180). Default 30.', default: 30 },
-      },
-      required: ['country_code'],
-    },
-  },
-  {
-    name: 'validate_predictions',
+    name: 'get_call_ledger',
     description:
-      "Check NexusWatch prediction accuracy: predicted vs actual CII impacts per scenario. Returns MAE and tracking status ('aligned'/'partial'/'diverging').",
-    inputSchema: {
-      type: 'object',
-      properties: {
-        scenario_id: { type: 'string', description: 'Scenario ID. Omit for all.' },
-        days: { type: 'number', description: 'Lookback days (1-90). Default 14.', default: 14 },
-      },
-    },
+      'The public call ledger: every dated, falsifiable call NexusWatch has open or resolved, each settled ' +
+      'against a named EXTERNAL source (OONI censorship measurements, FX reference rates) on a date fixed in ' +
+      "advance. Includes Brier score, skill vs each unit's own base rate, calibration bins, and effective " +
+      'sample size. Skill is reported even when negative; with nothing resolved yet, scores are null rather ' +
+      'than invented.',
+    inputSchema: { type: 'object', properties: {} },
   },
 ];
 
@@ -245,18 +231,8 @@ async function executeTool(name: string, args: Record<string, unknown>, apiKey: 
       });
     case 'get_active_crises':
       return callApi('/api/crisis/active');
-    case 'get_sanctions_attribution':
-      return callApi('/api/enrichment/sanctions-attribution', {
-        params: {
-          country: String(args.country_code).toUpperCase(),
-          days: String(args.days ?? 30),
-        },
-      });
-    case 'validate_predictions': {
-      const params: Record<string, string> = { days: String(args.days ?? 14) };
-      if (args.scenario_id) params.scenario = String(args.scenario_id);
-      return callApi('/api/enrichment/cascade-validation', { params });
-    }
+    case 'get_call_ledger':
+      return callApi('/api/calls/ledger');
     default:
       throw new Error(`Unknown tool: ${name}`);
   }

@@ -61,7 +61,7 @@ export function renderWhyFree(root: HTMLElement): void {
       <p>
         The repo is open: <a href="https://github.com/ethancstuart/nexus-watch" target="_blank" rel="noopener">github.com/ethancstuart/nexus-watch</a>.
         Every brief that's ever been published is archived at <a href="#/briefs">/briefs</a>. The
-        prediction ledger — including calls we got wrong — is at <a href="#/accuracy">/accuracy</a>.
+        call ledger — including calls we get wrong — is at <a href="#/ledger">/ledger</a>.
         Methodology is at <a href="#/methodology">/methodology</a>. The operator is me.
       </p>
 

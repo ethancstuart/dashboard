@@ -24,7 +24,7 @@ export function renderReleaseNotes(container: HTMLElement): void {
       version: 'v2.5',
       title: 'Persona UX Overhaul',
       highlights: [
-        '158 countries (up from 86) — every region on Earth now covered',
+        'Map coverage expanded to ~157 countries (client-computed estimates; 85 countries carry scored daily history)',
         'Layer presets — one-click modes: Conflict, Trade, Hazards, Intelligence, Everything',
         '13 theater presets (was 7) — Balkans, Gulf, Central Asia, SE Asia, Central America, Nordic',
         '13 compare presets — new regional comparisons for expanded country coverage',
@@ -62,7 +62,7 @@ export function renderReleaseNotes(container: HTMLElement): void {
       version: 'v2.0',
       title: 'Verified Intelligence Platform — Launch',
       highlights: [
-        '150+ countries (up from 23) with 3-tier coverage system',
+        'Map coverage expanded to 150+ countries (up from 23) with a 3-tier system; scored daily history remains a smaller set',
         'Intelligence Confidence System — every CII score decomposes to source data',
         'Verification Engine — CONFIRMED / CORROBORATED / UNVERIFIED badges',
         'Scenario Simulation Engine — 7 preset what-if scenarios',

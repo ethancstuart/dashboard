@@ -16,7 +16,7 @@ import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
     q: 'What do the colored dots on the map mean?',
-    a: 'Each color represents a different data layer. Red dots are active conflicts (ACLED data), orange dots are wildfires (NASA FIRMS), yellow dots are news events (GDELT), and green markers show chokepoint status. Press <kbd>L</kbd> to open the full layer panel and toggle layers on/off.',
+    a: 'Each color represents a different data layer. Red dots are conflict signals derived from GDELT headlines — positions are approximate, country-level, orange dots are wildfires (NASA FIRMS), yellow dots are news events (GDELT), and green markers show chokepoint status. Press <kbd>L</kbd> to open the full layer panel and toggle layers on/off.',
   },
   {
     q: 'What is the CII score?',
@@ -28,11 +28,11 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: 'How often is the data updated?',
-    a: 'It depends on the source. Earthquakes update every 60 seconds (USGS). Wildfires every 10 minutes (NASA FIRMS). Conflict events update every few hours (ACLED). CII scores recompute on each data refresh cycle. Each layer shows a freshness badge \u2014 green means updated within the last hour.',
+    a: 'It depends on the source. Earthquakes update every 60 seconds (USGS). Wildfires every 10 minutes (NASA FIRMS). The conflict signal refreshes with GDELT (the ACLED feed is currently offline). CII scores recompute on each data refresh cycle. Each layer shows a freshness badge \u2014 green means updated within the last hour.',
   },
   {
     q: 'Is NexusWatch really free?',
-    a: 'Yes. The whole thing — full 3D globe with 45+ live layers, CII scores for 150+ countries, intelligence briefs, AI analyst, alerts, evidence chains, scenario simulation, portfolio exposure, API access. Free for everyone. No credit card required.',
+    a: 'Yes. The whole thing — full 3D globe with 45+ live layers, CII scores with daily history for 85 countries, intelligence briefs, AI analyst, alerts, evidence chains, scenario simulation, portfolio exposure, API access. Free for everyone. No credit card required.',
   },
   {
     q: 'How do I compare countries?',

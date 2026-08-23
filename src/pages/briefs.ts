@@ -249,7 +249,7 @@ function renderSampleHero(samples: SampleBrief[] = SAMPLE_BRIEFS): string {
         <p class="dossier-sample-subtitle">
           Next live brief publishes <strong>5 AM ET</strong> tomorrow. The samples
           below are hand-curated previews — full briefs synthesize fresh CII data
-          across 158 countries every morning.
+          across 85 scored countries every morning.
         </p>
       </header>
       <div class="dossier-sample-grid">${cards}</div>

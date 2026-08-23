@@ -218,40 +218,21 @@ server.tool(
   },
 );
 
-// ---- Tool 8: get_sanctions_attribution ----
+// ---- Tool 8: get_call_ledger ----
+// Replaces two tools that asserted falsehoods to LLM clients:
+// get_sanctions_attribution filtered on country_codes, which is empty on every
+// row of sanctions_events, so it returned "no sanctions activity" for every
+// country on earth while its methodology string claimed a three-way join. And
+// validate_predictions served the closed-loop pipeline — predictions of our own
+// index scored against our own index, measured at -37.3% skill vs no-change —
+// described as "the public accountability layer". The ledger below is the real
+// accountability layer: calls settled against external sources only.
 server.tool(
-  'get_sanctions_attribution',
-  'Cross-reference sanctions events with conflict data and crisis triggers for a specific country. Links OFAC/UN sanctions changes (entity additions, removals, updates) with ACLED conflict events and active crisis playbooks. Use this to understand the sanctions-conflict nexus for a country.',
-  {
-    country_code: z.string().length(2).describe("ISO 3166-1 alpha-2 country code (e.g. 'RU', 'IR', 'KP')"),
-    days: z.number().int().min(1).max(180).default(30).describe('Lookback window in days. Default 30.'),
-  },
-  async ({ country_code, days }) => {
-    const data = await api('/api/enrichment/sanctions-attribution', {
-      params: {
-        country: country_code.toUpperCase(),
-        days: String(days),
-      },
-    });
-    return text(data);
-  },
-);
-
-// ---- Tool 9: validate_predictions ----
-server.tool(
-  'validate_predictions',
-  "Check how well NexusWatch's scenario predictions match reality. Compares predicted CII impacts from scenario simulations against actual CII movements. Returns per-country predicted vs actual scores, mean absolute error, and a tracking status ('aligned', 'partial', 'diverging'). This is the public accountability layer — NexusWatch publishes its track record.",
-  {
-    scenario_id: z
-      .string()
-      .optional()
-      .describe("Scenario ID to validate (e.g. 'hormuz-closure'). Omit for all scenarios."),
-    days: z.number().int().min(1).max(90).default(14).describe('Lookback window in days. Default 14.'),
-  },
-  async ({ scenario_id, days }) => {
-    const params: Record<string, string> = { days: String(days) };
-    if (scenario_id) params.scenario = scenario_id;
-    const data = await api('/api/enrichment/cascade-validation', { params });
+  'get_call_ledger',
+  "The public call ledger: every dated, falsifiable call NexusWatch has open or resolved, each settled against a named EXTERNAL source (OONI censorship measurements, FX reference rates) on a date fixed in advance. Includes Brier score, skill vs each unit's own base rate, calibration bins, and effective sample size. Skill is reported even when negative; with nothing resolved yet, scores are null rather than invented.",
+  {},
+  async () => {
+    const data = await api('/api/calls/ledger');
     return text(data);
   },
 );

@@ -20,7 +20,7 @@ const TOOLS: ToolRow[] = [
   {
     name: 'get_country_risk',
     glyph: '⊕',
-    oneLine: 'CII score for one or all 158 countries (6-component breakdown + confidence).',
+    oneLine: 'CII score for one or all 85 scored countries (6-component breakdown + confidence).',
   },
   {
     name: 'get_alerts',
@@ -49,14 +49,9 @@ const TOOLS: ToolRow[] = [
   },
   { name: 'get_active_crises', glyph: '◉', oneLine: 'All currently unresolved crisis triggers across the network.' },
   {
-    name: 'get_sanctions_attribution',
-    glyph: '⊘',
-    oneLine: 'OFAC/UN sanctions cross-referenced with ACLED conflict + crisis events.',
-  },
-  {
-    name: 'validate_predictions',
+    name: 'get_call_ledger',
     glyph: '✓',
-    oneLine: 'Prediction accuracy by scenario: MAE and aligned/partial/diverging status.',
+    oneLine: 'The public call ledger: open and resolved calls, Brier, and skill vs base rate — negative included.',
   },
 ];
 
@@ -65,7 +60,7 @@ const EXAMPLE_PROMPTS: string[] = [
   'Run the Hormuz closure scenario and summarize the energy-price impact.',
   'My portfolio is 18% TSM, 9% XOM, 7% ASML — what is my geopolitical exposure?',
   'List every country currently above CII 70 with the dominant driver.',
-  'What sanctions actions in the last 30 days correlated with new ACLED events?',
+  'Pull the call ledger and tell me which open calls diverge most from their base rates.',
 ];
 
 export function renderMcpPage(root: HTMLElement): void {
@@ -97,8 +92,8 @@ export function renderMcpPage(root: HTMLElement): void {
       <p>
         NexusWatch is also an MCP server. Connect it to Claude Code, Cursor, Windsurf, or any
         Model Context Protocol client and your agent gets live access to nine geopolitical
-        intelligence tools — CII for 158 countries, scenario simulation, portfolio exposure,
-        sanctions attribution, and the prediction ledger. No account, no API key, no signup.
+        intelligence tools — CII for 85 scored countries, scenario simulation, portfolio exposure,
+        and the public call ledger. No account, no API key, no signup.
       </p>
 
       <h2>Install in one line.</h2>

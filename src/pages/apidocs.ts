@@ -44,7 +44,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
       <div class="nw-endpoint-path">/api/v2/cii</div>
-      <div class="nw-endpoint-desc">All 150+ countries with CII scores, components, and confidence.</div>
+      <div class="nw-endpoint-desc">All 85 scored countries with CII scores, components, and confidence.</div>
       <details>
         <summary>Example response</summary>
         <pre><code>{

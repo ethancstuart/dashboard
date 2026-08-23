@@ -63,7 +63,7 @@ export function renderCountryBrief(root: HTMLElement, code: string): void {
     const empty = createElement('div', { className: 'nw-brief-empty' });
     empty.innerHTML = `
       <p>No CII data available for ${countryCode}. The country may not be in the NexusWatch monitored list yet.</p>
-      <p>Visit <a href="#/intel">the Intel Map</a> to see all 150+ monitored countries.</p>
+      <p>Visit <a href="#/intel">the Intel Map</a> to see all monitored countries.</p>
     `;
     doc.appendChild(empty);
     root.appendChild(doc);
