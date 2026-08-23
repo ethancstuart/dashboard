@@ -226,11 +226,24 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/accuracy', () => {
-    import('./pages/accuracy.ts')
+  // /accuracy and /ledger both render The Ledger. The old accuracy page scored
+  // `assessments` — predictions of our own index, against our own index — and
+  // heroed that as a track record at -37.3% skill against a naive baseline.
+  // The route is kept so existing links and the sitemap keep working; what it
+  // serves is now resolved against sources outside NexusWatch.
+  .on('/ledger', () => {
+    import('./pages/ledger.ts')
       .then(async (m) => {
         await transition(appRoot);
-        void m.renderAccuracyPage(appRoot);
+        void m.renderLedgerPage(appRoot);
+      })
+      .catch((err) => showRouteError(appRoot, err));
+  })
+  .on('/accuracy', () => {
+    import('./pages/ledger.ts')
+      .then(async (m) => {
+        await transition(appRoot);
+        void m.renderLedgerPage(appRoot);
       })
       .catch((err) => showRouteError(appRoot, err));
   })

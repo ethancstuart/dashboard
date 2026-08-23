@@ -153,10 +153,16 @@ export const PAGE_SEO = {
     canonicalPath: '/methodology',
   },
   accuracy: {
-    title: 'Accuracy Tracker',
+    title: 'The Ledger',
     description:
-      'Live accuracy log for NexusWatch predictions: hits, misses, calibration, and Brier scores across the verified-signals stream. Free.',
-    canonicalPath: '/accuracy',
+      'Every call NexusWatch makes, resolved against an external source on a date fixed in advance — with the score published whether it flatters us or not.',
+    canonicalPath: '/ledger',
+  },
+  ledger: {
+    title: 'The Ledger',
+    description:
+      'Every call NexusWatch makes, resolved against an external source on a date fixed in advance — with the score published whether it flatters us or not.',
+    canonicalPath: '/ledger',
   },
   roadmap: {
     title: 'Roadmap',

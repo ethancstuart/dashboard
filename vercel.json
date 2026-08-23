@@ -65,6 +65,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/ledger",
+      "destination": "/index.html"
+    },
+    {
       "source": "/accuracy",
       "destination": "/index.html"
     },

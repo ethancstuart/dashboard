@@ -1,0 +1,326 @@
+/*
+ * Kit — structure for the four repeated marks.
+ *
+ * Colour comes from tokens only. No hex literals live here: the ledger's old
+ * stylesheet hardcoded ORANGE/GREEN/YELLOW/RED and ~200 inline
+ * style="color: ${...}" usages downstream of it, which is why it could not
+ * participate in the design system at all.
+ *
+ * The type scale is named by ROLE, not by size, and splits prose from data.
+ * Numeric names (--text-xs … --text-3xl) invite arbitrary use; a measurement
+ * and a paragraph want different faces, not different sizes of one face.
+ */
+
+.surface-dossier,
+.surface-terminal {
+  /* Prose */
+  --type-display: clamp(40px, 5vw, 72px);
+  --type-title: clamp(28px, 3vw, 40px);
+  --type-subtitle: 22px;
+  --type-body: 17px;
+  --type-small: 14px;
+  --type-caption: 12px;
+
+  /* Data — always mono, always tabular */
+  --type-figure: clamp(56px, 9vw, 112px);
+  --type-stat: 32px;
+  --type-data: 15px;
+  --type-label: 11px;
+
+  /* Reading rhythm. Editorial surfaces use only these three. */
+  --rhythm-para: 16px;
+  --rhythm-block: 32px;
+  --rhythm-section: clamp(56px, 8vw, 104px);
+}
+
+/* --------------------------------------------------------------------------
+   stat — the measurement
+   -------------------------------------------------------------------------- */
+
+.nw-stat__value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+.nw-stat--hero .nw-stat__value {
+  font-size: var(--type-figure);
+}
+.nw-stat--section .nw-stat__value {
+  font-size: var(--type-stat);
+}
+.nw-stat--inline .nw-stat__value {
+  font-size: var(--type-data);
+}
+
+.nw-stat__label {
+  font-family: var(--font-serif);
+  font-size: var(--type-subtitle);
+  color: var(--color-text-primary);
+  margin-top: 10px;
+}
+
+.nw-stat--inline .nw-stat__label {
+  font-size: var(--type-small);
+  margin-top: 2px;
+}
+
+.nw-stat__detail {
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+/* Provenance is quiet but never absent — that is the whole contract. */
+.nw-stat__provenance {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  margin-top: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   sectionRule — the anchor
+   -------------------------------------------------------------------------- */
+
+.nw-section {
+  margin: var(--rhythm-section) 0 var(--rhythm-block);
+}
+
+.nw-section__rule {
+  height: 2px;
+  background: var(--color-divider);
+  margin-bottom: 14px;
+}
+
+.nw-section__kicker {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin-bottom: 8px;
+}
+
+.nw-section__title {
+  font-family: var(--font-serif);
+  font-size: var(--type-title);
+  font-weight: 600;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.nw-section__lede {
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin: var(--rhythm-para) 0 0;
+  max-width: 62ch;
+}
+
+/* --------------------------------------------------------------------------
+   figure — a chart inside an argument
+   -------------------------------------------------------------------------- */
+
+.nw-figure {
+  margin: var(--rhythm-block) 0;
+  padding: 0;
+  border-top: 1px solid var(--color-border);
+  padding-top: 18px;
+}
+
+.nw-figure__title {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.nw-figure__caption {
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin: 8px 0 16px;
+  max-width: 62ch;
+}
+
+.nw-figure__plot {
+  overflow-x: auto;
+}
+
+.nw-figure__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   capture — the one email form
+   -------------------------------------------------------------------------- */
+
+.nw-capture {
+  margin: var(--rhythm-block) 0;
+}
+
+.nw-capture__heading {
+  font-family: var(--font-serif);
+  font-size: var(--type-subtitle);
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.nw-capture__note {
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  color: var(--color-text-secondary);
+  margin: 0 0 14px;
+  max-width: 52ch;
+}
+
+.nw-capture__form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nw-capture__input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 13px 15px;
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 3px;
+}
+
+.nw-capture__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.nw-capture__button {
+  padding: 13px 22px;
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-inverse);
+  background: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.nw-capture__button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.nw-capture__status {
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  margin-top: 10px;
+  min-height: 1.2em;
+  color: var(--color-text-secondary);
+}
+
+.nw-capture__status[data-state='ok'] {
+  color: var(--color-positive);
+}
+.nw-capture__status[data-state='err'] {
+  color: var(--color-negative);
+}
+
+/* --------------------------------------------------------------------------
+   row — the repeated list line
+   -------------------------------------------------------------------------- */
+
+.nw-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.nw-row__lead {
+  font-family: var(--font-mono);
+  font-size: var(--type-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  flex: 0 0 auto;
+  min-width: 3.5em;
+}
+
+.nw-row__detail {
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  color: var(--color-text-secondary);
+  flex: 1 1 auto;
+}
+
+.nw-row__trail {
+  font-family: var(--font-mono);
+  font-size: var(--type-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* State colour appears in exactly one place on the ledger: whether a call
+   landed. Everywhere else the charts are ink and gold, because traffic-lighting
+   your own honest numbers makes transparency look like a failing report card. */
+.nw-row[data-state='hit'] .nw-row__trail {
+  color: var(--color-positive);
+}
+.nw-row[data-state='miss'] .nw-row__trail {
+  color: var(--color-negative);
+}
+.nw-row[data-state='pending'] .nw-row__trail {
+  color: var(--color-text-tertiary);
+}
+
+/* --------------------------------------------------------------------------
+   page shell for reading surfaces
+   -------------------------------------------------------------------------- */
+
+.nw-reading {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: 56px 24px 96px;
+}
+
+.nw-reading p {
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: 1.62;
+  color: var(--color-text-primary);
+  max-width: 62ch;
+}
+
+.nw-statgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 32px;
+  margin: var(--rhythm-block) 0;
+}

@@ -8,5 +8,7 @@
 @import './nexuswatch.css';
 @import './map.css';
 @import './quick-layer-bar.css';
+/* Kit — the four repeated marks. Colour comes from tokens only. */
+@import './kit.css';
 /* Site-wide mobile reflow — must come last so it can override page CSS. */
 @import './mobile.css';
