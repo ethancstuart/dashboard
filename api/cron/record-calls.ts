@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { blendRates, historicalRate, type CallKind } from '../_lib/calls.js';
+import { blendRates, historicalRate, fxThreshold, type CallKind } from '../_lib/calls.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -44,6 +44,11 @@ const THRESHOLD = 1;
 
 const KIND: CallKind = 'censorship_event';
 const RESOLVER = 'OONI (ooni.org) confirmed_blocked > 0';
+
+const FX_KIND: CallKind = 'fx_devaluation';
+const FX_RESOLVER = 'fx_rates (daily USD reference rates)';
+/** Recent window for the FX signal, in 14-day horizons. */
+const FX_RECENT_WINDOWS = 3;
 
 interface RateRow {
   country_code: string;
@@ -111,10 +116,92 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       written++;
     }
 
-    console.log(`[record-calls] wrote ${written} calls across ${rows.length} countries`);
+    // === FX depreciation calls ===
+    // A market price is the best resolver material available: it settles
+    // itself, on a fixed date, with no threshold anyone can argue about after
+    // the fact. And it is a genuinely independent second domain, so the
+    // aggregate score is not one narrow signal wearing a track record's
+    // clothes.
+    let fxWritten = 0;
+    let fxSkippedPegs = 0;
+    try {
+      // Full 14-day depreciation series per currency. rate_vs_usd is
+      // units-per-USD (verified: AED sits at its 3.6725 peg), so a RISING rate
+      // is a WEAKER currency.
+      const series = (await sql`
+        WITH m AS (
+          SELECT currency_code, country_code, date, rate_vs_usd,
+                 LAG(rate_vs_usd, ${HORIZON_DAYS}) OVER (PARTITION BY currency_code ORDER BY date) AS prev
+          FROM fx_rates
+        )
+        SELECT currency_code, country_code, date::text AS date,
+               ((rate_vs_usd - prev) / NULLIF(prev, 0) * 100)::float AS dep
+        FROM m
+        WHERE prev IS NOT NULL
+        ORDER BY currency_code, date
+      `) as unknown as Array<{ currency_code: string; country_code: string; date: string; dep: number }>;
+
+      const latest = (await sql`
+        SELECT DISTINCT ON (currency_code) currency_code, country_code, rate_vs_usd::float AS rate
+        FROM fx_rates ORDER BY currency_code, date DESC
+      `) as unknown as Array<{ currency_code: string; country_code: string; rate: number }>;
+      const rateOf = new Map(latest.map((r) => [r.currency_code, r]));
+
+      const byCurrency = new Map<string, number[]>();
+      for (const r of series) {
+        const arr = byCurrency.get(r.currency_code);
+        if (arr) arr.push(r.dep);
+        else byCurrency.set(r.currency_code, [r.dep]);
+      }
+
+      for (const [code, deps] of byCurrency) {
+        const meta = rateOf.get(code);
+        if (!meta || deps.length < HORIZON_DAYS) continue;
+
+        const sorted = [...deps].sort((a, b) => a - b);
+        const p75 = sorted[Math.floor(sorted.length * 0.75)];
+        const threshold = fxThreshold(p75);
+        if (threshold === null) {
+          fxSkippedPegs++;
+          continue;
+        }
+
+        // Long-run rate is ~0.25 BY CONSTRUCTION, since the threshold is the
+        // 75th percentile. Computed rather than assumed so it stays honest if
+        // the percentile ever moves.
+        const longRun = historicalRate(deps.filter((d) => d >= threshold).length, deps.length);
+        const recentDeps = deps.slice(-HORIZON_DAYS * FX_RECENT_WINDOWS);
+        const recent = historicalRate(recentDeps.filter((d) => d >= threshold).length, recentDeps.length);
+        const probability = blendRates(recent, longRun);
+
+        const claim =
+          `${code} depreciates ${threshold.toFixed(2)}% or more against USD ` +
+          `at any point within ${HORIZON_DAYS} days, from ${meta.rate.toPrecision(6)}.`;
+
+        await sql`
+          INSERT INTO calls
+            (made_on, kind, country_code, claim, probability, horizon_days,
+             resolves_on, resolver, threshold, threshold_pct, reference_value, base_rate)
+          VALUES
+            (CURRENT_DATE, ${FX_KIND}, ${meta.country_code}, ${claim}, ${probability}, ${HORIZON_DAYS},
+             CURRENT_DATE + (${HORIZON_DAYS}::int), ${FX_RESOLVER}, 1, ${threshold}, ${meta.rate}, ${longRun})
+          ON CONFLICT (made_on, kind, country_code) DO UPDATE
+            SET probability = EXCLUDED.probability, base_rate = EXCLUDED.base_rate,
+                claim = EXCLUDED.claim, threshold_pct = EXCLUDED.threshold_pct,
+                reference_value = EXCLUDED.reference_value
+        `;
+        fxWritten++;
+      }
+    } catch (fxErr) {
+      console.error('[record-calls] fx pass failed (non-fatal):', fxErr instanceof Error ? fxErr.message : fxErr);
+    }
+
+    console.log(`[record-calls] wrote ${written} censorship + ${fxWritten} fx calls (${fxSkippedPegs} pegs skipped)`);
     return res.status(200).json({
       ok: true,
       written,
+      fx_written: fxWritten,
+      fx_skipped_pegs: fxSkippedPegs,
       horizon_days: HORIZON_DAYS,
       long_windows: longWindows,
       recent_windows: recentWindows,

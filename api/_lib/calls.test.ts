@@ -9,6 +9,8 @@ import {
   historicalRate,
   clampProbability,
   blendRates,
+  fxThreshold,
+  fxDepreciationPct,
   formatLedgerLine,
   formatLedgerSummary,
   type ScoredCall,
@@ -279,5 +281,59 @@ describe('formatLedgerSummary — the standing line at the top of the brief', ()
     });
     expect(line).not.toContain('NaN');
     expect(line).toContain('Brier');
+  });
+});
+
+describe('fxThreshold — calibrated per currency, not a fixed percentage', () => {
+  it("uses the currency's own p75 depreciation as the bar", () => {
+    expect(fxThreshold(3.584)).toBe(3.58);
+    expect(fxThreshold(7.883)).toBe(7.88);
+  });
+
+  it('returns NO CALL for a pegged currency', () => {
+    // 28 of 80 currencies have volatility_7d of exactly 0.0000. A vol-multiple
+    // threshold would give them zero — "any move at all" — which is degenerate,
+    // not uncertain. There is no honest call to make about a hard peg.
+    expect(fxThreshold(0)).toBeNull();
+    expect(fxThreshold(0.1)).toBeNull();
+  });
+
+  it('honours an explicit floor', () => {
+    expect(fxThreshold(0.4, 0.5)).toBeNull();
+    expect(fxThreshold(0.6, 0.5)).toBe(0.6);
+  });
+
+  it('returns null for missing history rather than inventing a bar', () => {
+    expect(fxThreshold(null)).toBeNull();
+    expect(fxThreshold(NaN)).toBeNull();
+  });
+
+  it('makes a lira call and a franc call comparably hard by construction', () => {
+    // Both thresholds sit at each currency's own 75th percentile, so both
+    // events have a ~25% base rate and the aggregate Brier is meaningful.
+    const lira = fxThreshold(3.2);
+    const franc = fxThreshold(0.9);
+    expect(lira).not.toBeNull();
+    expect(franc).not.toBeNull();
+    expect(lira).toBeGreaterThan(franc as number);
+  });
+});
+
+describe('fxDepreciationPct — rate is units-per-USD, so UP is weaker', () => {
+  it('reports depreciation as positive', () => {
+    // TRY 48.05 -> 50.00 is a weaker lira.
+    expect(fxDepreciationPct(48.05, 50.0)).toBeCloseTo(4.058, 2);
+  });
+
+  it('reports appreciation as negative', () => {
+    expect(fxDepreciationPct(50, 48)).toBeCloseTo(-4, 6);
+  });
+
+  it('is zero for no move', () => {
+    expect(fxDepreciationPct(3.6725, 3.6725)).toBe(0);
+  });
+
+  it('does not divide by zero', () => {
+    expect(fxDepreciationPct(0, 5)).toBe(0);
   });
 });

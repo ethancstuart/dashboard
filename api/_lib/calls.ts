@@ -34,9 +34,17 @@
  *     every single row, so nothing in it can resolve a country-scoped claim.
  *     Fix api/cron/source-ofac.ts first; the kind goes in then.
  *
- * The live resolver is political on purpose: the brief measures 3.1% politics
- * against 18.5% seismic, and censorship is the highest-frequency political
- * signal actually flowing.
+ *   - `fx_devaluation` → `fx_rates`. LIVE. 80 currencies mapped to 80
+ *     countries, daily and unbroken since 2026-04-18. A market price is the
+ *     best resolver material there is: it settles itself, on a fixed date,
+ *     with no threshold anyone can argue about afterwards. It is not a closed
+ *     loop — a market price is emphatically not our output.
+ *
+ * The censorship resolver is political on purpose: the brief measures 3.1%
+ * politics against 18.5% seismic, and censorship is the highest-frequency
+ * political signal actually flowing. FX adds an independent second domain, so
+ * the aggregate score is not one narrow signal wearing a track record's
+ * clothes.
  *
  * SCORING. Brier score, plus the Murphy decomposition into reliability,
  * resolution and uncertainty, plus skill against the base rate. The base rate
@@ -52,7 +60,7 @@
  * cannot produce would be the same shape of error as the ledger this replaces:
  * a name implying evidence that does not exist.
  */
-export type CallKind = 'censorship_event';
+export type CallKind = 'censorship_event' | 'fx_devaluation';
 
 export interface Call {
   id?: number;
@@ -216,6 +224,37 @@ export function resolveOutcome(evidenceCount: number, threshold = 1): 0 | 1 {
  */
 export function historicalRate(hits: number, windows: number): number {
   return clampProbability((hits + 1) / (windows + 2));
+}
+
+/**
+ * The depreciation threshold for one currency, from its own history.
+ *
+ * NOT a multiple of volatility, which was the obvious approach and is wrong
+ * here. `volatility_7d` is exactly 0.0000 for the 28 of 80 currencies that are
+ * pegged or tightly managed, so a vol multiple gives them a threshold of zero —
+ * "any move at all" — and the call becomes degenerate rather than uncertain.
+ *
+ * Instead the threshold IS the currency's own 75th-percentile 14-day
+ * depreciation. That makes the base rate ~25% by construction for every
+ * currency, so a call on the Turkish lira and a call on the Swiss franc are
+ * comparably hard and the aggregate Brier means something. A fixed percentage
+ * would have made the ledger's score mostly a measure of which currencies
+ * happened to be included.
+ *
+ * Currencies whose p75 falls below `floorPct` get NO call: there is no honest
+ * uncertainty to express about a hard peg, and filling the ledger with
+ * near-certain negatives would flatter the Brier score without informing anyone.
+ */
+export function fxThreshold(p75DepreciationPct: number | null, floorPct = 0.25): number | null {
+  if (p75DepreciationPct === null || !Number.isFinite(p75DepreciationPct)) return null;
+  if (p75DepreciationPct < floorPct) return null;
+  return Math.round(p75DepreciationPct * 100) / 100;
+}
+
+/** Did the currency depreciate past the threshold? Rate is units-per-USD, so UP is weaker. */
+export function fxDepreciationPct(reference: number, observed: number): number {
+  if (!Number.isFinite(reference) || reference === 0) return 0;
+  return ((observed - reference) / reference) * 100;
 }
 
 /**
