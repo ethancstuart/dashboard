@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
+import { groundDraft, type GroundingReport } from '../_lib/grounding.js';
 import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
@@ -724,6 +725,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     // === Generate AI brief (outputs markdown text) ===
     let briefText: string;
     let aiDebug: string | null = null;
+    let grounding: GroundingReport | null = null;
 
     if (anthropicKey) {
       try {
@@ -900,7 +902,23 @@ ${(() => {
             aiDebug = 'ai-empty-response';
             briefText = buildFallbackText(briefData);
           } else {
-            aiDebug = 'ai-success';
+            // === Mechanical grounding gate (Phase 2) ===
+            // Every numeral in the draft must be present in, or derivable
+            // from, the context it was generated from. Published briefs have
+            // carried invented casualty figures attributed to ACLED, an
+            // invented WHO statement, and a false precedent reproduced from
+            // the prompt itself. An instruction not to fabricate is not a
+            // gate; this is the gate, and it fails LOUDLY to the
+            // deterministic builder — which is grounded by construction —
+            // rather than silently shipping invention.
+            grounding = groundDraft(briefText, dataContext);
+            if (!grounding.pass) {
+              aiDebug = `grounding-failed: ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported numerals [${grounding.unsupported.slice(0, 8).join(', ')}]`;
+              console.error('[daily-brief] GROUNDING GATE REFUSED THE DRAFT:', aiDebug);
+              briefText = buildFallbackText(briefData);
+            } else {
+              aiDebug = `ai-success (grounding ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported)`;
+            }
           }
         } else {
           const errBody = await aiRes.text().catch(() => 'unknown');
@@ -1002,7 +1020,14 @@ ${(() => {
       channel: 'archive',
       status: 'success',
       latencyMs: Date.now() - archiveT0,
-      metadata: { brief_html_length: briefHtml.length, ai: aiDebug },
+      metadata: {
+        brief_html_length: briefHtml.length,
+        ai: aiDebug,
+        // Watched, not hoped about: the unsupported-claim rate per issue.
+        grounding_unsupported: grounding?.unsupported.length ?? null,
+        grounding_total_numerals: grounding?.draftNumerals.length ?? null,
+        grounding_rate: grounding ? Math.round(grounding.unsupportedRate * 1000) / 1000 : null,
+      },
     });
 
     // === Record CII snapshots for prediction ledger (Phase 3) ===
