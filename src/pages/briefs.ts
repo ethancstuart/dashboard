@@ -60,9 +60,9 @@ export function renderBriefs(root: HTMLElement): void {
     <nav class="dossier-nav">
       <a href="#/" class="dossier-nav-logo">NexusWatch</a>
       <div class="dossier-nav-links">
+        <a href="#/ledger" class="dossier-nav-link">LEDGER</a>
         <a href="#/intel" class="dossier-nav-link">PLATFORM</a>
         <a href="#/briefs" class="dossier-nav-link">BRIEFS</a>
-        <a href="https://brief.nexuswatch.dev" target="_blank" rel="noopener" class="dossier-nav-link dossier-nav-subscribe">SUBSCRIBE</a>
       </div>
     </nav>
 

@@ -49,9 +49,9 @@ export function renderLanding(root: HTMLElement): void {
     <nav class="nw-nav" aria-label="Primary">
       <a href="#/" class="nw-nav-brand"><span class="nw-nav-mark">●</span>&nbsp;NexusWatch</a>
       <div class="nw-nav-links">
-        <a href="#/intel">Intel Map</a>
+        <a href="#/ledger">The Ledger</a>
         <a href="#/briefs">Briefs</a>
-        <a href="#/why-free">Why Free</a>
+        <a href="#/intel">Intel Map</a>
         <a href="#/about">About</a>
       </div>
     </nav>
@@ -296,6 +296,7 @@ export function renderLanding(root: HTMLElement): void {
       <div class="nw-footer-top">
         <div class="nw-footer-brand"><span>●</span> NexusWatch</div>
         <div class="nw-footer-links">
+          <a href="#/ledger">The Ledger</a>
           <a href="#/intel">Intel Map</a>
           <a href="#/briefs">Briefs</a>
           <a href="#/why-free">Why Free</a>

@@ -136,11 +136,11 @@ function show404(root: HTMLElement) {
   const nav = document.createElement('div');
   nav.style.cssText = 'color:var(--nw-text-muted, #757575);font-size:13px';
   const links = [
-    ['Intel Map', '#/intel'],
+    ['The Ledger', '#/ledger'],
     ['Briefs', '#/briefs'],
+    ['Intel Map', '#/intel'],
     ['Watchlist', '#/watchlist'],
-    ['Feed', '#/feed'],
-    ['Compare', '#/compare'],
+    ['Status', '#/status'],
   ];
   nav.innerHTML =
     'Popular pages: ' +

@@ -120,12 +120,12 @@ function renderEmptyState(container: HTMLElement): void {
         <div>
           <div class="nw-cmdk-section-label">Jump to</div>
           <div class="nw-cmdk-quick-links">
+            <a href="#/ledger">✓ The Ledger</a>
             <a href="#/intel">🌐 Intel Map</a>
+            <a href="#/briefs">☕ Briefs</a>
             <a href="#/compare">⇄ Compare</a>
             <a href="#/entities">🕸 Entities</a>
             <a href="#/audit">🔍 Audit</a>
-            <a href="#/accuracy">✓ Accuracy</a>
-            <a href="#/portfolio">📈 Portfolio</a>
             <a href="#/status">📡 Status</a>
           </div>
         </div>
