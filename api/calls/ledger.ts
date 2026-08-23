@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import {
   brierScore,
   brierSkillScore,
+  effectiveSampleSize,
   baseRate,
   calibrationBins,
   murphyDecomposition,
@@ -68,9 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       LIMIT 200
     `) as unknown as CallRow[];
 
+    // baseRate is REQUIRED for a publishable skill score — without it
+    // brierSkillScore returns NaN rather than silently falling back to the
+    // pooled reference, which is the flattery this rewrite removes.
     const scored: ScoredCall[] = resolved.map((c) => ({
       probability: c.probability,
       outcome: c.status === 'hit' ? 1 : 0,
+      baseRate: c.base_rate ?? undefined,
     }));
 
     const byKind: Record<string, { open: number; resolved: number; hits: number; brier: number | null }> = {};
@@ -108,6 +113,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           null,
         ),
       },
+      // n is NOT the number of independent observations: record-calls.ts writes
+      // a fresh 14-day call per country every day, so consecutive calls share 13
+      // of 14 days and all resolve against one set of external data.
+      effective_sample_size: scored.length ? Math.round(effectiveSampleSize(scored.length) * 10) / 10 : 0,
       scoring: {
         brier: scored.length ? num(brierScore(scored)) : null,
         base_rate: scored.length ? num(baseRate(scored)) : null,

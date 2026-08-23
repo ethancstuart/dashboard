@@ -133,12 +133,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       LIMIT 40
     `) as unknown as CallRow[];
 
+    // Display list, capped. The STATISTICS below must not be computed from
+    // this — see `scoredRows`.
     const resolved = (await sql`
       SELECT kind, country_code, claim, probability::float AS probability,
              base_rate::float AS base_rate, resolves_on::text AS resolves_on, status
       FROM calls WHERE status <> 'pending'
       ORDER BY resolved_at DESC LIMIT 40
     `) as unknown as CallRow[];
+
+    // Every resolved call, for scoring. The headline was previously computed
+    // from the 40 rows above while being captioned with the un-limited count —
+    // and because record-calls.ts writes FX after censorship, those 40 would
+    // have been almost entirely one leg presented as the whole book.
+    const scoredRows = (await sql`
+      SELECT kind, probability::float AS probability, base_rate::float AS base_rate, status
+      FROM calls WHERE status <> 'pending'
+    `) as unknown as Array<{ kind: string; probability: number; base_rate: number | null; status: string }>;
 
     const totals = (await sql`
       SELECT
@@ -157,9 +168,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }>;
     const t = totals[0];
 
-    const scored: ScoredCall[] = resolved.map((c) => ({
+    const scored: ScoredCall[] = scoredRows.map((c) => ({
       probability: c.probability,
       outcome: c.status === 'hit' ? 1 : 0,
+      baseRate: c.base_rate ?? undefined,
     }));
     const asOf = new Date().toISOString().slice(0, 10);
 

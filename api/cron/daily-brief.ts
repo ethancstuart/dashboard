@@ -817,10 +817,10 @@ ${(() => {
       `) as unknown as Array<{ country_code: string; status: string; probability: number }>;
 
       const allScoredRows = (await sql`
-        SELECT probability::float AS probability, status
+        SELECT probability::float AS probability, base_rate::float AS base_rate, status
         FROM calls
         WHERE status <> 'pending'
-      `) as unknown as Array<{ probability: number; status: string }>;
+      `) as unknown as Array<{ probability: number; base_rate: number | null; status: string }>;
 
       const openRows = (await sql`
         SELECT COUNT(*)::int AS n, MIN(resolves_on)::text AS next_resolves
@@ -830,6 +830,7 @@ ${(() => {
       const allScored: ScoredCall[] = allScoredRows.map((r) => ({
         probability: r.probability,
         outcome: r.status === 'hit' ? 1 : 0,
+        baseRate: r.base_rate ?? undefined,
       }));
 
       const ledger = formatLedgerSummary({

@@ -125,19 +125,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let fxWritten = 0;
     let fxSkippedPegs = 0;
     try {
-      // Full 14-day depreciation series per currency. rate_vs_usd is
-      // units-per-USD (verified: AED sits at its 3.6725 peg), so a RISING rate
-      // is a WEAKER currency.
+      // FORWARD PEAK depreciation from each anchor day — deliberately the same
+      // quantity the resolver measures, and the fix for a real defect.
+      //
+      // This previously used LAG(), i.e. endpoint-to-endpoint depreciation over
+      // the trailing 14 days, while resolve-calls.ts resolves on MAX() across
+      // the window. Peak exceedance is strictly greater than endpoint
+      // exceedance — for a driftless walk the reflection principle puts it at
+      // about 2x — so the threshold was calibrated to one event and the call
+      // was settled on another. Measured over 5,270 currency-days: endpoint
+      // exceedance 24.3%, peak exceedance 38.2%, against a mean stated
+      // probability of 0.190. The 52 calls written under the old threshold
+      // would have resolved at roughly double their stated probability, about
+      // twenty confident misses all in the same direction, from construction
+      // alone and nothing to do with forecasting.
+      //
+      // CURRENT ROW is included because the resolver's window is inclusive of
+      // made_on and reference_value is that day's rate, so depreciation is
+      // measured from it. rate_vs_usd is units-per-USD (AED sits at its 3.6725
+      // peg), so a RISING rate is a WEAKER currency.
       const series = (await sql`
         WITH m AS (
           SELECT currency_code, country_code, date, rate_vs_usd,
-                 LAG(rate_vs_usd, ${HORIZON_DAYS}) OVER (PARTITION BY currency_code ORDER BY date) AS prev
+                 MAX(rate_vs_usd) OVER (
+                   PARTITION BY currency_code ORDER BY date
+                   ROWS BETWEEN CURRENT ROW AND ${HORIZON_DAYS} FOLLOWING
+                 ) AS fwd_peak,
+                 COUNT(*) OVER (
+                   PARTITION BY currency_code ORDER BY date
+                   ROWS BETWEEN CURRENT ROW AND ${HORIZON_DAYS} FOLLOWING
+                 ) AS window_rows
           FROM fx_rates
         )
         SELECT currency_code, country_code, date::text AS date,
-               ((rate_vs_usd - prev) / NULLIF(prev, 0) * 100)::float AS dep
+               ((fwd_peak - rate_vs_usd) / NULLIF(rate_vs_usd, 0) * 100)::float AS dep
         FROM m
-        WHERE prev IS NOT NULL
+        -- Only anchors with a COMPLETE forward window. A truncated window at the
+        -- end of the series understates the peak and would drag the threshold down.
+        WHERE window_rows = ${HORIZON_DAYS} + 1
         ORDER BY currency_code, date
       `) as unknown as Array<{ currency_code: string; country_code: string; date: string; dep: number }>;
 

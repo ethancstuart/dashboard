@@ -3,6 +3,8 @@ import {
   brierScore,
   baseRate,
   brierSkillScore,
+  brierSkillScoreVsPooled,
+  effectiveSampleSize,
   calibrationBins,
   murphyDecomposition,
   resolveOutcome,
@@ -18,6 +20,12 @@ import {
 } from './calls.js';
 
 const c = (probability: number, outcome: 0 | 1): ScoredCall => ({ probability, outcome });
+/** A call carrying the unit's own climatology — required for a real skill score. */
+const cb = (probability: number, outcome: 0 | 1, baseRate: number): ScoredCall => ({
+  probability,
+  outcome,
+  baseRate,
+});
 
 describe('brierScore', () => {
   it('is 0 for a perfect forecaster', () => {
@@ -44,28 +52,79 @@ describe('baseRate', () => {
   });
 });
 
-describe('brierSkillScore — the number that gets published either way', () => {
-  it('is positive when the forecaster beats the base rate', () => {
-    // Base rate 0.5, and the forecaster called each one correctly and confidently.
-    const calls = [c(0.9, 1), c(0.1, 0), c(0.9, 1), c(0.1, 0)];
+describe("brierSkillScore — scored against each unit's OWN climatology", () => {
+  it("is positive when the forecaster beats that unit's base rate", () => {
+    // Base rate 0.5 for each; forecaster called each correctly and confidently.
+    const calls = [cb(0.9, 1, 0.5), cb(0.1, 0, 0.5), cb(0.9, 1, 0.5), cb(0.1, 0, 0.5)];
     expect(brierSkillScore(calls)).toBeGreaterThan(0);
   });
 
-  it('is 0 for a forecaster who just states the base rate', () => {
-    const calls = [c(0.5, 1), c(0.5, 0), c(0.5, 1), c(0.5, 0)];
+  it('is 0 for a forecaster who just restates the base rate', () => {
+    const calls = [cb(0.5, 1, 0.5), cb(0.5, 0, 0.5), cb(0.5, 1, 0.5), cb(0.5, 0, 0.5)];
     expect(brierSkillScore(calls)).toBeCloseTo(0, 10);
   });
 
-  it('goes NEGATIVE when the forecaster is worse than the base rate', () => {
-    // Confidently wrong every time.
-    const calls = [c(0.9, 0), c(0.1, 1), c(0.9, 0), c(0.1, 1)];
+  it('goes NEGATIVE when the forecaster is worse than climatology', () => {
+    const calls = [cb(0.9, 0, 0.5), cb(0.1, 1, 0.5), cb(0.9, 0, 0.5), cb(0.1, 1, 0.5)];
     expect(brierSkillScore(calls)).toBeLessThan(0);
   });
 
-  it('is undefined rather than misleading when every outcome is identical', () => {
-    // With no variance there is no baseline to have skill against. Reporting a
-    // number here would be the same class of error as the closed-loop ledger.
-    expect(Number.isNaN(brierSkillScore([c(0.7, 1), c(0.8, 1)]))).toBe(true);
+  it('REFUSES to score a call with no base rate rather than falling back to pooled', () => {
+    // Returning a number here would reintroduce exactly the flattery this removes.
+    expect(Number.isNaN(brierSkillScore([c(0.9, 1), c(0.1, 0)]))).toBe(true);
+    expect(Number.isNaN(brierSkillScore([cb(0.9, 1, 0.5), c(0.1, 0)]))).toBe(true);
+  });
+
+  it('is undefined rather than misleading when the reference was already perfect', () => {
+    expect(Number.isNaN(brierSkillScore([cb(0.7, 1, 1), cb(0.8, 1, 1)]))).toBe(true);
+  });
+});
+
+describe('the pooling artefact this replaced — the regression test that matters', () => {
+  // A forecaster who knows NOTHING except which country it is: it says each
+  // unit's own base rate back, every time. Against per-unit climatology that is
+  // by definition zero skill. Against a POOLED base rate it scores positive,
+  // purely for knowing that some countries always block and others never do.
+  const alwaysBlocks = Array.from({ length: 7 }, () => cb(0.99, 1, 0.99));
+  const neverBlocks = Array.from({ length: 24 }, () => cb(0.01, 0, 0.01));
+  const uncertain = [cb(0.5, 1, 0.5), cb(0.5, 0, 0.5), cb(0.5, 1, 0.5), cb(0.5, 0, 0.5)];
+  const book = [...alwaysBlocks, ...neverBlocks, ...uncertain];
+
+  it('awards essentially ZERO skill against per-unit climatology, correctly', () => {
+    expect(Math.abs(brierSkillScore(book))).toBeLessThan(0.02);
+  });
+
+  it('awards LARGE positive skill against the pooled base rate, incorrectly', () => {
+    expect(brierSkillScoreVsPooled(book)).toBeGreaterThan(0.5);
+  });
+
+  it('so the two disagree by a wide margin on a forecaster with no information', () => {
+    expect(brierSkillScoreVsPooled(book) - brierSkillScore(book)).toBeGreaterThan(0.5);
+  });
+});
+
+describe('effectiveSampleSize — 91 correlated calls are not 91 observations', () => {
+  it('returns n when observations are independent', () => {
+    expect(effectiveSampleSize(91, 0)).toBe(91);
+  });
+
+  it('collapses hard under realistic correlation', () => {
+    // A fresh 14-day call per country per day shares 13 of 14 days with
+    // yesterday's, and all of them resolve against one set of external data.
+    expect(effectiveSampleSize(91, 0.15)).toBeLessThan(8);
+  });
+
+  it('never exceeds n and never goes below 1 for a non-empty book', () => {
+    for (const n of [1, 5, 39, 52, 91, 1274]) {
+      const e = effectiveSampleSize(n, 0.15);
+      expect(e).toBeLessThanOrEqual(n);
+      expect(e).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('handles degenerate inputs without returning nonsense', () => {
+    expect(effectiveSampleSize(0)).toBe(0);
+    expect(effectiveSampleSize(1)).toBe(1);
   });
 });
 
@@ -197,9 +256,15 @@ describe('formatLedgerLine', () => {
   });
 
   it('reports a negative skill score rather than hiding it', () => {
-    const line = formatLedgerLine([call('miss'), call('hit')], [c(0.9, 0), c(0.1, 1)]);
+    const line = formatLedgerLine([call('miss'), call('hit')], [cb(0.9, 0, 0.5), cb(0.1, 1, 0.5)]);
     expect(line).toContain('-');
     expect(line).toContain('vs base rate');
+  });
+
+  it('omits skill entirely when the calls carry no base rate', () => {
+    const line = formatLedgerLine([call('miss'), call('hit')], [c(0.9, 0), c(0.1, 1)]);
+    expect(line).not.toContain('vs base rate');
+    expect(line).not.toContain('NaN');
   });
 });
 
@@ -266,11 +331,21 @@ describe('formatLedgerSummary — the standing line at the top of the brief', ()
   it('prints a negative skill score rather than omitting it', () => {
     const line = formatLedgerSummary({
       resolvedToday: [mk('miss')],
-      allScored: [c(0.9, 0), c(0.1, 1)],
+      allScored: [cb(0.9, 0, 0.5), cb(0.1, 1, 0.5)],
       openCount: 1,
     });
     expect(line).toContain('-');
     expect(line).toContain('vs base rate');
+  });
+
+  it('says nothing about skill when base rates are missing', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [mk('miss')],
+      allScored: [c(0.9, 0), c(0.1, 1)],
+      openCount: 1,
+    });
+    expect(line).not.toContain('vs base rate');
+    expect(line).not.toContain('NaN');
   });
 
   it('omits skill rather than printing NaN when every outcome is identical', () => {

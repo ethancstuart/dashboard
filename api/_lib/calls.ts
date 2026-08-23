@@ -86,6 +86,12 @@ export interface Call {
 export interface ScoredCall {
   probability: number;
   outcome: 0 | 1;
+  /**
+   * That unit's OWN long-run rate at the time the call was made — the number
+   * this forecast is trying to beat. Stored per call in `calls.base_rate`.
+   * Required for a publishable skill score; see brierSkillScore.
+   */
+  baseRate?: number;
 }
 
 /** Clamp into the open interval so a stated 0 or 1 is never unfalsifiable. */
@@ -111,18 +117,69 @@ export function baseRate(calls: ScoredCall[]): number {
 }
 
 /**
- * Brier Skill Score against always predicting the base rate.
+ * Brier Skill Score against EACH UNIT'S OWN long-run rate.
  *
- * > 0 means we beat "how often does this happen anyway". <= 0 means we did
- * not, and that number gets published exactly as it comes out — a track record
- * that only reports its wins is not a track record.
+ * THE REFERENCE MATTERS MORE THAN THE SCORE, and getting it wrong was the
+ * defect this function was rewritten to remove. It previously scored against
+ * the POOLED realized frequency across every call of every kind. That is not a
+ * benchmark a forecaster has to be any good to beat.
+ *
+ * Measured on the live book: of 39 censorship calls, 7 countries saw a
+ * confirmed block in 8 of 8 fortnights and 24 saw one in 0 of 8. Only 8 carry
+ * genuine uncertainty. Pooling "always" with "never" produces a reference
+ * around 0.33 that is a terrible forecast for every individual country, so
+ * beating it requires only knowing that China censors the internet and Chad
+ * does not. That is a lookup table, not a prediction — and against the pooled
+ * reference this book projected +15.2% while the honest per-country numbers
+ * were -66.8% (censorship) and -23.6% (FX).
+ *
+ * Requires `baseRate` on every call. A call without one is not scoreable here,
+ * and returning a number anyway would reintroduce exactly the flattery this
+ * removes.
+ *
+ * Positive means we beat that unit's own climatology. Zero or negative means we
+ * did not, and that number publishes exactly as it comes out.
  */
 export function brierSkillScore(calls: ScoredCall[]): number {
   if (calls.length === 0) return NaN;
+  if (calls.some((c) => c.baseRate === undefined || !Number.isFinite(c.baseRate))) return NaN;
+  const reference = calls.reduce((acc, c) => acc + ((c.baseRate as number) - c.outcome) ** 2, 0) / calls.length;
+  if (reference === 0) return NaN; // reference was perfect — skill undefined
+  return 1 - brierScore(calls) / reference;
+}
+
+/**
+ * The old pooled-reference skill score, kept ONLY so the difference can be
+ * shown and argued about. Never publish this as "skill".
+ */
+export function brierSkillScoreVsPooled(calls: ScoredCall[]): number {
+  if (calls.length === 0) return NaN;
   const climatology = baseRate(calls);
   const reference = calls.reduce((acc, c) => acc + (climatology - c.outcome) ** 2, 0) / calls.length;
-  if (reference === 0) return NaN; // every outcome identical — skill undefined
+  if (reference === 0) return NaN;
   return 1 - brierScore(calls) / reference;
+}
+
+/**
+ * Effective sample size, given that overlapping calls are not independent.
+ *
+ * `record-calls.ts` writes a fresh 14-day call per country EVERY DAY, so two
+ * consecutive calls on the same country share 13 of their 14 days and will
+ * almost always resolve identically. Ninety-one calls resolving on one date
+ * against one set of external data is nowhere near ninety-one observations.
+ *
+ * The standard correction for equicorrelated observations:
+ *   n_eff = n / (1 + (n - 1) * rho)
+ *
+ * `rho` is the average pairwise outcome correlation. It is an input rather
+ * than an estimate because with a single resolution date there is nothing to
+ * estimate it from — and assuming independence is the one option that is
+ * certainly wrong.
+ */
+export function effectiveSampleSize(n: number, rho = 0.15): number {
+  if (n <= 1) return n;
+  const r = Math.min(0.99, Math.max(0, rho));
+  return n / (1 + (n - 1) * r);
 }
 
 export interface CalibrationBin {
