@@ -16,6 +16,7 @@ import '../styles/landing.css';
 import { createElement } from '../utils/dom.ts';
 import { trackEvent } from '../services/analytics.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { capture, installSurfaces } from '../ui/kit/index.ts';
 
 const FALLBACK_BRIEF = {
   date: 'Sample',
@@ -64,15 +65,18 @@ export function renderLanding(root: HTMLElement): void {
       </div>
 
       <div class="nw-hero-content" id="nw-hero-content">
-        <span class="nw-eyebrow">Geopolitical Intelligence</span>
-        <h1 class="nw-hero-headline word-stagger" aria-label="The world, watched.">
-          <span>The</span> <span>world,</span> <span>watched<span class="nw-hero-period">.</span></span>
+        <span class="nw-eyebrow" id="nw-hero-eyebrow">The public forecasting ledger</span>
+        <h1 class="nw-hero-headline word-stagger" aria-label="The world, graded.">
+          <span>The</span> <span>world,</span> <span>graded<span class="nw-hero-period">.</span></span>
         </h1>
-        <p class="nw-hero-sub">45+ live data layers. 85 countries scored. Daily AI briefs. Free.</p>
-        <a href="#/intel" class="nw-hero-cta" data-cta="hero-primary">
-          Open the dashboard <span class="nw-hero-cta-arrow" aria-hidden="true">→</span>
-        </a>
-        <p class="nw-hero-fineprint">It's the entire site. Free.</p>
+        <p class="nw-hero-sub">
+          Every call we make is dated, falsifiable, and scored against someone else's data —
+          published whether it flatters us or not.
+        </p>
+        <div id="nw-hero-capture"></div>
+        <p class="nw-hero-fineprint">
+          <a href="#/ledger">See every call we have open &rarr;</a> &middot; free, no account
+        </p>
       </div>
     </section>
 
@@ -308,6 +312,40 @@ export function renderLanding(root: HTMLElement): void {
   `;
 
   root.appendChild(main);
+
+  // ── Hero capture — the single shared implementation ──
+  // The primary action is SUBSCRIBE, not "open the dashboard". A stranger
+  // dropped onto a 45-layer dark globe with no legend bounces and is never
+  // seen again; a subscriber gets a chance every morning, and the brief is the
+  // only surface here with demonstrated daily engagement. The old hero sent
+  // everyone to the map and put the only email field seven sections below it.
+  installSurfaces();
+  const heroCapture = main.querySelector<HTMLElement>('#nw-hero-capture');
+  if (heroCapture) {
+    heroCapture.appendChild(capture({ source: 'landing-hero', cta: 'Get tomorrow’s brief' }));
+  }
+
+  // ── Live count from the ledger ──
+  // Reads the real number rather than stating one. The eyebrow says something
+  // deliberately unimpressive but true; the previous hero claimed "158
+  // countries scored" against a real 85.
+  const eyebrow = main.querySelector<HTMLElement>('#nw-hero-eyebrow');
+  if (eyebrow) {
+    void fetch('/api/calls/ledger')
+      .then((r) => (r.ok ? (r.json() as Promise<{ counts?: { open?: number; resolved?: number } }>) : null))
+      .then((d) => {
+        const open = d?.counts?.open;
+        const resolved = d?.counts?.resolved;
+        if (typeof open !== 'number') return;
+        eyebrow.textContent =
+          typeof resolved === 'number' && resolved > 0
+            ? `${open} calls open · ${resolved} resolved and scored`
+            : `${open} calls open · the public forecasting ledger`;
+      })
+      .catch(() => {
+        /* leave the static eyebrow — never invent a count */
+      });
+  }
 
   // ── Hero globe — lazy MapLibre on desktop, static fallback on mobile ──
   const heroGlobe = main.querySelector<HTMLElement>('#nw-hero-globe');
