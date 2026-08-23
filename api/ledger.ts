@@ -100,9 +100,27 @@ function shell(body: string, title: string, description: string): string {
   .hit .trail { color:var(--up); } .miss .trail { color:var(--down); } .pending .trail { color:var(--ink3); }
   a { color:var(--accent); }
   .foot { margin-top:64px; font-size:14px; color:var(--ink2); }
+  .masthead { display:flex; align-items:baseline; gap:22px; flex-wrap:wrap; padding:18px 0; border-bottom:2px solid var(--gold); margin-bottom:40px; }
+  .masthead .wordmark { font-family:${fonts.serif}; font-weight:600; font-size:19px; color:var(--ink); text-decoration:none; }
+  .masthead a { font-family:${fonts.mono}; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink2); text-decoration:none; }
+  .masthead a:hover { color:var(--accent); }
 </style>
 </head>
-<body><div class="wrap">${body}</div></body>
+<body><div class="wrap">
+<nav class="masthead" aria-label="Primary">
+  <a class="wordmark" href="https://nexuswatch.dev/">NexusWatch</a>
+  <a href="https://nexuswatch.dev/ledger">The Ledger</a>
+  <a href="https://nexuswatch.dev/briefs">Briefs</a>
+  <a href="https://nexuswatch.dev/intel">Intel Map</a>
+  <a href="https://nexuswatch.dev/methodology">Method</a>
+  <a href="https://nexuswatch.dev/about">About</a>
+</nav>
+${body}
+<p class="foot">Daily snapshots of this book are committed to the public repository —
+<a href="https://github.com/ethancstuart/nexus-watch/tree/main/ledger-snapshots">ledger-snapshots/</a> —
+so the stated probabilities and thresholds carry GitHub's timestamps, not ours. A reader can verify
+no call moved between issuance and resolution without trusting us.</p>
+</div></body>
 </html>`;
 }
 

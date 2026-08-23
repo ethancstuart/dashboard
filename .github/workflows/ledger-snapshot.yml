@@ -1,0 +1,61 @@
+# The daily call-set snapshot — the goalposts, held outside our own hands.
+#
+# The ledger's entire argument is "we cannot move the goalposts after the
+# fact." Until this workflow, the goalposts were rows in a Postgres database
+# that one person can UPDATE — the honest resolver code is real, but "trust
+# me, the cron job is honest" has the exact structure of the thing the ledger
+# claims to replace.
+#
+# This snapshots the full public book into ledger-snapshots/ once a day. The
+# attestation is GitHub's, not ours: commit timestamps on a public repository,
+# authored by the Actions bot on a schedule, form an append-only record we
+# cannot quietly rewrite (a force-push to erase history would itself be
+# public). A reader who wants to verify that a call's stated probability,
+# threshold or resolver never changed between issuance and resolution can diff
+# two dated files, with no trust in us required.
+#
+# 10:20 UTC: after record-calls (09:30) and resolve-calls (09:45), before
+# most readers see the day's brief.
+name: ledger-snapshot
+
+on:
+  schedule:
+    - cron: '20 10 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the public ledger
+        run: |
+          set -euo pipefail
+          mkdir -p ledger-snapshots
+          DATE=$(date -u +%F)
+          curl -sf --max-time 60 https://nexuswatch.dev/api/calls/ledger -o "ledger-snapshots/${DATE}.json"
+          # Refuse to commit an error page or an empty body as a "snapshot".
+          python3 - "ledger-snapshots/${DATE}.json" <<'EOF'
+          import json, sys
+          with open(sys.argv[1]) as f:
+              d = json.load(f)
+          assert 'counts' in d and 'open' in d, 'not a ledger payload'
+          print(f"snapshot ok: {d['counts']}")
+          EOF
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git config user.name  "ledger-snapshot[bot]"
+          git config user.email "actions@github.com"
+          git add ledger-snapshots/
+          if git diff --cached --quiet; then
+            echo "no change"
+            exit 0
+          fi
+          git commit -m "ledger: daily snapshot $(date -u +%F)"
+          git push

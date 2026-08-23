@@ -4,3 +4,7 @@ coverage/
 public/sw.js
 *.md
 .superpowers/
+# Ledger snapshots are byte-exact records of what the API served — the whole
+# point is that they are never modified after capture. Formatting one would
+# falsify its diff history.
+ledger-snapshots/
