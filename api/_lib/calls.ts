@@ -315,6 +315,36 @@ export function fxDepreciationPct(reference: number, observed: number): number {
 }
 
 /**
+ * Recency weight per call kind — SET BY MEASUREMENT, not by taste.
+ *
+ * The original weight was a declared-in-advance 0.6 for everything, which was
+ * honest but arbitrary. A walk-forward backtest over the full stored history
+ * (disjoint 14-day outcome windows, thresholds and rates estimated from data
+ * strictly before each fold; scripts/backtest-calls.ts reproduces it) swept
+ * the weight and measured Brier out-of-sample:
+ *
+ *     w      FX (n=267)   censorship (n=93)
+ *     0.0    0.1013       0.0677   <- best for censorship
+ *     0.2    0.0993       0.0687
+ *     0.4    0.0987 <- best for FX
+ *     0.6    0.0994       0.0725   <- the old default
+ *     0.8    0.1014       0.0753
+ *
+ * Recency carries a small real signal in FX and none at all in censorship —
+ * at w=0.6 the censorship leg scored -7.1% skill against its own climatology,
+ * a pure noise penalty the data-science review predicted from the variance of
+ * a three-window estimator. So censorship states climatology, and FX leans
+ * recent only as far as the evidence supports.
+ *
+ * Remeasure as history accumulates; the weight follows the backtest, never
+ * the other way around.
+ */
+export const RECENCY_WEIGHT: Record<CallKind, number> = {
+  censorship_event: 0,
+  fx_devaluation: 0.4,
+};
+
+/**
  * Blend a country's recent rate with its long-run rate into a stated probability.
  *
  * This is the whole forecast, and it is deliberately small enough to argue

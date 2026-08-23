@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { blendRates, historicalRate, fxThreshold, type CallKind } from '../_lib/calls.js';
+import { blendRates, historicalRate, fxThreshold, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -95,7 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const r of rows) {
       const longRun = historicalRate(r.long_hits, longWindows);
       const recent = historicalRate(r.recent_hits, recentWindows);
-      const probability = blendRates(recent, longRun);
+      const probability = blendRates(recent, longRun, RECENCY_WEIGHT[KIND]);
 
       const claim =
         `OONI records at least ${THRESHOLD} confirmed website or app blocking event ` +
@@ -197,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const longRun = historicalRate(deps.filter((d) => d >= threshold).length, deps.length);
         const recentDeps = deps.slice(-HORIZON_DAYS * FX_RECENT_WINDOWS);
         const recent = historicalRate(recentDeps.filter((d) => d >= threshold).length, recentDeps.length);
-        const probability = blendRates(recent, longRun);
+        const probability = blendRates(recent, longRun, RECENCY_WEIGHT[FX_KIND]);
 
         const claim =
           `${code} depreciates ${threshold.toFixed(2)}% or more against USD ` +
