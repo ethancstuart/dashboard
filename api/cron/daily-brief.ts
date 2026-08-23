@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
 import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
-import { recordAnthropicSpend } from '../_lib/llm-budget.js';
+import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
 
@@ -861,6 +861,10 @@ ${(() => {
   return parts.join('\n');
 })()}`;
 
+        // Cron path: bypassCap — the daily brief is mission-critical and must
+        // ship even at the cap — but the check still runs so the soft-warn
+        // telemetry fires as spend approaches the limit.
+        await checkBudget({ endpoint: 'daily-brief', bypassCap: true });
         const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {

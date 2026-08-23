@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { kvCached } from './_lib/kvCache.js';
 import { rateLimit, applyRateLimitHeaders } from './_lib/rateLimit.js';
 import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
+import { checkBudget } from './_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 25 };
 
@@ -162,6 +163,14 @@ interface CachedPayload {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Budget gate — the $9/day kill switch only works if every public spender
+  // checks it. Until now it gated 3 of 12 call sites; this endpoint could keep
+  // spending past any limit.
+  const gate = await checkBudget({ endpoint: 'briefs-sample', bypassCap: false });
+  if (!gate.ok) {
+    res.setHeader('Retry-After', '3600');
+    return res.status(503).json(gate);
+  }
   res.setHeader('Access-Control-Allow-Origin', 'https://nexuswatch.dev');
   if (req.method === 'OPTIONS') return res.status(200).end();
 

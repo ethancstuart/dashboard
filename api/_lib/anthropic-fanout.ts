@@ -13,6 +13,7 @@
  */
 
 import { estimateAnthropicCost, recordSpend } from './llm-budget.js';
+// llm-budget-gate-exempt: library, not a handler — its only caller (council.ts) gates with checkBudget before fanning out.
 
 export interface AnthropicCallSpec {
   /** Persona/label for logging + cost attribution. */

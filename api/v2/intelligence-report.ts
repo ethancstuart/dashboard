@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { recordAnthropicSpend } from '../_lib/llm-budget.js';
+import { checkBudget } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
@@ -29,6 +30,14 @@ interface ReportRequest {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Budget gate — the $9/day kill switch only works if every public spender
+  // checks it. Until now it gated 3 of 12 call sites; this endpoint could keep
+  // spending past any limit.
+  const gate = await checkBudget({ endpoint: 'intelligence-report', bypassCap: false });
+  if (!gate.ok) {
+    res.setHeader('Retry-After', '3600');
+    return res.status(503).json(gate);
+  }
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });

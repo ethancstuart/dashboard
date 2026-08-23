@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { recordAnthropicSpend, type AnthropicUsage } from '../_lib/llm-budget.js';
+import { checkBudget } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -70,6 +71,14 @@ interface CompileRequest {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Budget gate — the $9/day kill switch only works if every public spender
+  // checks it. Until now it gated 3 of 12 call sites; this endpoint could keep
+  // spending past any limit.
+  const gate = await checkBudget({ endpoint: 'alerts-compile', bypassCap: false });
+  if (!gate.ok) {
+    res.setHeader('Retry-After', '3600');
+    return res.status(503).json(gate);
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'anthropic_not_configured' });

@@ -15,7 +15,7 @@
 import type { Platform } from './flags.js';
 import type { Topic, Pillar, PostType } from './topicSelector.js';
 import type { VoiceProfile } from './marketingVoice.js';
-import { recordAnthropicSpend } from '../../_lib/llm-budget.js';
+import { checkBudget, recordAnthropicSpend } from '../../_lib/llm-budget.js';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -198,6 +198,13 @@ function inferFormat(platform: Platform, content: string): 'post' | 'thread' | '
 }
 
 export async function generateContent(req: GenerationRequest): Promise<GenerationResult | null> {
+  // Budget gate. null is this function's "did not generate" contract, and the
+  // dispatcher skips a topic with no content — so a tripped cap fails CLOSED.
+  const budgetGate = await checkBudget({ endpoint: 'marketing-content', bypassCap: false });
+  if (!budgetGate.ok) {
+    console.warn('[contentGenerator] budget gate closed:', budgetGate.message);
+    return null;
+  }
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     // Stub mode — generate a placeholder so the flow can be exercised end-to-end.

@@ -1,4 +1,5 @@
 import { recordAnthropicSpend, type AnthropicUsage } from './_lib/llm-budget.js';
+import { checkBudget } from './_lib/llm-budget.js';
 export const config = { runtime: 'edge' };
 
 const CORS_HEADERS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': 'https://nexuswatch.dev' };
@@ -30,6 +31,16 @@ export default async function handler(req: Request) {
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: CORS_HEADERS });
+  }
+
+  // Budget gate. Edge runtime, but llm-budget's neon driver is fetch-based and
+  // edge-compatible; fails open on DB error by design.
+  const gate = await checkBudget({ endpoint: 'sitrep', bypassCap: false });
+  if (!gate.ok) {
+    return new Response(JSON.stringify(gate), {
+      status: 503,
+      headers: { ...CORS_HEADERS, 'Retry-After': '3600' },
+    });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

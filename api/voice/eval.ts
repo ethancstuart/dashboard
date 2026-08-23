@@ -35,6 +35,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { recordAnthropicSpend, type AnthropicUsage } from '../_lib/llm-budget.js';
+import { checkBudget } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -273,6 +274,12 @@ function isValidPlatform(p: unknown): p is Platform {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
+  const gate = await checkBudget({ endpoint: 'voice-eval', bypassCap: false });
+  if (!gate.ok) {
+    res.setHeader('Retry-After', '3600');
+    res.status(503).json(gate);
+    return;
+  }
   if (req.method === 'OPTIONS') {
     res.status(200);
     for (const [k, v] of Object.entries(CORS_HEADERS)) {

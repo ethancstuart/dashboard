@@ -40,7 +40,17 @@ const BILLED_HOSTS = ['api.anthropic.com', 'api.openai.com'];
 /** Any of these in a file means it participates in spend accounting. */
 const RECORDING_MARKERS = ['recordSpend', 'recordAnthropicSpend'];
 
+/**
+ * And this means it consults the kill switch. Recording without gating is how
+ * the switch saw the fire and was wired to three rooms of twelve: 9 of 12 call
+ * sites — including every public unauthenticated endpoint — could keep
+ * spending past any limit. Both properties are now required of every billed
+ * call site.
+ */
+const GATING_MARKERS = ['checkBudget'];
+
 const EXEMPT_RE = /\/\/\s*llm-spend-exempt:\s*(\S.*)$/m;
+const GATE_EXEMPT_RE = /\/\/\s*llm-budget-gate-exempt:\s*(\S.*)$/m;
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -66,6 +76,7 @@ function stripComments(src: string): string {
 interface Finding {
   file: string;
   hosts: string[];
+  missing: 'recording' | 'gating';
 }
 
 const violations: Finding[] = [];
@@ -81,15 +92,20 @@ for (const file of walk(SCAN_DIR)) {
   inScope++;
   const rel = relative(ROOT, file);
 
-  if (RECORDING_MARKERS.some((m) => code.includes(m))) continue;
+  const records = RECORDING_MARKERS.some((m) => code.includes(m));
+  const gates = GATING_MARKERS.some((m) => code.includes(m));
 
-  const exemption = src.match(EXEMPT_RE);
-  if (exemption) {
-    exempt.push({ file: rel, reason: exemption[1].trim() });
-    continue;
+  if (!records) {
+    const exemption = src.match(EXEMPT_RE);
+    if (exemption) exempt.push({ file: rel, reason: exemption[1].trim() });
+    else violations.push({ file: rel, hosts, missing: 'recording' });
   }
 
-  violations.push({ file: rel, hosts });
+  if (!gates) {
+    const gateExemption = src.match(GATE_EXEMPT_RE);
+    if (gateExemption) exempt.push({ file: rel, reason: `gate: ${gateExemption[1].trim()}` });
+    else violations.push({ file: rel, hosts, missing: 'gating' });
+  }
 }
 
 console.log(`[check-llm-spend] ${inScope} file(s) in api/ call a billed LLM endpoint.`);
@@ -100,18 +116,21 @@ for (const e of exempt) {
 if (violations.length > 0) {
   console.error(`\n[check-llm-spend] FAILED — ${violations.length} call site(s) record no spend:\n`);
   for (const v of violations) {
-    console.error(`  ${v.file}  (calls ${v.hosts.join(', ')})`);
+    console.error(`  ${v.file}  (calls ${v.hosts.join(', ')}) — missing ${v.missing}`);
   }
   console.error(
-    '\nEach must either record its spend:\n' +
-      "    import { recordAnthropicSpend } from '../_lib/llm-budget.js';\n" +
-      "    await recordAnthropicSpend(model, data.usage, 'endpoint-label');\n" +
-      '\nor declare, in the file, why it should not:\n' +
-      '    // llm-spend-exempt: <reason>\n' +
-      '\nUnrecorded spend is invisible to the $9/day kill-switch in\n' +
-      'api/_lib/llm-budget.ts, which cannot fire on money it never sees.',
+    '\nEvery billed call site must RECORD its spend and GATE on the kill switch:\n' +
+      "    import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';\n" +
+      "    const gate = await checkBudget({ endpoint: 'x', bypassCap: false }); // crons: bypassCap: true\n" +
+      "    await recordAnthropicSpend(model, data.usage, 'x');\n" +
+      '\nOr declare, in the file, why it should not:\n' +
+      '    // llm-spend-exempt: <reason>          (recording)\n' +
+      '    // llm-budget-gate-exempt: <reason>    (gating; e.g. a library whose callers gate)\n' +
+      '\nUnrecorded spend is invisible to the $9/day kill-switch; ungated spend\n' +
+      'ignores it. Both happened here — the switch saw one row from May while ten\n' +
+      'call sites spent silently, then saw everything and gated three of twelve.',
   );
   process.exit(1);
 }
 
-console.log('[check-llm-spend] OK — every billed call site records spend.');
+console.log('[check-llm-spend] OK — every billed call site records spend and gates on the budget.');
