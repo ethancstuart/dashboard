@@ -53,7 +53,7 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string 
   { path: 'about', changefreq: 'monthly', priority: '0.5' },
   { path: 'methodology', changefreq: 'monthly', priority: '0.5' },
   { path: 'roadmap', changefreq: 'weekly', priority: '0.4' },
-  { path: 'accuracy', changefreq: 'daily', priority: '0.7' },
+  { path: 'ledger', changefreq: 'daily', priority: '0.9' },
   { path: 'compare', changefreq: 'weekly', priority: '0.5' },
   { path: 'watchlist', changefreq: 'weekly', priority: '0.4' },
   { path: 'feed', changefreq: 'daily', priority: '0.5' },
