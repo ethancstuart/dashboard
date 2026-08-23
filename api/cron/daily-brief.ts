@@ -73,13 +73,61 @@ const CRITICAL_INFRA: { name: string; type: string; lat: number; lon: number }[]
 ];
 
 // OSINT + world news RSS feeds for headline context
-const BRIEF_RSS_FEEDS = [
-  { url: 'https://www.bellingcat.com/feed/', source: 'Bellingcat' },
-  { url: 'https://www.crisisgroup.org/rss.xml', source: 'Crisis Group' },
-  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', source: 'BBC World' },
-  { url: 'https://www.aljazeera.com/xml/rss/all.xml', source: 'Al Jazeera' },
-  { url: 'https://rss.dw.com/xml/rss-en-all', source: 'DW' },
+/**
+ * The brief's news roster.
+ *
+ * This was five English-language feeds — Bellingcat, Crisis Group, BBC World,
+ * Al Jazeera, DW — for a product that claims a global view. 109 of the first
+ * 133 briefs mentioned Bellingcat and one recent edition drew 5 of 5 "top
+ * stories" from it, including a football-betting piece. Bellingcat is an
+ * investigations shop on a multi-week cadence: excellent, and the wrong tempo
+ * to drive a daily. Measured coverage across 120 briefs: Iran 120, Mexico 5,
+ * Nigeria 8, DR Congo 7.
+ *
+ * EVERY FEED BELOW WAS FETCHED AND CONFIRMED TO RETURN ITEMS before being
+ * added. Candidates that failed are recorded in the gap note rather than
+ * added hopefully — an empty source is how V-Dem ended up cited on the landing
+ * page for four months while its table held zero rows.
+ *
+ * STATE MEDIA IS INCLUDED AND TAGGED. It is never a fact source. What a state
+ * outlet chooses to emphasise is evidence of that state's posture, which is
+ * a different and genuinely useful observable — but it may only ever be cited
+ * as "TASS is framing X as Y", never as "X happened". The tag is what makes
+ * that rule enforceable in the prompt.
+ *
+ * KNOWN GAP, stated rather than papered over: there is no wire service here.
+ * AP, Reuters, ISW, the Kyiv Independent and Times of Israel were all tested
+ * and all failed (connection failure, 403, or 404). A daily brief without a
+ * wire is a real weakness and it should be closed with a paid or authenticated
+ * feed rather than by pretending.
+ */
+type BriefFeed = { url: string; source: string; region: string; stateMedia?: true };
+
+const BRIEF_RSS_FEEDS: BriefFeed[] = [
+  // Investigative and analytic
+  { url: 'https://www.bellingcat.com/feed/', source: 'Bellingcat', region: 'global' },
+  { url: 'https://www.crisisgroup.org/rss.xml', source: 'Crisis Group', region: 'global' },
+  // Anglophone internationals
+  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', source: 'BBC World', region: 'global' },
+  { url: 'https://www.aljazeera.com/xml/rss/all.xml', source: 'Al Jazeera', region: 'mena' },
+  { url: 'https://rss.dw.com/xml/rss-en-all', source: 'DW', region: 'europe' },
+  // Regional origin — the actual gap
+  { url: 'https://www.thehindu.com/news/international/feeder/default.rss', source: 'The Hindu', region: 'south-asia' },
+  { url: 'https://asia.nikkei.com/rss/feed/nar', source: 'Nikkei Asia', region: 'east-asia' },
+  { url: 'https://www.scmp.com/rss/91/feed', source: 'SCMP', region: 'east-asia' },
+  { url: 'https://www.premiumtimesng.com/feed', source: 'Premium Times', region: 'west-africa' },
+  { url: 'https://www.dailymaverick.co.za/dmrss/', source: 'Daily Maverick', region: 'southern-africa' },
+  { url: 'https://www.batimes.com.ar/feed', source: 'Buenos Aires Herald', region: 'latam' },
+  { url: 'https://en.mercopress.com/rss/', source: 'MercoPress', region: 'latam' },
+  { url: 'https://meduza.io/rss/en/all', source: 'Meduza', region: 'russia' },
+  // State media — posture, never fact
+  { url: 'https://tass.com/rss/v2.xml', source: 'TASS', region: 'russia', stateMedia: true },
+  { url: 'https://www.globaltimes.cn/rss/outbrain.xml', source: 'Global Times', region: 'china', stateMedia: true },
+  { url: 'https://en.irna.ir/rss', source: 'IRNA', region: 'iran', stateMedia: true },
 ];
+
+/** Source names that may only be cited as evidence of state framing. */
+const STATE_MEDIA_SOURCES = new Set(BRIEF_RSS_FEEDS.filter((f) => f.stateMedia).map((f) => f.source));
 
 // === The NexusWatch Brief — AI Prompt ===
 function getBriefSystemPrompt(now: Date): string {
@@ -145,6 +193,23 @@ ATTRIBUTION: You are NexusWatch — the platform IS the source. Don't attribute 
 
 CRITICAL RULES:
 - NEVER fabricate events, names, or claims not in the data. If the data doesn't support it, don't write it.
+- NO SELF-HISTORY. Never write "the biggest move we've logged this year", "the
+  last time we saw this", or compare to any past NexusWatch observation. This
+  archive begins 2026-04-08 and holds no such history, so every one of those
+  sentences has been invented — including a "2018 Sulawesi moved the CII
+  equivalent by 28 points" that predates the product by eight years. A brief
+  whose entire claim is a published record cannot invent its own record.
+- NO RETROSPECTIVE CLAIMS AT ALL unless the item is in today's context. No past
+  price moves, no historical analogies, no "in 2019...". You cannot check them
+  and neither can the reader.
+- ATTRIBUTE IN THE SENTENCE, not in a footnote. Any non-trivial factual claim
+  names its source inline: "OONI recorded 2,136 confirmed blocks in Russia this
+  week", not "Russia is tightening controls". Never name a source that is not in
+  the context — published briefs have carried "ACLED reports 400+ civilian
+  casualties" when ACLED has never been contacted by this system.
+- SEPARATE OBSERVED FROM ASSESSED. "OONI recorded X" is observed. "We read this
+  as pre-emptive posture" is assessed, and assessment carries a confidence word
+  and a reason: "moderate confidence — single source, no corroboration yet."
 - DO synthesize and connect dots — this is analysis, not aggregation.
 - LEAD WITH STATE BEHAVIOUR. The Top Signal covers something a government,
   bloc or armed actor DID or DECIDED — a designation, a vote, a deployment, a
@@ -756,7 +821,15 @@ ${recentOutbreaks.length > 0 ? recentOutbreaks.join('\n') : 'No recent outbreak 
 ${conflictHeadlines.length > 0 ? conflictHeadlines.map((h) => `- ${h}`).join('\n') : '(GDELT feed unavailable from this origin)'}
 
 === OSINT & WORLD NEWS (last 24h) ===
-${newsHeadlines.length > 0 ? newsHeadlines.map((n) => `- [${n.source}] ${n.title}`).join('\n') : 'No headlines available'}
+Items marked [STATE MEDIA] are evidence of that government's framing, NOT of
+what happened. Cite them only as "TASS is presenting X as Y". Never as a fact.
+${
+  newsHeadlines.length > 0
+    ? newsHeadlines
+        .map((n) => `- [${n.source}${STATE_MEDIA_SOURCES.has(n.source) ? ' · STATE MEDIA' : ''}] ${n.title}`)
+        .join('\n')
+    : 'No headlines available'
+}
 
 === MARKET INDICATORS ===
 ${markets.length > 0 ? markets.map((m) => `${m.symbol}: ${m.price} (${m.change})`).join(' | ') : 'Market data unavailable'}
