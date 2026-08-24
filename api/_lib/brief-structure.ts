@@ -104,7 +104,14 @@ export function extractSubject(markdown: string): string | null {
   for (const section of ['Top Signal', "Today's Call", "This Week's Calls", 'The Week That Was']) {
     const idx = markdown.indexOf(section);
     if (idx === -1) continue;
-    const tail = markdown.slice(idx, idx + 1200);
+    // The window ends at the NEXT section header, never at a fixed offset.
+    // The first live run proved why: Top Signal opened without a bold
+    // phrase, a 1200-char window ran into The Board, and the 2026-08-24
+    // subject line went out as "Movers" — a subsection label from a
+    // different section entirely.
+    const rest = markdown.slice(idx + section.length);
+    const nextHeader = rest.search(/^## /m);
+    const tail = nextHeader === -1 ? rest : rest.slice(0, nextHeader);
     const bold = tail.match(/\*\*([^*\n]{4,90})\*\*/);
     if (bold) {
       const s = bold[1].trim().replace(/[.:]$/, '');

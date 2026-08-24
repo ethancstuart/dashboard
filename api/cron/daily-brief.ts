@@ -1047,17 +1047,18 @@ ${(() => {
         SELECT country_code, status, probability::float AS probability
         FROM calls
         WHERE resolved_at::date = CURRENT_DATE AND status <> 'pending'
+          AND kind <> 'seismicity_window'
       `) as unknown as Array<{ country_code: string; status: string; probability: number }>;
 
       const allScoredRows = (await sql`
         SELECT probability::float AS probability, base_rate::float AS base_rate, status
         FROM calls
-        WHERE status <> 'pending'
+        WHERE status <> 'pending' AND kind <> 'seismicity_window'
       `) as unknown as Array<{ probability: number; base_rate: number | null; status: string }>;
 
       const openRows = (await sql`
         SELECT COUNT(*)::int AS n, MIN(resolves_on)::text AS next_resolves
-        FROM calls WHERE status = 'pending'
+        FROM calls WHERE status = 'pending' AND kind <> 'seismicity_window'
       `) as unknown as Array<{ n: number; next_resolves: string | null }>;
 
       const allScored: ScoredCall[] = allScoredRows.map((r) => ({

@@ -89,6 +89,22 @@ describe('extractSubject — the subject is the story, not the date', () => {
   it('returns null on a draft with no bold anywhere near the lead sections', () => {
     expect(extractSubject('## 📊 Top Signal\n\nA quiet day.')).toBeNull();
   });
+
+  it('NEVER crosses a section boundary — the bug that titled an issue "Movers"', () => {
+    // Top Signal has no bold; the next section opens with a bold subsection
+    // label. The 2026-08-24 issue went out with the subject "Movers" because
+    // a fixed-width window read into The Board. The extractor must fall
+    // through to Today's Call instead.
+    const draft = [
+      "## 🎯 Today's Call",
+      '**Thailand**: 52% chance by 2026-09-05.',
+      '## 📊 Top Signal',
+      'Russia and Iran are running parallel censorship operations at scale.',
+      '## 🌍 The Board',
+      '**Movers** — Sudan 61.',
+    ].join('\n\n');
+    expect(extractSubject(draft)).toBe('Thailand');
+  });
 });
 
 describe('section constants', () => {
