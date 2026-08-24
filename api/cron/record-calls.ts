@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { blendRates, historicalRate, fxThreshold, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
+import { SEISMIC_REGIONS, SEISMIC_REGION_BOXES, SEISMIC_HORIZON_DAYS } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -221,12 +222,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('[record-calls] fx pass failed (non-fatal):', fxErr instanceof Error ? fxErr.message : fxErr);
     }
 
-    console.log(`[record-calls] wrote ${written} censorship + ${fxWritten} fx calls (${fxSkippedPegs} pegs skipped)`);
+    // === Seismicity calibration harness ===
+    // One call per tectonic region with NON-OVERLAPPING windows: a new call is
+    // issued only when the region has no pending one, so consecutive calls
+    // never share days and n_eff ≈ n (the political domains, recorded daily,
+    // can't have that). The stated probability IS the tuned Poisson base rate
+    // — the harness is supposed to score ≈ 0 skill; what it validates is the
+    // machinery. The region box and magnitude are frozen into resolver_params
+    // at issue, so re-tuning the region table can never move a live call's
+    // criterion.
+    let seisWritten = 0;
+    try {
+      const pending = (await sql`
+        SELECT country_code FROM calls
+        WHERE kind = 'seismicity_window' AND status = 'pending'
+      `) as unknown as Array<{ country_code: string }>;
+      const pendingRegions = new Set(pending.map((r) => r.country_code));
+
+      for (const region of SEISMIC_REGIONS) {
+        if (pendingRegions.has(region.code)) continue;
+        const box = SEISMIC_REGION_BOXES[region.code];
+        if (!box) continue; // tuned entry without a box cannot state a criterion
+        const claim =
+          `USGS records at least 1 earthquake of magnitude ${region.mag.toFixed(2)} or greater ` +
+          `in the ${region.code} region within ${SEISMIC_HORIZON_DAYS} days.`;
+        await sql`
+          INSERT INTO calls
+            (made_on, kind, country_code, claim, probability, horizon_days,
+             resolves_on, resolver, threshold, base_rate, resolver_params)
+          VALUES
+            (CURRENT_DATE, 'seismicity_window', ${region.code}, ${claim}, ${region.baseRate},
+             ${SEISMIC_HORIZON_DAYS}, CURRENT_DATE + (${SEISMIC_HORIZON_DAYS}::int),
+             'USGS fdsnws event count', 1, ${region.baseRate},
+             ${JSON.stringify({ box, mag: region.mag })})
+          ON CONFLICT (made_on, kind, country_code) DO NOTHING
+        `;
+        seisWritten++;
+      }
+    } catch (seisErr) {
+      console.error(
+        '[record-calls] seismicity pass failed (non-fatal):',
+        seisErr instanceof Error ? seisErr.message : seisErr,
+      );
+    }
+
+    console.log(
+      `[record-calls] wrote ${written} censorship + ${fxWritten} fx calls + ${seisWritten} seismicity (${fxSkippedPegs} pegs skipped)`,
+    );
     return res.status(200).json({
       ok: true,
       written,
       fx_written: fxWritten,
       fx_skipped_pegs: fxSkippedPegs,
+      seismicity_written: seisWritten,
       horizon_days: HORIZON_DAYS,
       long_windows: longWindows,
       recent_windows: recentWindows,

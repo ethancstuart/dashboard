@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { resolveOutcome, fxDepreciationPct } from '../_lib/calls.js';
+import { usgsCountUrl, type RegionBox } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -29,6 +30,7 @@ interface DueCall {
   threshold: number;
   threshold_pct: number | null;
   reference_value: number | null;
+  resolver_params: { box?: RegionBox; mag?: number } | null;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -42,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const due = (await sql`
       SELECT id, kind, country_code, made_on::text AS made_on, resolves_on::text AS resolves_on,
-             threshold, threshold_pct::float AS threshold_pct, reference_value::float AS reference_value
+             threshold, threshold_pct::float AS threshold_pct, reference_value::float AS reference_value,
+             resolver_params
       FROM calls
       WHERE status = 'pending' AND resolves_on <= CURRENT_DATE
       ORDER BY resolves_on ASC
@@ -80,7 +83,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const moved = fxDepreciationPct(ref, peak[0].peak);
         outcome = moved >= pct ? 1 : 0;
         count = Math.round(moved * 100) / 100;
-      } else {
+      } else if (call.kind === 'seismicity_window') {
+        // Calibration harness: did USGS record a qualifying event inside the
+        // frozen box and window? The box and magnitude come from
+        // resolver_params, stored at issue — never from the current region
+        // table, which may have been re-tuned since.
+        const params = call.resolver_params;
+        if (!params?.box || typeof params.mag !== 'number') {
+          console.error(`[resolve-calls] call ${call.id} seismicity without frozen params — left pending`);
+          continue;
+        }
+        const url = usgsCountUrl(params.box, params.mag, call.made_on, call.resolves_on);
+        const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        if (!r.ok) {
+          console.error(`[resolve-calls] USGS ${r.status} for call ${call.id} — left pending for retry`);
+          continue;
+        }
+        const d = (await r.json()) as { count: number };
+        count = d.count;
+        outcome = resolveOutcome(count, call.threshold);
+      } else if (call.kind === 'censorship_event') {
         // The only question asked of the outside world: did OONI confirm a block
         // in this country inside the declared window?
         const evidence = (await sql`
@@ -94,6 +116,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         count = evidence[0]?.n ?? 0;
         outcome = resolveOutcome(count, call.threshold);
+      } else {
+        // An unknown kind must NEVER fall into another kind's resolver — that
+        // is how a wrong criterion resolves a call silently. Before this
+        // branch existed, any third kind would have been scored against OONI.
+        console.error(`[resolve-calls] call ${call.id} has unknown kind '${call.kind}' — left pending`);
+        continue;
       }
       const status = outcome === 1 ? 'hit' : 'miss';
 

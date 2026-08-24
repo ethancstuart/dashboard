@@ -60,7 +60,18 @@
  * cannot produce would be the same shape of error as the ledger this replaces:
  * a name implying evidence that does not exist.
  */
-export type CallKind = 'censorship_event' | 'fx_devaluation';
+export type CallKind = 'censorship_event' | 'fx_devaluation' | 'seismicity_window';
+
+/**
+ * Calibration-harness kinds: real calls, resolved externally like any other,
+ * but our stated probability IS the climatology, so expected skill is ≈ 0 by
+ * construction. They exist to validate the scoring machinery on a domain
+ * where the right answer is computable analytically (USGS seismicity is
+ * ~Poisson; Gutenberg–Richter gives the theoretical base rate). Ledger
+ * surfaces label them as a harness and exclude them from headline CLAIM
+ * counts — counting them as geopolitical claims would be inflation.
+ */
+export const CALIBRATION_KINDS: ReadonlySet<string> = new Set(['seismicity_window']);
 
 export interface Call {
   id?: number;
@@ -342,6 +353,9 @@ export function fxDepreciationPct(reference: number, observed: number): number {
 export const RECENCY_WEIGHT: Record<CallKind, number> = {
   censorship_event: 0,
   fx_devaluation: 0.4,
+  // Poisson climatology — a recency blend would only add noise to a harness
+  // whose entire job is to sit exactly on its base rate.
+  seismicity_window: 0,
 };
 
 /**

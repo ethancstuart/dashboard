@@ -47,6 +47,7 @@ interface CallRow {
 const KIND_LABEL: Record<string, string> = {
   censorship_event: 'Network interference (OONI)',
   fx_devaluation: 'Currency depreciation (FX reference rates)',
+  seismicity_window: 'Seismicity (USGS) — calibration harness',
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -97,14 +98,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // have been almost entirely one leg presented as the whole book.
     const scoredRows = (await sql`
       SELECT kind, probability::float AS probability, base_rate::float AS base_rate, status
-      FROM calls WHERE status <> 'pending'
+      FROM calls WHERE status <> 'pending' AND kind <> 'seismicity_window'
     `) as unknown as Array<{ kind: string; probability: number; base_rate: number | null; status: string }>;
 
     const totals = (await sql`
       SELECT
-        COUNT(*) FILTER (WHERE status = 'pending')::int AS open,
-        COUNT(*) FILTER (WHERE status <> 'pending')::int AS resolved,
-        COUNT(*) FILTER (WHERE status = 'hit')::int AS hits,
+        COUNT(*) FILTER (WHERE status = 'pending' AND kind <> 'seismicity_window')::int AS open,
+        COUNT(*) FILTER (WHERE status <> 'pending' AND kind <> 'seismicity_window')::int AS resolved,
+        COUNT(*) FILTER (WHERE status = 'hit' AND kind <> 'seismicity_window')::int AS hits,
         MIN(resolves_on) FILTER (WHERE status = 'pending')::text AS next_resolves,
         MIN(made_on)::text AS first_call
       FROM calls
@@ -181,7 +182,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     parts.push('<div class="rule"></div><div class="kicker">What counts</div><h2>Resolved by someone else</h2>');
     parts.push(
       '<p class="lede">Nothing here is scored against a NexusWatch number. That distinction is the whole product: ' +
-        'an index that grades its own forecasts can accumulate rows forever without ever being wrong.</p>',
+        'an index that grades its own forecasts can accumulate rows forever without ever being wrong. ' +
+        'One domain is deliberately unglamorous: USGS seismicity windows, stated at their own climatology. ' +
+        'They are a calibration harness — a domain where the right answer is computable, so a broken scoring ' +
+        'pipeline cannot hide — and they are excluded from the claim counts above.</p>',
     );
     const kinds = new Map<string, number>();
     for (const c of open) kinds.set(c.kind, (kinds.get(c.kind) ?? 0) + 1);

@@ -68,11 +68,13 @@ interface LedgerData {
 const KIND_LABEL: Record<string, string> = {
   censorship_event: 'Network interference',
   fx_devaluation: 'Currency depreciation',
+  seismicity_window: 'Seismicity — calibration harness',
 };
 
 const KIND_RESOLVER: Record<string, string> = {
   censorship_event: 'OONI',
   fx_devaluation: 'FX reference rates',
+  seismicity_window: 'USGS',
 };
 
 function pct(v: number): string {

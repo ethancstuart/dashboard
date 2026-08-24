@@ -7,6 +7,7 @@ import {
   baseRate,
   calibrationBins,
   murphyDecomposition,
+  CALIBRATION_KINDS,
   type ScoredCall,
 } from '../_lib/calls.js';
 
@@ -72,7 +73,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // baseRate is REQUIRED for a publishable skill score — without it
     // brierSkillScore returns NaN rather than silently falling back to the
     // pooled reference, which is the flattery this rewrite removes.
-    const scored: ScoredCall[] = resolved.map((c) => ({
+    // Headline scoring EXCLUDES calibration-harness kinds: their stated
+    // probability is the climatology, so folding them in would drag the
+    // aggregate toward zero skill and count earthquake windows as
+    // geopolitical claims. They still score inside by_kind, where the
+    // harness's ≈0 skill is the point.
+    const claimResolved = resolved.filter((c) => !CALIBRATION_KINDS.has(c.kind));
+    const claimOpen = open.filter((c) => !CALIBRATION_KINDS.has(c.kind));
+    const scored: ScoredCall[] = claimResolved.map((c) => ({
       probability: c.probability,
       outcome: c.status === 'hit' ? 1 : 0,
       baseRate: c.base_rate ?? undefined,
@@ -101,9 +109,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       generated_at: new Date().toISOString(),
       counts: {
-        open: open.length,
-        resolved: resolved.length,
-        hits: resolved.filter((c) => c.status === 'hit').length,
+        open: claimOpen.length,
+        resolved: claimResolved.length,
+        hits: claimResolved.filter((c) => c.status === 'hit').length,
+        calibration_open: open.length - claimOpen.length,
+        calibration_resolved: resolved.length - claimResolved.length,
         next_resolves_on: open.reduce<string | null>(
           (min, c) => (min === null || c.resolves_on < min ? c.resolves_on : min),
           null,

@@ -75,3 +75,7 @@ COMMENT ON COLUMN calls.base_rate IS
   'P(event) from the country''s own history at the time the call was made. The baseline skill is measured against.';
 COMMENT ON COLUMN calls.threshold IS
   'Qualifying external events required for a hit. Fixed at creation so the bar cannot move afterwards.';
+
+-- 2026-08-24: kind-specific frozen criterion parameters (seismicity boxes).
+-- Stored at issue so the resolver never re-derives the criterion.
+ALTER TABLE calls ADD COLUMN IF NOT EXISTS resolver_params JSONB;

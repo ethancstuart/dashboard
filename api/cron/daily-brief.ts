@@ -809,7 +809,10 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
             SELECT kind, country_code, probability::float AS p, base_rate::float AS base,
                    resolves_on::text AS resolves_on, threshold_pct::float AS threshold_pct
             FROM calls
-            WHERE status = 'pending' AND base_rate IS NOT NULL
+            -- Calibration-harness calls (seismicity) are excluded EXPLICITLY,
+            -- not by trusting their zero divergence to sort them out of the
+            -- top 8 — and the per-kind phrasing below doesn't speak seismic.
+            WHERE status = 'pending' AND base_rate IS NOT NULL AND kind <> 'seismicity_window'
             ORDER BY ABS(probability - base_rate) DESC, probability DESC
             LIMIT 8
           `) as unknown as Array<{
