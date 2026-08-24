@@ -83,8 +83,6 @@ import {
 import { createMarketsTab } from '../ui/sidebarMarkets.ts';
 import { createFeedsTab } from '../ui/sidebarFeeds.ts';
 import { createMapSearch } from '../map/MapSearch.ts';
-import { showOnboarding } from '../ui/onboardingOverlay.ts';
-import { showFreeTierTour } from '../ui/freeTierTour.ts';
 import { createMapLegend } from '../ui/mapLegend.ts';
 import { createAiTerminal } from '../ui/aiTerminal.ts';
 import { animateCounter } from '../ui/animatedCounter.ts';
@@ -551,21 +549,10 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
   app.appendChild(statusBar);
   root.appendChild(app);
 
-  // ── Onboarding (delayed — don't block first map interaction) ──
-  // Track map visits: onboarding fires on 2nd visit OR after 45s idle on 1st.
-  // This lets users explore the map before being asked to set preferences.
-  const mapVisits = parseInt(localStorage.getItem('nw:map-visits') || '0', 10) + 1;
-  localStorage.setItem('nw:map-visits', String(mapVisits));
-
-  if (mapVisits >= 2) {
-    // Second+ visit — show onboarding immediately (they've seen the map)
-    showOnboarding(root);
-  } else {
-    // First visit — delay 45 seconds so they can explore first
-    setTimeout(() => showOnboarding(root), 45000);
-  }
-  // Free tier tour always fires on first intel map visit (it's lightweight)
-  showFreeTierTour(root);
+  // Onboarding deliberately absent. Three competing flows (a 45-second modal,
+  // a tooltip tour, and /welcome) used to interrupt the first session; the
+  // 42-persona study found they suppressed exploration rather than aiding it.
+  // Interests are edited in /settings, and the map teaches itself by being a map.
 
   // ── Initialize map ──
   const mapView = new MapView(mapContainer);

@@ -275,7 +275,7 @@ export const PAGE_SEO = {
   // ---------------------------------------------------------------------------
   // Routes intentionally without entries:
   //
-  //   /welcome          — onboarding flow, transient, behind first-visit gate
+  //   /welcome          — legacy onboarding URL, redirects to /settings
   //   /settings         — account settings, requires login, noindex by intent
   //   /admin/*          — admin tooling (social-queue, marketing), private
   //   /entities/:id     — dynamic detail; uses entities entry as base then

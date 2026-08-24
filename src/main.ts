@@ -407,13 +407,10 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
+  // /welcome was the third of three competing onboarding flows, all deleted
+  // 2026-08-23. Old links land on /settings, which is where interests live now.
   .on('/welcome', () => {
-    import('./pages/welcome.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderWelcomePage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
+    router.navigate('/settings');
   })
   .on('/settings', () => {
     import('./pages/settings.ts')
