@@ -1,0 +1,25 @@
+#!/bin/sh
+# Pre-push gate — pushing to main DEPLOYS (Vercel builds on push; CI is a
+# report that arrives after production has the code). Fast checks only: the
+# AK lesson is that a slow hook is a hook people reflexively skip.
+#
+# Scoped to the files being pushed, not the worktree: untracked scratch from
+# parallel sessions must not block a push it isn't part of.
+#
+# Escape hatch (same-session security fixes only): SKIP_PREPUSH=1 git push
+set -e
+[ -n "$SKIP_PREPUSH" ] && { echo "pre-push: SKIPPED by SKIP_PREPUSH=1"; exit 0; }
+
+range=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null || echo '')
+if [ -n "$range" ]; then
+  files=$(git diff --name-only "@{u}"...HEAD --diff-filter=d | grep -E '\.(ts|tsx|js|json|css|md)$' || true)
+else
+  files=$(git diff --name-only HEAD~5...HEAD --diff-filter=d | grep -E '\.(ts|tsx|js|json|css|md)$' || true)
+fi
+
+if [ -n "$files" ]; then
+  echo "$files" | xargs npx prettier --check --ignore-unknown || {
+    echo "push blocked: prettier — run npx prettier --write on the files above"; exit 1; }
+fi
+npx tsc --noEmit || { echo "push blocked: typecheck"; exit 1; }
+echo "pre-push: clean"
