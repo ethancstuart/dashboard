@@ -108,7 +108,7 @@ export function renderMethodology(root: HTMLElement): void {
             <span class="method-component-name">Governance (structural)</span>
             <span class="method-component-range">0–15 pts</span>
           </div>
-          <p>Structural governance risk. Uses <strong>baseline scores</strong> reflecting authoritarianism, sanctions exposure, and institutional fragility. Also adjusts upward when conflict is elevated — countries at war have degraded governance by definition. North Korea (15), Iran (13), and Syria (13) lead this component.</p>
+          <p>As of <strong>2026-08-24</strong>: derived from the World Bank Worldwide Governance Indicators — the mean of the six 2024 estimates (voice &amp; accountability, political stability, government effectiveness, regulatory quality, rule of law, control of corruption) through an anchored linear map (+1.8, Denmark-tier → 0 points; −2.0, Somalia-tier → 15). This replaced a hand-set table that scored governance only where it was a live crisis and zeroed the middle — Chad, Zimbabwe, Pakistan and Bangladesh sat at ≈0 while WGI places them near 11. The hand-set value survives only as the fallback where WGI has no coverage (Taiwan); the component breakdown flags which source produced each country's value.</p>
           <p class="method-formula">Score = max(baseline_governance, conflict_derived), capped at 15</p>
         </div>
 

@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { cronJitter } from '../_cron-utils.js';
 import { BASELINE_CONFLICT, BASELINE_GOVERNANCE, MARKET_RISK } from '../_lib/cii-baselines.js';
 import { conflictBaselineFromDeaths } from '../_lib/ucdp.js';
+import { governanceFromWgi } from '../_lib/governance.js';
 import { detectCompoundSignals } from '../_lib/compound-signals.js';
 import { buildFingerprint, findPatternMatches } from '../_lib/pattern-fingerprint.js';
 
@@ -199,6 +200,7 @@ async function computeScore(
     fxVolatility: Map<string, number>;
     wikiSpikes: Map<string, number>;
     ucdpDeaths: Map<string, number>;
+    wgiMean: Map<string, number>;
   },
 ): Promise<{ score: number; deviation: number; components: Record<string, number>; liveSourceCount: number }> {
   let liveSourceCount = 0;
@@ -231,7 +233,12 @@ async function computeScore(
   const fragilityFloor = BASELINE_CONFLICT[country.code] ?? 0;
   const derivedConflict = conflictBaselineFromDeaths(dbData.ucdpDeaths.get(country.code) ?? 0);
   const baselineConflict = Math.max(fragilityFloor, derivedConflict);
-  const baselineGov = BASELINE_GOVERNANCE[country.code] ?? 0;
+  // Governance = WGI-derived where the World Bank covers the country
+  // (84 of 85), hand-set only as the fallback (Taiwan). Adopted 2026-08-24,
+  // same vintage as the UCDP conflict derivation — see api/_lib/governance.ts
+  // for the map and the comparison that motivated it.
+  const wgi = dbData.wgiMean.get(country.code);
+  const baselineGov = wgi !== undefined ? governanceFromWgi(wgi) : (BASELINE_GOVERNANCE[country.code] ?? 0);
   const baselineMarket = MARKET_RISK[country.code] ?? 8;
   const structuralRaw = baselineConflict + baselineGov + baselineMarket;
   const score = Math.round((structuralRaw / 55) * 100);
@@ -313,6 +320,8 @@ async function computeScore(
       conflict: Math.round(baselineConflict * 10) / 10,
       conflictFloor: Math.round(fragilityFloor * 10) / 10,
       conflictDerived: derivedConflict,
+      // 1 = WGI-derived, 0 = hand-set fallback (WGI does not cover the country)
+      governanceFromWgi: wgi !== undefined ? 1 : 0,
       governance: Math.round(baselineGov * 10) / 10,
       marketExposure: Math.round(baselineMarket * 10) / 10,
       // Deviation parts
@@ -335,11 +344,28 @@ async function fetchDbData(sql: any): Promise<{
   fxVolatility: Map<string, number>;
   wikiSpikes: Map<string, number>;
   ucdpDeaths: Map<string, number>;
+  wgiMean: Map<string, number>;
 }> {
   const ooni = new Map<string, number>();
   const fxVolatility = new Map<string, number>();
   const wikiSpikes = new Map<string, number>();
   const ucdpDeaths = new Map<string, number>();
+  const wgiMean = new Map<string, number>();
+
+  // World Bank WGI — mean of the six governance estimates, latest year.
+  // Annual data; drives the derived governance structural score.
+  try {
+    const rows = await sql`
+      SELECT country_code, AVG(value)::float AS mean_est
+      FROM governance_indicators
+      WHERE source = 'worldbank-wgi'
+        AND year = (SELECT MAX(year) FROM governance_indicators WHERE source = 'worldbank-wgi')
+      GROUP BY country_code
+    `;
+    for (const r of rows) wgiMean.set(String(r.country_code), Number(r.mean_est));
+  } catch {
+    /* table may not exist yet — the hand-set fallback carries the component */
+  }
 
   // UCDP GED trailing-12-month fatalities — the measured input to the
   // conflict structural baseline (max(fragility floor, derived curve)).
@@ -395,7 +421,7 @@ async function fetchDbData(sql: any): Promise<{
     /* table may not exist yet */
   }
 
-  return { ooni, fxVolatility, wikiSpikes, ucdpDeaths };
+  return { ooni, fxVolatility, wikiSpikes, ucdpDeaths, wgiMean };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
