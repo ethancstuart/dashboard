@@ -760,6 +760,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
         // Non-fatal: a query failure costs a section, never the brief.
         let censorshipLines: string[] = [];
         let openCallLines: string[] = [];
+        let sanctionsLines: string[] = [];
         try {
           const nameOf = new Map(allCII.map((c) => [c.code, c.name]));
           const blocks = (await sql`
@@ -813,6 +814,32 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
             return `${nameOf.get(c.country_code) ?? c.country_code} (${c.country_code}): ${claim} — ${vs}`;
           });
           briefData.openCallLines = openCallLines;
+
+          // Designation deltas — real adds/removes/updates from the rebuilt
+          // sanctions collector (a diff against the stored snapshot, not a
+          // re-insert of the whole list). Sparse by nature: ~5 designation
+          // days a year, which is exactly why it is brief signal and not a
+          // call domain.
+          const sanctions = (await sql`
+            SELECT source, change_type, entity_name, country_codes, programs, source_date::text AS source_date
+            FROM sanctions_events
+            WHERE observed_at > NOW() - INTERVAL '7 days'
+            ORDER BY observed_at DESC LIMIT 12
+          `) as unknown as Array<{
+            source: string;
+            change_type: string;
+            entity_name: string;
+            country_codes: string[];
+            programs: string[];
+            source_date: string | null;
+          }>;
+          sanctionsLines = sanctions.map((ev) => {
+            const src = ev.source === 'ofac' ? 'OFAC' : 'UN';
+            const verb = ev.change_type === 'add' ? 'designated' : ev.change_type === 'remove' ? 'delisted' : 'amended';
+            const cc = ev.country_codes?.length ? ` [${ev.country_codes.join(', ')}]` : '';
+            const pg = ev.programs?.length ? ` under ${ev.programs.slice(0, 2).join(', ')}` : '';
+            return `${src} ${verb}: ${ev.entity_name}${pg}${cc}${ev.source_date ? ` (${ev.source_date})` : ''}`;
+          });
         } catch (polErr) {
           console.error(
             '[daily-brief] political signal unavailable (non-fatal):',
@@ -834,6 +861,9 @@ ${censorshipLines.length > 0 ? censorshipLines.join('\n') : 'No confirmed blocki
 
 === OUR OPEN CALLS (dated, falsifiable, resolved against OONI and FX reference rates) ===
 ${openCallLines.length > 0 ? openCallLines.join('\n') : 'No open calls.'}
+
+=== SANCTIONS DESIGNATION CHANGES (OFAC SDN + UN consolidated, last 7 days) ===
+${sanctionsLines.length > 0 ? sanctionsLines.join('\n') : 'No designation changes observed in the last 7 days.'}
 
 === 7-DAY CII TRAJECTORIES ===
 ${weeklyTrends.length > 0 ? weeklyTrends.map((t) => `${t.name} [${t.direction.toUpperCase()}]: ${t.weekAgoScore ?? '?'} → ${t.currentScore} over 7d | Daily: ${t.scores.map((s) => s.score).join(' → ')}`).join('\n') : 'Insufficient history for weekly trends'}

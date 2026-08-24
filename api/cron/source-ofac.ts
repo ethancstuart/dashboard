@@ -1,35 +1,49 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { parseOfacCsv, parseUnXml, fingerprint, diffSnapshot, type SanctionsEntity } from '../_lib/sanctions.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
 /**
- * OFAC SDN + UN Consolidated sanctions ingestion cron.
+ * OFAC SDN + UN Consolidated sanctions ingestion — rebuilt 2026-08-23.
  *
- * OFAC SDN list: https://www.treasury.gov/ofac/downloads/sdn.xml (and JSON
- *   feed at https://sanctionssearch.ofac.treas.gov/data/consolidated/current.json
- *   — use the JSON one).
- * UN Consolidated: https://scsanctions.un.org/resources/xml/en/consolidated.xml
+ * What the first version actually did, per the audit that prompted this
+ * rewrite: 116,717 rows for 1,021 entities (the whole UN list re-inserted on
+ * every snapshot change, because the "diff" marked everything 'add'), zero
+ * OFAC rows ever (the endpoint had been retired — 404 — since before the
+ * first run, and the error was reported but nothing alerted), all dates NULL
+ * (defeating the dedup constraint, because NULL never equals NULL), and all
+ * country attributions empty (the fields were in the feeds; the parser
+ * ignored them).
  *
- * Both feeds are large (SDN is ~15k entities, UN is ~1k). We compare the
- * latest snapshot hash against the last-seen hash in KV to short-circuit
- * when nothing changed. When changes are present, we diff entities and
- * write `add` / `update` / `remove` rows to sanctions_events.
+ * How it works now:
+ *  - OFAC: SDN.CSV from sanctionslistservice.ofac.treas.gov (5.6 MB; the
+ *    28 MB XML is unnecessary). Program → country attribution where the
+ *    regime is unambiguous; transnational programs attribute to nothing.
+ *  - UN: consolidated XML (302 → Azure blob; fetch follows it). UN_LIST_TYPE
+ *    → country, LISTED_ON → the entity's real designation date.
+ *  - A REAL diff: each fetch is compared against sanctions_current (the
+ *    stored previous snapshot); only adds / updates / removes become events,
+ *    with a non-NULL source_date so the dedup constraint actually bites.
+ *  - Bootstrap: when sanctions_current is empty for a source, the snapshot is
+ *    seeded WITHOUT emitting events — 19k "added today" rows on day one would
+ *    be false, and the brief reads this table as political signal.
  *
- * This cron is DATA SCAFFOLDING — the parser is intentionally minimal
- * (parses the top-level entity list; doesn't yet extract aliases, vessel
- * IMOs, etc.). Next iteration: richer entity attribute extraction, and
- * country_code enrichment via the entityRegistry.
- *
- * Requires: DATABASE_URL. No API keys needed (OFAC + UN are public).
- * Safe to run against empty DB — gracefully returns skipped=true.
+ * The brief consumes deltas ("OFAC added 3 entities under IRAN programs");
+ * this is deliberately NOT a call domain — designation days are ~5/year,
+ * far too sparse to calibrate.
  */
 
-const OFAC_URL = 'https://sanctionssearch.ofac.treas.gov/data/consolidated/current.json';
+const OFAC_CSV_URL = 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV';
 const UN_URL = 'https://scsanctions.un.org/resources/xml/en/consolidated.xml';
 
-const KV_URL = process.env.KV_REST_API_URL;
-const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+interface LegResult {
+  bootstrap: boolean;
+  added: number;
+  updated: number;
+  removed: number;
+  total: number;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
@@ -37,194 +51,135 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return res.status(500).json({ error: 'database_not_configured' });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sql: any = neon(dbUrl);
+  const sql = neon(dbUrl);
 
-  const result = { ofac: 0, un: 0, skipped_ofac: false, skipped_un: false, errors: [] as string[] };
+  const result: { ofac?: LegResult; un?: LegResult; errors: string[] } = { errors: [] };
 
-  // ---- OFAC ----
-  try {
-    const r = await fetch(OFAC_URL, { signal: AbortSignal.timeout(30000) });
-    if (!r.ok) throw new Error(`ofac_${r.status}`);
-    const body = await r.text();
-    const hash = await sha256(body);
-    const lastHash = await kvGet('sanctions:ofac:last_hash');
-    if (lastHash === hash) {
-      result.skipped_ofac = true;
-    } else {
-      const changes = extractOfacChanges(body);
-      for (const c of changes) {
-        await sql`
-          INSERT INTO sanctions_events
-            (source, source_entity_id, entity_name, entity_type, country_codes,
-             change_type, programs, remarks, source_date)
-          VALUES ('ofac', ${c.id}, ${c.name}, ${c.type}, ${c.countries},
-                  ${c.change_type}, ${c.programs}, ${c.remarks}, ${c.source_date ?? null})
-          ON CONFLICT (source, source_entity_id, change_type, source_date) DO NOTHING
-        `;
-        result.ofac++;
-      }
-      await kvSet('sanctions:ofac:last_hash', hash);
+  async function seedSnapshot(source: string, feed: SanctionsEntity[]): Promise<void> {
+    // Chunked UNNEST inserts: 20k single-row round trips would blow the
+    // function timeout. Array fields travel as delimited strings ('|' for
+    // programs, which can never contain it) and are split server-side.
+    for (let i = 0; i < feed.length; i += 2000) {
+      const chunk = feed.slice(i, i + 2000);
+      await sql`
+        INSERT INTO sanctions_current
+          (source, source_entity_id, entity_name, entity_type, country_codes, programs, fingerprint)
+        SELECT ${source}, t.id, t.name, t.type,
+               COALESCE(string_to_array(NULLIF(t.cc, ''), ','), '{}'),
+               COALESCE(string_to_array(NULLIF(t.pg, ''), '|'), '{}'),
+               t.fp
+        FROM UNNEST(
+          ${chunk.map((e) => e.id)}::text[],
+          ${chunk.map((e) => e.name)}::text[],
+          ${chunk.map((e) => e.type)}::text[],
+          ${chunk.map((e) => e.countries.join(','))}::text[],
+          ${chunk.map((e) => e.programs.join('|'))}::text[],
+          ${chunk.map((e) => fingerprint(e))}::text[]
+        ) AS t(id, name, type, cc, pg, fp)
+        ON CONFLICT (source, source_entity_id) DO NOTHING
+      `;
     }
+  }
+
+  async function runLeg(source: 'ofac' | 'un', fetchAndParse: () => Promise<SanctionsEntity[]>): Promise<void> {
+    const feed = await fetchAndParse();
+    // A tiny feed is a broken fetch, not a mass delisting. Refuse to diff:
+    // treating it as truth would emit thousands of false 'remove' events.
+    if (feed.length < 100) throw new Error(`${source}_feed_implausibly_small:${feed.length}`);
+
+    const prevRows = (await sql`
+      SELECT source_entity_id, entity_name, fingerprint
+      FROM sanctions_current WHERE source = ${source}
+    `) as unknown as Array<{ source_entity_id: string; entity_name: string; fingerprint: string }>;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (prevRows.length === 0) {
+      await seedSnapshot(source, feed);
+      result[source] = { bootstrap: true, added: 0, updated: 0, removed: 0, total: feed.length };
+      return;
+    }
+
+    const previous = new Map(
+      prevRows.map((r) => [r.source_entity_id, { name: r.entity_name, fingerprint: r.fingerprint }]),
+    );
+    const diff = diffSnapshot(feed, previous);
+
+    for (const e of diff.added) {
+      await sql`
+        INSERT INTO sanctions_events
+          (source, source_entity_id, entity_name, entity_type, country_codes, change_type, programs, remarks, source_date)
+        VALUES (${source}, ${e.id}, ${e.name}, ${e.type}, ${e.countries}, 'add', ${e.programs}, null, ${e.listedOn ?? today})
+        ON CONFLICT (source, source_entity_id, change_type, source_date) DO NOTHING
+      `;
+    }
+    for (const e of diff.updated) {
+      await sql`
+        INSERT INTO sanctions_events
+          (source, source_entity_id, entity_name, entity_type, country_codes, change_type, programs, remarks, source_date)
+        VALUES (${source}, ${e.id}, ${e.name}, ${e.type}, ${e.countries}, 'update', ${e.programs}, null, ${today})
+        ON CONFLICT (source, source_entity_id, change_type, source_date) DO NOTHING
+      `;
+    }
+    for (const r of diff.removed) {
+      await sql`
+        INSERT INTO sanctions_events (source, source_entity_id, entity_name, change_type, source_date)
+        VALUES (${source}, ${r.id}, ${r.name}, 'remove', ${today})
+        ON CONFLICT (source, source_entity_id, change_type, source_date) DO NOTHING
+      `;
+    }
+
+    // Refresh the snapshot: upsert changed/new entities, delete the delisted.
+    for (const e of [...diff.added, ...diff.updated]) {
+      await sql`
+        INSERT INTO sanctions_current
+          (source, source_entity_id, entity_name, entity_type, country_codes, programs, fingerprint, last_seen)
+        VALUES (${source}, ${e.id}, ${e.name}, ${e.type}, ${e.countries}, ${e.programs}, ${fingerprint(e)}, CURRENT_DATE)
+        ON CONFLICT (source, source_entity_id) DO UPDATE SET
+          entity_name = EXCLUDED.entity_name, entity_type = EXCLUDED.entity_type,
+          country_codes = EXCLUDED.country_codes, programs = EXCLUDED.programs,
+          fingerprint = EXCLUDED.fingerprint, last_seen = CURRENT_DATE
+      `;
+    }
+    if (diff.removed.length > 0) {
+      await sql`
+        DELETE FROM sanctions_current
+        WHERE source = ${source} AND source_entity_id = ANY(${diff.removed.map((r) => r.id)})
+      `;
+    }
+    await sql`UPDATE sanctions_current SET last_seen = CURRENT_DATE WHERE source = ${source}`;
+
+    result[source] = {
+      bootstrap: false,
+      added: diff.added.length,
+      updated: diff.updated.length,
+      removed: diff.removed.length,
+      total: feed.length,
+    };
+  }
+
+  try {
+    await runLeg('ofac', async () => {
+      const r = await fetch(OFAC_CSV_URL, { signal: AbortSignal.timeout(60000) });
+      if (!r.ok) throw new Error(`ofac_${r.status}`);
+      return parseOfacCsv(await r.text());
+    });
   } catch (err) {
     result.errors.push(`ofac: ${err instanceof Error ? err.message : err}`);
   }
 
-  // ---- UN Consolidated ----
   try {
-    const r = await fetch(UN_URL, { signal: AbortSignal.timeout(30000) });
-    if (!r.ok) throw new Error(`un_${r.status}`);
-    const body = await r.text();
-    const hash = await sha256(body);
-    const lastHash = await kvGet('sanctions:un:last_hash');
-    if (lastHash === hash) {
-      result.skipped_un = true;
-    } else {
-      const changes = extractUnChanges(body);
-      for (const c of changes) {
-        await sql`
-          INSERT INTO sanctions_events
-            (source, source_entity_id, entity_name, entity_type, country_codes,
-             change_type, programs, remarks, source_date)
-          VALUES ('un', ${c.id}, ${c.name}, ${c.type}, ${c.countries},
-                  ${c.change_type}, ${c.programs}, ${c.remarks}, ${c.source_date ?? null})
-          ON CONFLICT (source, source_entity_id, change_type, source_date) DO NOTHING
-        `;
-        result.un++;
-      }
-      await kvSet('sanctions:un:last_hash', hash);
-    }
+    await runLeg('un', async () => {
+      const r = await fetch(UN_URL, { signal: AbortSignal.timeout(90000), redirect: 'follow' });
+      if (!r.ok) throw new Error(`un_${r.status}`);
+      return parseUnXml(await r.text());
+    });
   } catch (err) {
     result.errors.push(`un: ${err instanceof Error ? err.message : err}`);
   }
 
-  return res.json(result);
-}
-
-// ---------------------------------------------------------------------------
-// Parsing — minimal top-level extraction; richer fields can come later
-// ---------------------------------------------------------------------------
-
-interface SanctionsChange {
-  id: string;
-  name: string;
-  type: string;
-  countries: string[];
-  change_type: 'add' | 'update' | 'remove';
-  programs: string[];
-  remarks: string | null;
-  source_date: string | null;
-}
-
-function extractOfacChanges(json: string): SanctionsChange[] {
-  try {
-    const data = JSON.parse(json) as {
-      sdnList?: Array<{
-        uid?: number;
-        firstName?: string;
-        lastName?: string;
-        sdnType?: string;
-        programList?: string[];
-        addressList?: Array<{ country?: string }>;
-        remarks?: string;
-      }>;
-    };
-    const list = data.sdnList ?? [];
-    return list.map((e) => ({
-      id: String(e.uid ?? ''),
-      name: [e.firstName, e.lastName].filter(Boolean).join(' ').trim() || 'unknown',
-      type: (e.sdnType || 'entity').toLowerCase(),
-      countries: Array.from(new Set((e.addressList ?? []).map((a) => (a.country || '').toUpperCase()).filter(Boolean))),
-      change_type: 'add' as const,
-      programs: e.programList ?? [],
-      remarks: e.remarks ?? null,
-      source_date: null,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-function extractUnChanges(xml: string): SanctionsChange[] {
-  // Minimal regex-based extraction (no XML parser dep). Next iteration:
-  // proper XML parsing so aliases and vessel IMOs are captured.
-  const entries: SanctionsChange[] = [];
-  const individualMatches = xml.matchAll(/<INDIVIDUAL>([\s\S]*?)<\/INDIVIDUAL>/g);
-  for (const m of individualMatches) {
-    const block = m[1];
-    const id = block.match(/<DATAID>(\d+)<\/DATAID>/)?.[1] ?? '';
-    const firstName = block.match(/<FIRST_NAME>([^<]+)<\/FIRST_NAME>/)?.[1] ?? '';
-    const lastName = block.match(/<SECOND_NAME>([^<]+)<\/SECOND_NAME>/)?.[1] ?? '';
-    const refNumber = block.match(/<REFERENCE_NUMBER>([^<]+)<\/REFERENCE_NUMBER>/)?.[1] ?? '';
-    if (!id) continue;
-    entries.push({
-      id,
-      name: `${firstName} ${lastName}`.trim() || 'unknown',
-      type: 'individual',
-      countries: [],
-      change_type: 'add',
-      programs: refNumber ? [refNumber] : [],
-      remarks: null,
-      source_date: null,
-    });
-  }
-  const entityMatches = xml.matchAll(/<ENTITY>([\s\S]*?)<\/ENTITY>/g);
-  for (const m of entityMatches) {
-    const block = m[1];
-    const id = block.match(/<DATAID>(\d+)<\/DATAID>/)?.[1] ?? '';
-    const name = block.match(/<FIRST_NAME>([^<]+)<\/FIRST_NAME>/)?.[1] ?? '';
-    if (!id) continue;
-    entries.push({
-      id,
-      name: name || 'unknown',
-      type: 'entity',
-      countries: [],
-      change_type: 'add',
-      programs: [],
-      remarks: null,
-      source_date: null,
-    });
-  }
-  return entries;
-}
-
-// ---------------------------------------------------------------------------
-// KV helpers
-// ---------------------------------------------------------------------------
-
-async function kvGet(key: string): Promise<string | null> {
-  if (!KV_URL || !KV_TOKEN) return null;
-  try {
-    const res = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
-      headers: { Authorization: `Bearer ${KV_TOKEN}` },
-    });
-    if (!res.ok) return null;
-    const d = (await res.json()) as { result: string | null };
-    return d.result;
-  } catch {
-    return null;
-  }
-}
-
-async function kvSet(key: string, value: string): Promise<void> {
-  if (!KV_URL || !KV_TOKEN) return;
-  try {
-    await fetch(`${KV_URL}/set/${encodeURIComponent(key)}?EX=604800`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'text/plain' },
-      body: value,
-    });
-  } catch {
-    /* non-fatal */
-  }
-}
-
-async function sha256(s: string): Promise<string> {
-  const bytes = new TextEncoder().encode(s);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const subtle = (crypto as any).subtle;
-  const hash = await subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+  // A leg failure is a real failure now. The old collector returned 200 with
+  // an errors array through 35+ days of OFAC 404s and nothing ever surfaced.
+  const status = result.errors.length > 0 ? 500 : 200;
+  return res.status(status).json(result);
 }
