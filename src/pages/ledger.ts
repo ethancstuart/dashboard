@@ -321,6 +321,7 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
             ? pct(c.probability)
             : `${pct(c.probability)} (${divergence >= 0 ? '+' : ''}${divergence.toFixed(0)}pts)`,
         state: 'pending',
+        href: `/call/${c.id}`,
       }),
     );
   }
@@ -349,6 +350,7 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
           detail: `${c.claim} — said ${pct(c.probability)}`,
           trail: c.status === 'hit' ? 'HIT' : 'MISS',
           state: c.status === 'hit' ? 'hit' : 'miss',
+          href: `/call/${c.id}`,
         }),
       );
     }

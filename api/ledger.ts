@@ -8,7 +8,7 @@ import {
   murphyDecomposition,
   type ScoredCall,
 } from './_lib/calls.js';
-import { colors, fonts } from '../src/styles/email-tokens.js';
+import { shell, esc, pct } from './_lib/ssr-shell.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 20 };
 
@@ -34,6 +34,7 @@ export const config = { runtime: 'nodejs', maxDuration: 20 };
  */
 
 interface CallRow {
+  id: number;
   kind: string;
   country_code: string;
   claim: string;
@@ -47,82 +48,6 @@ const KIND_LABEL: Record<string, string> = {
   censorship_event: 'Network interference (OONI)',
   fx_devaluation: 'Currency depreciation (FX reference rates)',
 };
-
-function esc(s: string): string {
-  return s.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-  );
-}
-
-const pct = (v: number) => `${Math.round(v * 100)}%`;
-
-function shell(body: string, title: string, description: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title>
-<meta name="description" content="${esc(description)}">
-<link rel="canonical" href="https://nexuswatch.dev/ledger">
-<meta property="og:type" content="website">
-<meta property="og:title" content="${esc(title)}">
-<meta property="og:description" content="${esc(description)}">
-<meta property="og:url" content="https://nexuswatch.dev/ledger">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@NexusWatchDev">
-<style>
-  :root {
-    --ink: ${colors.textPrimary}; --ink2: ${colors.textSecondary}; --ink3: ${colors.textTertiary};
-    --page: ${colors.bgPage}; --card: ${colors.bgCard}; --rule: ${colors.border};
-    --gold: ${colors.divider}; --accent: ${colors.accent};
-    --up: ${colors.up}; --down: ${colors.down};
-  }
-  body { margin:0; background:var(--page); color:var(--ink); font-family:${fonts.sans}; }
-  .wrap { max-width:940px; margin:0 auto; padding:56px 24px 96px; }
-  .rule { height:2px; background:var(--gold); margin:64px 0 14px; }
-  .rule:first-of-type { margin-top:0; }
-  .kicker { font-family:${fonts.mono}; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
-  h1,h2 { font-family:${fonts.serif}; font-weight:600; line-height:1.15; margin:0; }
-  h1 { font-size:clamp(30px,4vw,46px); }
-  h2 { font-size:clamp(24px,3vw,34px); }
-  .lede { font-size:17px; line-height:1.62; color:var(--ink2); max-width:62ch; margin:16px 0 0; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:32px; margin:32px 0; }
-  .stat .v { font-family:${fonts.mono}; font-variant-numeric:tabular-nums; font-size:clamp(48px,8vw,96px); line-height:1; letter-spacing:-.02em; }
-  .stat .l { font-family:${fonts.serif}; font-size:20px; margin-top:10px; }
-  .stat .d { font-size:14px; color:var(--ink2); margin-top:4px; }
-  .stat .p { font-family:${fonts.mono}; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); margin-top:12px; }
-  .row { display:flex; align-items:baseline; gap:14px; padding:11px 0; border-bottom:1px solid var(--rule); }
-  .row .lead { font-family:${fonts.mono}; font-variant-numeric:tabular-nums; font-size:15px; min-width:3.5em; }
-  .row .det { font-size:14px; color:var(--ink2); flex:1 1 auto; }
-  .row .trail { font-family:${fonts.mono}; font-variant-numeric:tabular-nums; font-size:15px; margin-left:auto; }
-  .hit .trail { color:var(--up); } .miss .trail { color:var(--down); } .pending .trail { color:var(--ink3); }
-  a { color:var(--accent); }
-  .foot { margin-top:64px; font-size:14px; color:var(--ink2); }
-  .masthead { display:flex; align-items:baseline; gap:22px; flex-wrap:wrap; padding:18px 0; border-bottom:2px solid var(--gold); margin-bottom:40px; }
-  .masthead .wordmark { font-family:${fonts.serif}; font-weight:600; font-size:19px; color:var(--ink); text-decoration:none; }
-  .masthead a { font-family:${fonts.mono}; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--ink2); text-decoration:none; }
-  .masthead a:hover { color:var(--accent); }
-</style>
-</head>
-<body><div class="wrap">
-<nav class="masthead" aria-label="Primary">
-  <a class="wordmark" href="https://nexuswatch.dev/">NexusWatch</a>
-  <a href="https://nexuswatch.dev/ledger">The Ledger</a>
-  <a href="https://nexuswatch.dev/briefs">Briefs</a>
-  <a href="https://nexuswatch.dev/intel">Intel Map</a>
-  <a href="https://nexuswatch.dev/methodology">Method</a>
-  <a href="https://nexuswatch.dev/about">About</a>
-</nav>
-${body}
-<p class="foot">Daily snapshots of this book are committed to the public repository —
-<a href="https://github.com/ethancstuart/nexus-watch/tree/main/ledger-snapshots">ledger-snapshots/</a> —
-so the stated probabilities and thresholds carry GitHub's timestamps, not ours. A reader can verify
-no call moved between issuance and resolution without trusting us.</p>
-</div></body>
-</html>`;
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -138,13 +63,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    return res.send(shell('<h1>The Ledger</h1><p class="lede">Temporarily unavailable.</p>', title, description));
+    return res.send(shell('<h1>The Ledger</h1><p class="lede">Temporarily unavailable.</p>', { title, description, canonicalPath: '/ledger' }));
   }
 
   try {
     const sql = neon(dbUrl);
     const open = (await sql`
-      SELECT kind, country_code, claim, probability::float AS probability,
+      SELECT id, kind, country_code, claim, probability::float AS probability,
              base_rate::float AS base_rate, resolves_on::text AS resolves_on, status
       FROM calls WHERE status = 'pending'
       ORDER BY ABS(probability - COALESCE(base_rate, probability)) DESC, probability DESC
@@ -154,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Display list, capped. The STATISTICS below must not be computed from
     // this — see `scoredRows`.
     const resolved = (await sql`
-      SELECT kind, country_code, claim, probability::float AS probability,
+      SELECT id, kind, country_code, claim, probability::float AS probability,
              base_rate::float AS base_rate, resolves_on::text AS resolves_on, status
       FROM calls WHERE status <> 'pending'
       ORDER BY resolved_at DESC LIMIT 40
@@ -271,8 +196,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const trail =
         div === null ? pct(c.probability) : `${pct(c.probability)} (${div >= 0 ? '+' : ''}${div.toFixed(0)}pts)`;
       parts.push(
-        `<div class="row pending"><span class="lead">${esc(c.country_code)}</span>` +
-          `<span class="det">${esc(c.claim)}</span><span class="trail">${esc(trail)}</span></div>`,
+        `<a class="row pending" href="/call/${c.id}"><span class="lead">${esc(c.country_code)}</span>` +
+          `<span class="det">${esc(c.claim)}</span><span class="trail">${esc(trail)}</span></a>`,
       );
     }
 
@@ -285,9 +210,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       for (const c of ordered) {
         parts.push(
-          `<div class="row ${c.status === 'hit' ? 'hit' : 'miss'}"><span class="lead">${esc(c.country_code)}</span>` +
+          `<a class="row ${c.status === 'hit' ? 'hit' : 'miss'}" href="/call/${c.id}"><span class="lead">${esc(c.country_code)}</span>` +
             `<span class="det">${esc(c.claim)} — said ${pct(c.probability)}</span>` +
-            `<span class="trail">${c.status === 'hit' ? 'HIT' : 'MISS'}</span></div>`,
+            `<span class="trail">${c.status === 'hit' ? 'HIT' : 'MISS'}</span></a>`,
         );
       }
     }
@@ -300,14 +225,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `</p>`,
     );
 
-    return res.send(shell(parts.join('\n'), title, description));
+    return res.send(shell(parts.join('\n'), { title, description, canonicalPath: '/ledger' }));
   } catch (err) {
     console.error('[ledger] failed:', err instanceof Error ? err.message : err);
     return res.send(
       shell(
         '<h1>The Ledger</h1><p class="lede">The ledger query failed. Nothing is being hidden.</p>',
-        title,
-        description,
+        { title, description, canonicalPath: '/ledger' },
       ),
     );
   }

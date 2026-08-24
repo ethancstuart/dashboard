@@ -262,6 +262,14 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+a.nw-row {
+  text-decoration: none;
+  color: inherit;
+}
+a.nw-row:hover .nw-row__detail {
+  color: var(--color-text-primary);
+}
+
 .nw-row__lead {
   font-family: var(--font-mono);
   font-size: var(--type-data);

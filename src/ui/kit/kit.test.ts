@@ -92,6 +92,14 @@ describe('row', () => {
     expect(el.querySelector('.nw-row__trail')?.textContent).toBe('84%');
   });
 
+  it('renders as a real anchor when given a destination, and a div when not', () => {
+    const linked = row({ lead: 'IR', trail: '86%', href: '/call/12' });
+    expect(linked.tagName).toBe('A');
+    expect((linked as HTMLAnchorElement).getAttribute('href')).toBe('/call/12');
+    const plain = row({ lead: 'IR', trail: '86%' });
+    expect(plain.tagName).toBe('DIV');
+  });
+
   it('carries state for the one place colour is allowed', () => {
     expect(row({ lead: 'a', trail: 'b', state: 'hit' }).dataset.state).toBe('hit');
   });

@@ -113,9 +113,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
+  // Per-call pages — the citeable unit. Resolved calls are immutable documents
+  // (changefreq yearly); open calls change once, on their resolution date.
+  let callEntries: string[] = [];
+  if (dbUrl) {
+    try {
+      const sql = neon(dbUrl);
+      const calls = (await sql`
+        SELECT id, made_on::text AS made_on, status, resolved_at::text AS resolved_at
+        FROM calls ORDER BY made_on DESC LIMIT 5000
+      `) as unknown as Array<{ id: number; made_on: string; status: string; resolved_at: string | null }>;
+      callEntries = calls.map((c) =>
+        urlEntry(
+          `${base}/call/${c.id}`,
+          c.resolved_at ? c.resolved_at.slice(0, 10) : c.made_on,
+          c.status === 'pending' ? 'daily' : 'yearly',
+          c.status === 'pending' ? '0.5' : '0.6',
+        ),
+      );
+    } catch {
+      // Soft-fail
+    }
+  }
+
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${[...staticEntries, ...briefEntries, ...countryEntries].join('\n')}
+${[...staticEntries, ...briefEntries, ...countryEntries, ...callEntries].join('\n')}
 </urlset>
 `;
 

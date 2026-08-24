@@ -216,11 +216,18 @@ export interface RowOptions {
   detail?: string;
   /** Optional state for colouring: hit / miss / pending. */
   state?: 'hit' | 'miss' | 'pending';
+  /**
+   * Optional destination — the row renders as a real <a>. Used by the ledger to
+   * link each call to its /call/:id page; a plain anchor deliberately bypasses
+   * the SPA router so the server-rendered call document is what loads.
+   */
+  href?: string;
 }
 
 /** The half-component: a mono-left / ink-right line, used by every list. */
 export function row(opts: RowOptions): HTMLElement {
-  const root = createElement('div', { className: 'nw-row' });
+  const root = createElement(opts.href ? 'a' : 'div', { className: 'nw-row' });
+  if (opts.href) (root as HTMLAnchorElement).href = opts.href;
   if (opts.state) root.dataset.state = opts.state;
   root.appendChild(createElement('span', { className: 'nw-row__lead', textContent: opts.lead }));
   if (opts.detail) root.appendChild(createElement('span', { className: 'nw-row__detail', textContent: opts.detail }));

@@ -49,6 +49,10 @@
       "destination": "/api/country/:code"
     },
     {
+      "source": "/call/:id(\\d+)",
+      "destination": "/api/call?id=:id"
+    },
+    {
       "source": "/brief/:date(\\d{4}-\\d{2}-\\d{2})",
       "destination": "/api/brief/og?date=:date"
     },
