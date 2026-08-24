@@ -16,15 +16,19 @@ const base: BriefData = {
     {
       name: 'Sudan',
       code: 'SD',
-      score: 71,
-      prevScore: 62,
+      score: 80, // structural level (post-split)
+      deviation: 9, // live signal today — what movers rank by
+      prevScore: 80,
+      prevDeviation: 2,
       components: { conflict: 17, disasters: 3, governance: 8, marketExposure: 4 },
     },
     {
       name: 'Yemen',
       code: 'YE',
-      score: 66,
-      prevScore: 66,
+      score: 82,
+      deviation: 1,
+      prevScore: 82,
+      prevDeviation: 1,
       components: { conflict: 15, disasters: 2, governance: 7, marketExposure: 3 },
     },
   ] as BriefData['topRiskCountries'],

@@ -198,21 +198,49 @@ async function computeScore(
     fxVolatility: Map<string, number>;
     wikiSpikes: Map<string, number>;
   },
-): Promise<{ score: number; components: Record<string, number>; liveSourceCount: number }> {
+): Promise<{ score: number; deviation: number; components: Record<string, number>; liveSourceCount: number }> {
   let liveSourceCount = 0;
 
-  // ═══ Conflict (0-20) — ACLED live + baseline ═══
+  // ═══════════════════════════════════════════════════════════════════════
+  // THE SPLIT (owner decision 2026-08-23): a structural LEVEL and a daily
+  // DEVIATION, published side by side and never summed.
+  //
+  // Measured over 90 days of production history before this change: the
+  // conflict component moved in 0 of 85 countries, governance in 7, market
+  // in 16 — those three are a slowly-reviewed baseline wearing a live label.
+  // Disasters moved in 48 and "sentiment" in 66 — but sentiment was defined
+  // as conflict*0.5 + disasters*0.3, an echo of other components, not a
+  // signal. The old score summed all of it into one scalar whose daily
+  // moves were mostly rolling-24h feed decay narrated as world events.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ─── STRUCTURAL LEVEL (0–100) — baselines only, vintage-dated ───
+  // conflict 0–20 + governance 0–15 + market exposure 0–20, over a 55-point
+  // frame, rescaled to 0–100. Changes ONLY when cii-baselines.ts is
+  // reviewed. Bands: ≥80 severe (structurally critical states), 60–79
+  // elevated, 40–59 mixed, <40 stable.
+  const baselineConflict = BASELINE_CONFLICT[country.code] ?? 0;
+  const baselineGov = BASELINE_GOVERNANCE[country.code] ?? 0;
+  const baselineMarket = MARKET_RISK[country.code] ?? 8;
+  const structuralRaw = baselineConflict + baselineGov + baselineMarket;
+  const score = Math.round((structuralRaw / 55) * 100);
+
+  // ─── DAILY DEVIATION (points, ≥0) — live signal only ───
+  // What today's data adds ON TOP of the level. Reported as "+N today";
+  // 0 is a quiet day. Mean-reverts by construction (rolling feeds age out) —
+  // measured next-day slope on the disasters component: −0.18/pt, n=7,650.
+
+  // Live conflict events (feed currently returns nothing — api.acleddata.com
+  // has no DNS record; kept so a replacement feed lands in the right place).
   const acled = layerData.get('acled') || [];
   const nearbyConflicts = acled.filter(
     (e) => e.lat && e.lon && isNear(e.lat, e.lon, country.lat, country.lon, country.radius),
   );
   const fatalities = nearbyConflicts.reduce((sum, e) => sum + (Number(e.fatalities) || 0), 0);
-  const liveConflict = (nearbyConflicts.length / 5) * 8 + (fatalities / 50) * 12;
-  const baselineConflict = BASELINE_CONFLICT[country.code] ?? 0;
-  const conflict = Math.min(20, Math.max(liveConflict, baselineConflict));
+  const liveConflict = Math.min(20, (nearbyConflicts.length / 5) * 8 + (fatalities / 50) * 12);
   if (nearbyConflicts.length > 0) liveSourceCount++;
 
-  // ═══ Disasters (0-15) — earthquakes + fires (live) ═══
+  // Disasters (0–15) — earthquakes, rolling 24h.
   const quakes = layerData.get('earthquakes') || [];
   const nearbyQuakes = quakes.filter(
     (e) => e.lat && e.lon && isNear(e.lat, e.lon, country.lat, country.lon, country.radius),
@@ -221,21 +249,14 @@ async function computeScore(
   const disasters = Math.min(15, nearbyQuakes.length * 1.5 + (maxMag > 5 ? (maxMag - 5) * 4 : 0));
   if (nearbyQuakes.length > 0) liveSourceCount++;
 
-  // ═══ Sentiment (0-15) — Wikipedia pageview spikes + conflict-derived ═══
-  // Use Wikipedia z-score spike data if available, otherwise fall back to derivative
+  // Attention (0–8) — Wikipedia pageview z-spikes ONLY. The old "sentiment"
+  // blended in conflict*0.5 + disasters*0.3, double-counting both and making
+  // the effective conflict weight 30/100 while methodology said 20.
   const wikiZScore = dbData.wikiSpikes.get(country.code) || 0;
-  let sentiment: number;
-  if (wikiZScore > 1) {
-    // Wikipedia attention surge detected — use as real sentiment signal
-    const wikiContrib = Math.min(8, wikiZScore * 2);
-    sentiment = Math.min(15, wikiContrib + conflict * 0.3);
-    liveSourceCount++;
-  } else {
-    // Fallback to conflict-derived proxy
-    sentiment = Math.min(15, conflict * 0.5 + disasters * 0.3);
-  }
+  const attention = wikiZScore > 1 ? Math.min(8, wikiZScore * 2) : 0;
+  if (attention > 0) liveSourceCount++;
 
-  // ═══ Infrastructure (0-15) — OONI censorship data from DB ═══
+  // Censorship / infrastructure (0–15) — OONI confirmed blocks, 3 days.
   let infrastructure = 0;
   const ooniBlocked = dbData.ooni.get(country.code) || 0;
   if (ooniBlocked > 50) {
@@ -248,7 +269,6 @@ async function computeScore(
     infrastructure = 3;
     liveSourceCount++;
   }
-  // Also check layerData outages (legacy path)
   const outages = layerData.get('internet-outages') || [];
   const outageMatch = outages.find((o) => (o as Record<string, unknown>).code === country.code);
   if (outageMatch) {
@@ -257,39 +277,39 @@ async function computeScore(
     infrastructure = Math.max(infrastructure, outageScore);
   }
 
-  // ═══ Governance (0-15) — baseline + conflict-driven + OONI censorship signal ═══
-  const baselineGov = BASELINE_GOVERNANCE[country.code] ?? 0;
-  const conflictGov = conflict > 10 ? 12 : conflict > 5 ? 8 : conflict > 2 ? 4 : 1;
-  // OONI censorship adds to governance instability (censorship = regime fear)
-  const censorshipGov = ooniBlocked > 50 ? 4 : ooniBlocked > 10 ? 2 : 0;
-  const governance = Math.min(15, Math.max(baselineGov, conflictGov) + censorshipGov);
-
-  // ═══ Market Exposure (0-20) — FX volatility (live) + baseline ═══
-  let marketExposure = MARKET_RISK[country.code] ?? 8;
+  // FX stress (0–6) — 90-day distribution of volatility_7d: p50 0.17,
+  // p90 0.57, p99 8.6. The >3 gate fires only in genuine currency stress,
+  // which is the point.
+  let fxStress = 0;
   const fxVol = dbData.fxVolatility.get(country.code) || 0;
   if (fxVol > 5) {
-    marketExposure = Math.min(20, marketExposure + 6); // Currency crisis signal
+    fxStress = 6;
     liveSourceCount++;
   } else if (fxVol > 3) {
-    marketExposure = Math.min(20, marketExposure + 3); // Elevated volatility
+    fxStress = 3;
     liveSourceCount++;
   } else if (fxVol > 1) {
-    liveSourceCount++; // Data exists, normal vol
+    liveSourceCount++;
   }
 
-  const score = Math.round(
-    Math.min(100, conflict + disasters + sentiment + infrastructure + governance + marketExposure),
-  );
+  const deviation = Math.round((liveConflict + disasters + attention + infrastructure + fxStress) * 10) / 10;
 
   return {
     score,
+    deviation,
     components: {
-      conflict: Math.round(conflict * 10) / 10,
+      // Structural parts (native scales; the level is their rescaled sum)
+      conflict: Math.round(baselineConflict * 10) / 10,
+      governance: Math.round(baselineGov * 10) / 10,
+      marketExposure: Math.round(baselineMarket * 10) / 10,
+      // Deviation parts
+      liveConflict: Math.round(liveConflict * 10) / 10,
       disasters: Math.round(disasters * 10) / 10,
-      sentiment: Math.round(sentiment * 10) / 10,
+      attention: Math.round(attention * 10) / 10,
       infrastructure: Math.round(infrastructure * 10) / 10,
-      governance: Math.round(governance * 10) / 10,
-      marketExposure: Math.round(marketExposure * 10) / 10,
+      fxStress: Math.round(fxStress * 10) / 10,
+      // Back-compat alias: consumers that read "sentiment" get attention.
+      sentiment: Math.round(attention * 10) / 10,
     },
     liveSourceCount,
   };
@@ -379,32 +399,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const scored: Array<{
       country: (typeof COUNTRIES)[0];
       score: number;
+      deviation: number;
       components: Record<string, number>;
       liveSourceCount: number;
       grade: string;
     }> = [];
 
     for (const country of COUNTRIES) {
-      const { score, components, liveSourceCount } = await computeScore(country, layerData, dbData);
+      const { score, deviation, components, liveSourceCount } = await computeScore(country, layerData, dbData);
       totalLiveSources += liveSourceCount;
       const grade = liveSourceCount >= 4 ? 'A' : liveSourceCount >= 2 ? 'B' : liveSourceCount >= 1 ? 'C' : 'D';
-      scored.push({ country, score, components, liveSourceCount, grade });
+      scored.push({ country, score, deviation, components, liveSourceCount, grade });
     }
 
-    // Batch INSERT all 86 scores in chunks of 20 (avoids query size limits)
-    // This replaces the N+1 pattern (86 individual INSERTs → 5 batch INSERTs)
-    const BATCH_SIZE = 20;
+    // Write dedupe. This cron runs every 5 minutes and used to insert all 86
+    // rows every run — measured at ~279 rows per country per DAY, nearly all
+    // of them identical. A row is written only when the score or deviation
+    // changed, or the country's latest row is older than 6 hours (so
+    // time-windowed "as of yesterday" queries always find a recent row).
+    const latest = (await sql`
+      SELECT DISTINCT ON (country_code) country_code, score,
+             (components->>'deviation')::float AS deviation,
+             "timestamp"
+      FROM country_cii_history
+      ORDER BY country_code, "timestamp" DESC
+    `) as unknown as Array<{ country_code: string; score: number; deviation: number | null; timestamp: string }>;
+    const latestBy = new Map(latest.map((r) => [r.country_code, r]));
+
     let inserted = 0;
-    for (let i = 0; i < scored.length; i += BATCH_SIZE) {
-      const batch = scored.slice(i, i + BATCH_SIZE);
-      for (const s of batch) {
-        const enrichedComponents = { ...s.components, liveSourceCount: s.liveSourceCount, dataQuality: s.grade };
-        await sql`
-          INSERT INTO country_cii_history (country_code, country_name, score, components)
-          VALUES (${s.country.code}, ${s.country.name}, ${s.score}, ${JSON.stringify(enrichedComponents)})
-        `;
-        inserted++;
-      }
+    for (const s of scored) {
+      const prev = latestBy.get(s.country.code);
+      const ageMs = prev ? Date.now() - new Date(prev.timestamp).getTime() : Infinity;
+      const unchanged = prev !== undefined && prev.score === s.score && (prev.deviation ?? 0) === s.deviation;
+      if (unchanged && ageMs < 6 * 3600_000) continue;
+      const enrichedComponents = {
+        ...s.components,
+        deviation: s.deviation,
+        liveSourceCount: s.liveSourceCount,
+        dataQuality: s.grade,
+      };
+      await sql`
+        INSERT INTO country_cii_history (country_code, country_name, score, components)
+        VALUES (${s.country.code}, ${s.country.name}, ${s.score}, ${JSON.stringify(enrichedComponents)})
+      `;
+      inserted++;
     }
 
     // ═══ Compound Signals — multi-source convergence detection ═══

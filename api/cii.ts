@@ -16,7 +16,10 @@ const CACHE_TTL = 300_000;
 interface CIIResponse {
   countryCode: string;
   countryName: string;
+  /** Structural level, 0-100. Changes only when baselines are reviewed. */
   score: number;
+  /** Today's live signal on top of the level, in points. 0 = quiet day. */
+  deviation: number;
   trend: string;
   components: Record<string, number>;
   topSignals: string[];
@@ -58,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       countryCode: r.country_code as string,
       countryName: r.country_name as string,
       score: r.score as number,
+      deviation: Number((r.components as Record<string, unknown>)?.deviation ?? 0),
       trend: 'stable',
       components: r.components as Record<string, number>,
       topSignals: [],

@@ -37,7 +37,12 @@ export function renderMethodology(root: HTMLElement): void {
       </ul>
 
       <h2 class="brief-section-header">What is CII?</h2>
-      <p>The Country Instability Index (CII) is a composite score from <strong>0 to 100</strong> that quantifies a country's instability across 6 risk dimensions. It's computed every 5 minutes from live data feeds and updated continuously.</p>
+      <p>As of <strong>2026-08-23</strong> the Country Instability Index is <strong>two numbers, never one sum</strong>:</p>
+      <ul class="method-list">
+        <li><strong>The structural level (0–100)</strong> — conflict, governance and market-exposure baselines, reviewed and vintage-dated. It changes when the baselines are reviewed, not daily. Bands: ≥80 severe, 60–79 elevated, 40–59 mixed, &lt;40 stable.</li>
+        <li><strong>The daily deviation (points)</strong> — today's live signal on top of the level: earthquakes (USGS), confirmed censorship (OONI), FX stress, attention spikes (Wikipedia). 0 is a quiet day, and it mean-reverts by construction as rolling feeds age out.</li>
+      </ul>
+      <p>Why the split: measured over 90 days of our own history, the conflict component moved in <strong>0 of 85 countries</strong>, governance in 7 and market exposure in 16 — those were a slow baseline wearing a live label — while the old "sentiment" component was defined as conflict×0.5 + disasters×0.3, an echo of other components that double-counted both. Summing a static level with mean-reverting live noise produced daily "moves" that were mostly a rolling 24-hour feed aging out. Publishing the two parts separately is the honest version of the same information.</p>
       <p>NexusWatch keeps <strong>scored daily history for 85 countries</strong> — the set every forecast, snapshot and ledger call runs on. The map additionally displays client-computed estimates for roughly 157 countries across three tiers (Core, Extended, Monitor); those estimates carry no scored history and are labelled accordingly.</p>
       <p>CII powers the daily intelligence brief, correlation detection engine, scenario simulation, verification engine, and portfolio exposure calculations.</p>
 
@@ -58,22 +63,22 @@ export function renderMethodology(root: HTMLElement): void {
         <li><strong>UNHCR</strong> — refugee displacement data (daily)</li>
       </ul>
 
-      <h2 class="brief-section-header">The 6 Components</h2>
-      <p>Each country's CII is the sum of 6 independently scored components:</p>
+      <h2 class="brief-section-header">The Components</h2>
+      <p>The <strong>structural level</strong> is the rescaled sum of Conflict + Governance + Market Exposure (55 native points → 0–100). The <strong>daily deviation</strong> is the sum of Disasters + Infrastructure/Censorship + Attention + FX stress, reported in raw points. The two are never added together:</p>
 
       <div class="method-components">
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Conflict</span>
+            <span class="method-component-name">Conflict (structural)</span>
             <span class="method-component-range">0–20 pts</span>
           </div>
           <p>Armed conflict intensity. Today this is a <strong>hand-set baseline floor</strong> per country with active conflict, plus a GDELT-derived headline signal. The live ACLED feed this component was designed around is offline and contributes nothing; until a real event feed is restored, treat the conflict component as a slow-moving editorial floor, not a live measurement. That is also why we are rebuilding the index around externally-resolved calls rather than composite scores.</p>
-          <p class="method-formula">Score = max(live_conflict, baseline) where live = (events/5 × 8) + (fatalities/50 × 12), capped at 20</p>
+          <p class="method-formula">Structural side = the baseline floor only. Live conflict events (if a feed returns them) count toward the daily deviation instead — the max() ratchet that let live data only ever RAISE the level was removed 2026-08-23.</p>
         </div>
 
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Disasters</span>
+            <span class="method-component-name">Disasters (deviation)</span>
             <span class="method-component-range">0–15 pts</span>
           </div>
           <p>Natural disaster exposure. Based on <strong>USGS earthquake data</strong> — counts nearby seismic events and weights by magnitude. A single M6.0+ earthquake near a country can push this component to maximum.</p>
@@ -82,16 +87,16 @@ export function renderMethodology(root: HTMLElement): void {
 
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Sentiment</span>
-            <span class="method-component-range">0–15 pts</span>
+            <span class="method-component-name">Attention (deviation)</span>
+            <span class="method-component-range">0–8 pts</span>
           </div>
-          <p>Approximated from conflict intensity and disaster severity. Countries with high conflict and active disasters score higher on sentiment instability. Future versions will incorporate GDELT news tone analysis when available.</p>
+          <p>Wikipedia pageview z-score spikes only. The old "sentiment" definition (conflict×0.5 + disasters×0.3) was retired 2026-08-23: it was an echo of other components, not a signal, and it silently raised the effective conflict weight to 30/100 while this page said 20.</p>
           <p class="method-formula">Score = conflict × 0.5 + disasters × 0.3, capped at 15</p>
         </div>
 
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Infrastructure</span>
+            <span class="method-component-name">Infrastructure / Censorship (deviation)</span>
             <span class="method-component-range">0–15 pts</span>
           </div>
           <p>Infrastructure disruption risk. Currently sourced from <strong>IODA internet outage monitoring</strong>. Critical outages score 15, high outages score 10, moderate score 5. Countries with frequent communications blackouts during crises score persistently high.</p>
@@ -100,7 +105,7 @@ export function renderMethodology(root: HTMLElement): void {
 
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Governance</span>
+            <span class="method-component-name">Governance (structural)</span>
             <span class="method-component-range">0–15 pts</span>
           </div>
           <p>Structural governance risk. Uses <strong>baseline scores</strong> reflecting authoritarianism, sanctions exposure, and institutional fragility. Also adjusts upward when conflict is elevated — countries at war have degraded governance by definition. North Korea (15), Iran (13), and Syria (13) lead this component.</p>
@@ -109,7 +114,7 @@ export function renderMethodology(root: HTMLElement): void {
 
         <div class="method-component">
           <div class="method-component-header">
-            <span class="method-component-name">Market Exposure</span>
+            <span class="method-component-name">Market Exposure (structural)</span>
             <span class="method-component-range">0–20 pts</span>
           </div>
           <p>Economic vulnerability to instability. <strong>Static weights</strong> reflecting a country's impact on global energy markets, supply chains, and trade routes. North Korea scores 20 (maximum unpredictability), Afghanistan 19, while stable economies like the US, Germany, and UK score 2-3.</p>

@@ -12,8 +12,12 @@ export const config = { runtime: 'nodejs', maxDuration: 300 };
 interface CIIEntry {
   code: string;
   name: string;
+  /** Structural level (0-100) — changes only when baselines are reviewed. */
   score: number;
+  /** Today's live deviation in points; the number that actually moves. */
+  deviation: number;
   prevScore: number | null;
+  prevDeviation: number | null;
   components: Record<string, number>;
 }
 
@@ -339,8 +343,10 @@ Correct, with evidence:  **Iran** 61 (▲+4) — OONI recorded 1,611 confirmed b
 Correct, without:        **South Korea** 13 (▲+8) — driver not identified in today's data.
 
 **Crises** — active crises and escalation risks, 2-4 bullets max, each: **bold
-label** → 1-2 sentences on status and what to watch. Only genuine crises
-(CII > 65 or active conflict/disaster). If none, write "No active crisis triggers today."
+label** → 1-2 sentences on status and what to watch. Only genuine crises: a
+live deviation ≥ 8, or a structurally severe country (level ≥ 80) with any
+live deviation today. A high structural level ALONE is not a crisis — it is a
+standing fact. If none qualify, write "No active crisis triggers today."
 
 **Markets** — 2-4 sentences. THE MARKET LINES ARE ETF SHARE PRICES, NOT THE
 UNDERLYING. They are labelled as such in the context — "Crude oil ETF (USO)",
@@ -467,12 +473,14 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     ] = await Promise.allSettled([
       // 1. Current CII scores
       sql`
-        SELECT DISTINCT ON (country_code) country_code, country_name, score, components
+        SELECT DISTINCT ON (country_code) country_code, country_name, score, components,
+               COALESCE((components->>'deviation')::float, 0) AS deviation
         FROM country_cii_history ORDER BY country_code, timestamp DESC
       `,
-      // 2. Yesterday's CII for trend arrows
+      // 2. Yesterday's CII for trend arrows (deviation is what moves post-split)
       sql`
-        SELECT DISTINCT ON (country_code) country_code, score
+        SELECT DISTINCT ON (country_code) country_code, score,
+               COALESCE((components->>'deviation')::float, 0) AS deviation
         FROM country_cii_history
         WHERE timestamp < NOW() - INTERVAL '20 hours'
         ORDER BY country_code, timestamp DESC
@@ -512,7 +520,9 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       `,
       // 8. 7-day CII history for trend analysis
       sql`
-        SELECT country_code, country_name, score, timestamp::date as day
+        SELECT country_code, country_name,
+               COALESCE((components->>'deviation')::float, 0) AS deviation,
+               timestamp::date as day
         FROM country_cii_history
         WHERE timestamp > NOW() - INTERVAL '7 days'
         ORDER BY country_code, timestamp DESC
@@ -525,22 +535,29 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const ciiRows = ciiResult.status === 'fulfilled' ? (ciiResult.value as Record<string, unknown>[]) : [];
     const prevCiiRows = prevCiiResult.status === 'fulfilled' ? (prevCiiResult.value as Record<string, unknown>[]) : [];
     const prevScoreMap = new Map(prevCiiRows.map((r) => [r.country_code as string, r.score as number]));
+    const prevDevMap = new Map(prevCiiRows.map((r) => [r.country_code as string, Number(r.deviation ?? 0)]));
 
     const allCII: CIIEntry[] = ciiRows
       .map((r) => ({
         code: r.country_code as string,
         name: r.country_name as string,
         score: r.score as number,
+        deviation: Number(r.deviation ?? 0),
         prevScore: prevScoreMap.get(r.country_code as string) ?? null,
+        prevDeviation: prevDevMap.get(r.country_code as string) ?? null,
         components: r.components as Record<string, number>,
       }))
-      .sort((a, b) => b.score - a.score);
+      // Ranked by structural level, deviation as tiebreak — the "top risk"
+      // list is about the level; the movers list below is about the day.
+      .sort((a, b) => b.score - a.score || b.deviation - a.deviation);
     const topCII = allCII.slice(0, 10);
 
-    // Biggest movers (score change)
+    // Biggest movers — by DEVIATION change. Post-split the structural score
+    // is deliberately static, so a score delta would always be zero; what
+    // moves day to day is the live deviation.
     const movers = allCII
-      .filter((c) => c.prevScore !== null)
-      .map((c) => ({ ...c, delta: c.score - (c.prevScore ?? c.score) }))
+      .filter((c) => c.prevDeviation !== null)
+      .map((c) => ({ ...c, delta: c.deviation - (c.prevDeviation ?? 0) }))
       .filter((c) => Math.abs(c.delta) >= 3)
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
       .slice(0, 5);
@@ -583,14 +600,18 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const markets: MarketQuote[] = [];
     if (marketResult.status === 'fulfilled' && marketResult.value) {
       const mData = marketResult.value as Record<string, { close?: string; percent_change?: string }>;
+      // Honest instrument names. These are ETF SHARE PRICES, and the prompt's
+      // market rules assume the context says so — until 2026-08-23 this map
+      // said "Crude Oil" and "USD Index", handing the model the exact
+      // misstatement the rules forbid.
       const labels: Record<string, string> = {
-        SPY: 'S&P 500',
-        GLD: 'Gold',
-        USO: 'Crude Oil',
-        UNG: 'Nat Gas',
-        XLE: 'Energy Sector',
-        UUP: 'USD Index',
-        TLT: 'Treasuries',
+        SPY: 'S&P 500 ETF (SPY)',
+        GLD: 'Gold ETF (GLD)',
+        USO: 'Crude oil ETF (USO)',
+        UNG: 'Nat gas ETF (UNG)',
+        XLE: 'Energy sector ETF (XLE)',
+        UUP: 'Dollar index ETF (UUP)',
+        TLT: 'Treasury bond ETF (TLT)',
       };
       for (const [sym, q] of Object.entries(mData)) {
         if (q?.close) {
@@ -609,11 +630,13 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const weeklyTrends: WeeklyTrend[] = [];
     if (weeklyHistoryResult.status === 'fulfilled') {
       const histRows = weeklyHistoryResult.value as Record<string, unknown>[];
+      // Trajectories track the DEVIATION (post-split) — a 7-day structural
+      // trajectory is flat by construction and would say nothing.
       const byCountry = new Map<string, { name: string; entries: { date: string; score: number }[] }>();
       for (const r of histRows) {
         const code = r.country_code as string;
         const entry = byCountry.get(code) || { name: r.country_name as string, entries: [] };
-        entry.entries.push({ date: String(r.day), score: r.score as number });
+        entry.entries.push({ date: String(r.day), score: Number(r.deviation ?? 0) });
         byCountry.set(code, entry);
       }
       // Build trends for top-risk countries
@@ -629,8 +652,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([date, score]) => ({ date, score }));
         const weekAgo = scores.length >= 2 ? scores[0].score : null;
-        // Use authoritative current score from allCII, not history query
-        const current = c.score;
+        // Use authoritative current deviation from allCII, not history query
+        const current = c.deviation;
         // Detect volatility: if score swings >5 points in both directions
         let maxUp = 0,
           maxDown = 0;
@@ -743,8 +766,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     if (anthropicKey) {
       try {
         const trendArrow = (c: CIIEntry) => {
-          if (c.prevScore === null) return '';
-          const d = c.score - c.prevScore;
+          if (c.prevDeviation === null) return '';
+          const d = c.deviation - c.prevDeviation;
           if (d >= 3) return ` ↑${d.toFixed(0)}`;
           if (d <= -3) return ` ↓${Math.abs(d).toFixed(0)}`;
           return ' →';
@@ -850,11 +873,13 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
         const dataContext = `DATE: ${today} ${utcTime}
 COUNTRIES MONITORED: ${ciiRows.length}
 
-=== TOP RISK COUNTRIES (CII score / trend vs 24h ago) ===
-${topCII.map((c) => `${c.name}: ${c.score}/100${trendArrow(c)} [conflict=${c.components.conflict}, disasters=${c.components.disasters}, governance=${c.components.governance}, market=${c.components.marketExposure}]`).join('\n')}
+=== TOP RISK COUNTRIES (structural level 0-100 · live deviation today) ===
+The LEVEL changes only when baselines are reviewed; the DEVIATION is today's
+live signal on top of it (0 = quiet). They are two numbers, never one sum.
+${topCII.map((c) => `${c.name}: level ${c.score}/100 · today +${c.deviation}${trendArrow(c)} [conflict=${c.components.conflict}, governance=${c.components.governance}, market=${c.components.marketExposure} | live: disasters=${c.components.disasters}, censorship=${c.components.infrastructure}]`).join('\n')}
 
-=== BIGGEST MOVERS (24h) ===
-${movers.length > 0 ? movers.map((m) => `${m.name}: ${m.delta > 0 ? '+' : ''}${m.delta.toFixed(0)} (${m.prevScore?.toFixed(0)} → ${m.score})`).join('\n') : 'No significant movements (±3 threshold)'}
+=== BIGGEST DEVIATION MOVES (24h) ===
+${movers.length > 0 ? movers.map((m) => `${m.name}: deviation ${m.delta > 0 ? '+' : ''}${m.delta.toFixed(0)} (${m.prevDeviation?.toFixed(0)} → ${m.deviation}) on structural level ${m.score}`).join('\n') : 'No significant deviation moves (±3 threshold)'}
 
 === POLITICAL SIGNAL — NETWORK INTERFERENCE (OONI, last 7 days) ===
 ${censorshipLines.length > 0 ? censorshipLines.join('\n') : 'No confirmed blocking events recorded in the last 7 days.'}
@@ -901,9 +926,9 @@ Strait of Hormuz: ~20% of global oil transits. Adjacent to Iran (CII: ${allCII.f
 Bab el-Mandeb: Red Sea gateway. Adjacent to Yemen, Somalia (CII: ${allCII.find((c) => c.code === 'SO')?.score ?? '?'})
 Suez Canal: ~12% of global trade. Adjacent to instability in Sudan (CII: ${allCII.find((c) => c.code === 'SD')?.score ?? '?'}), Libya (CII: ${allCII.find((c) => c.code === 'LY')?.score ?? '?'})
 ${(() => {
-  const oilQuote = markets.find((m) => m.symbol === 'Crude Oil');
-  const gasQuote = markets.find((m) => m.symbol === 'Nat Gas');
-  const energyQuote = markets.find((m) => m.symbol === 'Energy Sector');
+  const oilQuote = markets.find((m) => m.symbol.includes('USO'));
+  const gasQuote = markets.find((m) => m.symbol.includes('UNG'));
+  const energyQuote = markets.find((m) => m.symbol.includes('XLE'));
   return `Oil: ${oilQuote ? `${oilQuote.price} (${oilQuote.change})` : 'N/A'} | Nat Gas: ${gasQuote ? `${gasQuote.price} (${gasQuote.change})` : 'N/A'} | Energy Sector (XLE): ${energyQuote ? `${energyQuote.price} (${energyQuote.change})` : 'N/A'}`;
 })()}
 
@@ -2456,8 +2481,8 @@ export function buildFallbackText(data: BriefData): string {
   // is the mechanical edition; on a site whose brand is "we publish our
   // misses", telling the reader the AI draft was refused today is a feature.
   const trendArrow = (c: CIIEntry) => {
-    if (c.prevScore === null) return '';
-    const d = c.score - c.prevScore;
+    if (c.prevDeviation === null) return '';
+    const d = c.deviation - c.prevDeviation;
     if (d >= 3) return ` ↑${d.toFixed(0)}`;
     if (d <= -3) return ` ↓${Math.abs(d).toFixed(0)}`;
     return ' →';
@@ -2472,7 +2497,7 @@ export function buildFallbackText(data: BriefData): string {
     const n = data.newsHeadlines[0];
     text += `**${n.title}** (${n.source}). This is the mechanical edition — the model draft was withheld today, so we give you the lead as the wire carried it rather than a synthesis.\n\n`;
   } else if (topCountry) {
-    text += `**${topCountry.name} leads the board at ${topCountry.score}/100${trendArrow(topCountry)}.** ${data.topRiskCountries.filter((c) => c.score >= 50).length} countries sit above CII 50 of ${data.totalCountries} scored.\n\n`;
+    text += `**${topCountry.name} leads the board — structural ${topCountry.score}/100, +${topCountry.deviation} live today${trendArrow(topCountry)}.** ${data.topRiskCountries.filter((c) => c.score >= 50).length} countries sit above CII 50 of ${data.totalCountries} scored.\n\n`;
   } else {
     text += `A quiet board. ${data.earthquakeCount} seismic events in 24h; nothing above the consequence threshold.\n\n`;
   }
@@ -2480,11 +2505,11 @@ export function buildFallbackText(data: BriefData): string {
   text += `${DAILY_SECTIONS[2]}\n\n`;
   text += `**Movers**\n\n`;
   const movers = data.topRiskCountries
-    .filter((c) => c.prevScore !== null && Math.abs(c.score - (c.prevScore as number)) >= 3)
+    .filter((c) => c.prevDeviation !== null && Math.abs(c.deviation - (c.prevDeviation as number)) >= 3)
     .slice(0, 6);
   if (movers.length > 0) {
     for (const c of movers) {
-      const d = c.score - (c.prevScore as number);
+      const d = c.deviation - (c.prevDeviation as number);
       text += `- **${c.name}** ${c.score} (${d > 0 ? '▲+' : '▼'}${d.toFixed(0)}) — driver not identified in today's data.\n`;
     }
     text += `\n`;
@@ -2492,7 +2517,9 @@ export function buildFallbackText(data: BriefData): string {
     text += `No moves past the ±3 threshold in 24h.\n\n`;
   }
   text += `**Crises**\n\n`;
-  const crises = data.topRiskCountries.filter((c) => c.score > 65).slice(0, 4);
+  const crises = data.topRiskCountries
+    .filter((c) => c.deviation >= 8 || (c.score >= 80 && c.deviation > 0))
+    .slice(0, 4);
   text +=
     crises.length > 0
       ? crises.map((c) => `- **${c.name}** — CII ${c.score}${trendArrow(c)}.`).join('\n') + `\n\n`

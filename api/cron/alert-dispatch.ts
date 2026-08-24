@@ -40,6 +40,7 @@ interface CiiScore {
   country_code: string;
   country_name: string;
   score: number;
+  deviation: number;
   prev_score: number | null;
 }
 
@@ -59,9 +60,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       h.country_code,
       h.country_name,
       h.score,
+      h.deviation,
       s.cii_score AS prev_score
     FROM (
-      SELECT DISTINCT ON (country_code) country_code, country_name, score
+      SELECT DISTINCT ON (country_code) country_code, country_name, score,
+             COALESCE((components->>'deviation')::float, 0) AS deviation
       FROM country_cii_history
       ORDER BY country_code, timestamp DESC
     ) h
@@ -90,30 +93,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }> = [];
 
   for (const row of scores as CiiScore[]) {
-    const delta = row.prev_score != null ? row.score - row.prev_score : 0;
     const hasCrisis = crisisCountries.has(row.country_code);
     const signals: string[] = [];
 
     let tier: AlertTier | null = null;
 
-    // CRITICAL: CII > 80 OR active crisis trigger OR delta > +15
-    if (row.score > 80 || hasCrisis || delta > 15) {
+    // Alerts fire on the DEVIATION — today's live signal — never on the
+    // structural level (post-split, 2026-08-23). The level is a standing
+    // fact: Syria is structurally severe every single day, and an alert
+    // that fires on a standing fact is spam that trains people to
+    // unsubscribe. What is alertable is what CHANGED: the deviation is
+    // exactly that, and it mean-reverts, so an absolute threshold reads
+    // as "unusually loud today".
+    // CRITICAL: deviation ≥ 12 OR active crisis trigger
+    if (row.deviation >= 12 || hasCrisis) {
       tier = TIERS.critical;
-      if (row.score > 80) signals.push(`CII ${row.score} exceeds critical threshold (80)`);
+      if (row.deviation >= 12) signals.push(`live deviation +${row.deviation.toFixed(1)} (structural ${row.score})`);
       if (hasCrisis) signals.push('Active crisis trigger');
-      if (delta > 15) signals.push(`CII jumped +${delta.toFixed(1)} in 24h`);
     }
-    // ELEVATED: CII > 65 OR delta > +10
-    else if (row.score > 65 || delta > 10) {
+    // ELEVATED: deviation ≥ 8
+    else if (row.deviation >= 8) {
       tier = TIERS.elevated;
-      if (row.score > 65) signals.push(`CII ${row.score} exceeds elevated threshold (65)`);
-      if (delta > 10) signals.push(`CII jumped +${delta.toFixed(1)} in 24h`);
+      signals.push(`live deviation +${row.deviation.toFixed(1)} (structural ${row.score})`);
     }
-    // WATCH: CII > 50 OR delta > +5
-    else if (row.score > 50 || delta > 5) {
+    // WATCH: deviation ≥ 4
+    else if (row.deviation >= 4) {
       tier = TIERS.watch;
-      if (row.score > 50) signals.push(`CII ${row.score} exceeds watch threshold (50)`);
-      if (delta > 5) signals.push(`CII rose +${delta.toFixed(1)} in 24h`);
+      signals.push(`live deviation +${row.deviation.toFixed(1)} (structural ${row.score})`);
     }
 
     if (tier) {
@@ -121,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         country_code: row.country_code,
         country_name: row.country_name,
         score: row.score,
-        delta,
+        delta: row.deviation,
         tier,
         signals,
       });
