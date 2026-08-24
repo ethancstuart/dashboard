@@ -49,7 +49,7 @@ export function renderMethodology(root: HTMLElement): void {
       <h2 class="brief-section-header">Data Sources (12 primary)</h2>
       <p>Every CII component and every layer displays which sources contributed. Current primary sources:</p>
       <ul class="method-list">
-        <li><strong>Conflict signal</strong> — currently GDELT-derived headline classification plus per-country baseline floors. The ACLED API feed is offline (the endpoint no longer resolves) and is not an input today; this line previously claimed an hourly ACLED refresh.</li>
+        <li><strong>UCDP GED</strong> — Uppsala Conflict Data Program georeferenced events: monthly candidate files (~1 month lag) plus annual curated releases; drives the derived conflict baseline. GDELT-derived headlines remain a brief-side signal. ACLED is not an input (legacy API retired; account read-access pending).</li>
         <li><strong>USGS</strong> — earthquake hazards feed (60s refresh)</li>
         <li><strong>NASA FIRMS</strong> — active fire hotspots via MODIS/VIIRS (10min)</li>
         <li><strong>GDELT</strong> — global news events with tone analysis, 65+ languages (15min)</li>
@@ -72,8 +72,8 @@ export function renderMethodology(root: HTMLElement): void {
             <span class="method-component-name">Conflict (structural)</span>
             <span class="method-component-range">0–20 pts</span>
           </div>
-          <p>Armed conflict intensity. Today this is a <strong>hand-set baseline floor</strong> per country with active conflict, plus a GDELT-derived headline signal. The live ACLED feed this component was designed around is offline and contributes nothing; until a real event feed is restored, treat the conflict component as a slow-moving editorial floor, not a live measurement. That is also why we are rebuilding the index around externally-resolved calls rather than composite scores.</p>
-          <p class="method-formula">Structural side = the baseline floor only. Live conflict events (if a feed returns them) count toward the daily deviation instead — the max() ratchet that let live data only ever RAISE the level was removed 2026-08-23.</p>
+          <p>As of <strong>2026-08-24</strong>: the maximum of two parts. A <strong>UCDP-derived score</strong> — trailing-12-month battle-related deaths from the UCDP Georeferenced Event Dataset (monthly candidate files + annual curated releases), through a documented log curve (100 deaths/yr ≈ 4, 1,000 ≈ 9, 100,000 → 20) — and a <strong>hand-set fragility floor</strong> that encodes what trailing deaths miss: frozen conflicts (Yemen, Syria), suppressed ones (North Korea), and Palestine, whose events UCDP codes under Israel. The derived side is what caught Mexico sitting at a hand-set zero with ~3,100 cartel-war deaths a year. Both parts are published in the component breakdown (<code>conflictDerived</code>, <code>conflictFloor</code>).</p>
+          <p class="method-formula">Structural side = max(fragility floor, UCDP-derived curve), reviewed monthly as new UCDP candidate files land. Live same-day conflict events (when a real-time feed is restored) count toward the daily deviation instead.</p>
         </div>
 
         <div class="method-component">

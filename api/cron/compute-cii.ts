@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { cronJitter } from '../_cron-utils.js';
 import { BASELINE_CONFLICT, BASELINE_GOVERNANCE, MARKET_RISK } from '../_lib/cii-baselines.js';
+import { conflictBaselineFromDeaths } from '../_lib/ucdp.js';
 import { detectCompoundSignals } from '../_lib/compound-signals.js';
 import { buildFingerprint, findPatternMatches } from '../_lib/pattern-fingerprint.js';
 
@@ -197,6 +198,7 @@ async function computeScore(
     ooni: Map<string, number>;
     fxVolatility: Map<string, number>;
     wikiSpikes: Map<string, number>;
+    ucdpDeaths: Map<string, number>;
   },
 ): Promise<{ score: number; deviation: number; components: Record<string, number>; liveSourceCount: number }> {
   let liveSourceCount = 0;
@@ -219,7 +221,16 @@ async function computeScore(
   // frame, rescaled to 0–100. Changes ONLY when cii-baselines.ts is
   // reviewed. Bands: ≥80 severe (structurally critical states), 60–79
   // elevated, 40–59 mixed, <40 stable.
-  const baselineConflict = BASELINE_CONFLICT[country.code] ?? 0;
+  // Conflict = max(fragility floor, UCDP-derived). The floor is the hand-set
+  // table (renamed in intent, kept in name for blast radius): it encodes
+  // structural fragility that trailing deaths miss — frozen conflicts (Yemen,
+  // Syria), suppressed ones (North Korea), and Palestine, whose events UCDP
+  // codes under Israel. The derived side is measured: trailing-12-month GED
+  // fatalities through a documented log curve, which is what caught Mexico
+  // sitting at a hand-set ZERO with 3,100 cartel-war deaths a year.
+  const fragilityFloor = BASELINE_CONFLICT[country.code] ?? 0;
+  const derivedConflict = conflictBaselineFromDeaths(dbData.ucdpDeaths.get(country.code) ?? 0);
+  const baselineConflict = Math.max(fragilityFloor, derivedConflict);
   const baselineGov = BASELINE_GOVERNANCE[country.code] ?? 0;
   const baselineMarket = MARKET_RISK[country.code] ?? 8;
   const structuralRaw = baselineConflict + baselineGov + baselineMarket;
@@ -300,6 +311,8 @@ async function computeScore(
     components: {
       // Structural parts (native scales; the level is their rescaled sum)
       conflict: Math.round(baselineConflict * 10) / 10,
+      conflictFloor: Math.round(fragilityFloor * 10) / 10,
+      conflictDerived: derivedConflict,
       governance: Math.round(baselineGov * 10) / 10,
       marketExposure: Math.round(baselineMarket * 10) / 10,
       // Deviation parts
@@ -321,10 +334,26 @@ async function fetchDbData(sql: any): Promise<{
   ooni: Map<string, number>;
   fxVolatility: Map<string, number>;
   wikiSpikes: Map<string, number>;
+  ucdpDeaths: Map<string, number>;
 }> {
   const ooni = new Map<string, number>();
   const fxVolatility = new Map<string, number>();
   const wikiSpikes = new Map<string, number>();
+  const ucdpDeaths = new Map<string, number>();
+
+  // UCDP GED trailing-12-month fatalities — the measured input to the
+  // conflict structural baseline (max(fragility floor, derived curve)).
+  try {
+    const rows = await sql`
+      SELECT iso2, SUM(deaths_best)::int AS deaths
+      FROM ucdp_events
+      WHERE iso2 IS NOT NULL AND date_start >= (CURRENT_DATE - INTERVAL '12 months')
+      GROUP BY iso2
+    `;
+    for (const r of rows) ucdpDeaths.set(String(r.iso2), Number(r.deaths) || 0);
+  } catch {
+    /* table may not exist yet — the fragility floor carries the component */
+  }
 
   // OONI censorship — confirmed blocks in last 3 days
   try {
@@ -366,7 +395,7 @@ async function fetchDbData(sql: any): Promise<{
     /* table may not exist yet */
   }
 
-  return { ooni, fxVolatility, wikiSpikes };
+  return { ooni, fxVolatility, wikiSpikes, ucdpDeaths };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

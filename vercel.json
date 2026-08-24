@@ -385,6 +385,10 @@
     {
       "path": "/api/cron/source-worldbank-governance",
       "schedule": "0 4 2 * *"
+    },
+    {
+      "path": "/api/cron/source-ucdp",
+      "schedule": "20 6 3 * *"
     }
   ],
   "headers": [
