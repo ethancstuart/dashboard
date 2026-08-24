@@ -347,7 +347,6 @@ function primaryButtonStyle(enabled: boolean): string {
   ].join(';');
 }
 
-
 function summaryStyle(): string {
   return [
     `margin-bottom: 16px`,

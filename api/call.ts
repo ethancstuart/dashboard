@@ -129,7 +129,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).send(
         shell(
           '<h1>No such call</h1><p class="lede">Nothing was ever recorded under this id. The full book is on <a href="/ledger">the ledger</a>.</p>',
-          { title: 'No such call — NexusWatch', description: 'This call id does not exist.', canonicalPath: '/ledger' },
+          {
+            title: 'No such call — NexusWatch',
+            description: 'This call id does not exist.',
+            canonicalPath: '/ledger',
+          },
         ),
       );
     }
@@ -153,7 +157,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const divergence = c.base_rate === null ? null : Math.round((c.probability - c.base_rate) * 100);
 
     const parts: string[] = [];
-    parts.push(`<div class="rule"></div><div class="kicker">Call #${c.id} · ${esc(c.country_code)} · ${esc(kindLabel)}</div>`);
+    parts.push(
+      `<div class="rule"></div><div class="kicker">Call #${c.id} · ${esc(c.country_code)} · ${esc(kindLabel)}</div>`,
+    );
     parts.push(`<h1>${esc(c.claim)}</h1>`);
     parts.push(
       `<p class="lede">Made ${esc(c.made_on)}, resolving ${esc(c.resolves_on)} — a ${c.horizon_days}-day window, ` +
@@ -212,7 +218,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const title = `${c.country_code}: ${c.claim} — Call #${c.id} · NexusWatch`;
     const description =
       `NexusWatch said ${pct(c.probability)} on ${c.made_on}, resolving ${c.resolves_on} against ${c.resolver}. ` +
-      (c.status === 'pending' ? 'Still open.' : c.status === 'void' ? 'Voided before resolution.' : `Result: ${c.status.toUpperCase()}.`);
+      (c.status === 'pending'
+        ? 'Still open.'
+        : c.status === 'void'
+          ? 'Voided before resolution.'
+          : `Result: ${c.status.toUpperCase()}.`);
 
     return res.status(200).send(shell(parts.join('\n'), { title, description, canonicalPath: `/call/${c.id}` }));
   } catch (err) {

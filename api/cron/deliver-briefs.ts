@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 1. Get today's brief from archive
   const briefs = await sql`
-    SELECT brief_date, summary FROM daily_briefs
+    SELECT brief_date, summary, content FROM daily_briefs
     WHERE brief_date = ${today}
     LIMIT 1
   `;
@@ -125,7 +125,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const recipients = Array.from(allEmails);
-  const subject = `NexusWatch Intelligence Brief — ${today}`;
+  // The subject is the day's story, extracted at generation time from Top
+  // Signal (brief-structure.ts). A date-only subject promises nothing; it
+  // survives only as the fallback when extraction found no headline.
+  const storedSubject = (() => {
+    try {
+      const c = briefs[0].content as { subject?: unknown } | null;
+      return typeof c?.subject === 'string' && c.subject.trim().length >= 4 ? c.subject.trim() : null;
+    } catch {
+      return null;
+    }
+  })();
+  const subject = storedSubject
+    ? `${storedSubject} — The NexusWatch Brief`
+    : `NexusWatch Intelligence Brief — ${today}`;
   const from = 'NexusWatch Intelligence <brief@nexuswatch.dev>';
   const BATCH_SIZE = 100;
   let sent = 0;

@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
 import { groundDraft, type GroundingReport } from '../_lib/grounding.js';
+import { DAILY_SECTIONS, SUNDAY_SECTIONS, validateBriefStructure, extractSubject } from '../_lib/brief-structure.js';
 import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
@@ -23,7 +24,7 @@ interface MarketQuote {
   direction: 'up' | 'down' | 'flat';
 }
 
-interface BriefData {
+export interface BriefData {
   date: string;
   utcTime: string;
   topRiskCountries: CIIEntry[];
@@ -38,6 +39,8 @@ interface BriefData {
   weeklyTrends: WeeklyTrend[];
   correlations: string[];
   newsHeadlines: NewsItem[];
+  /** Pre-formatted open-call lines (divergence-ordered), for Today's Call. */
+  openCallLines: string[];
 }
 
 interface WeeklyTrend {
@@ -136,8 +139,8 @@ function getBriefSystemPrompt(now: Date): string {
   // (5:00 AM ET) so UTC day and US-East day match for the whole publication.
   const dayOfWeek = now.getUTCDay();
   const isSunday = dayOfWeek === 0;
-  // isFriday removed — Friday tool-of-the-week now inline in "One More Thing" prompt.
-  // The fallback builder at ~line 2128 declares its own isFriday.
+  // Friday tool-of-the-week is gone with One More Thing (structure swap
+  // 2026-08-23); neither the prompt nor the fallback varies by weekday now.
 
   // ---------------------------------------------------------------------------
   // Base voice — the 40/60 analyst/smart-friend rubric locked 2026-04-11.
@@ -236,27 +239,35 @@ OUTPUT FORMAT: Clean markdown. Use ## for section headers with emoji prefixes. *
 
 THIS IS THE SUNDAY WEEK IN REVIEW EDITION. Different structure from daily briefs — reflective, trajectory-focused.
 
-STRUCTURE:
+STRUCTURE (follow exactly — six sections, do NOT add, drop or reorder; the
+template inserts the mechanical Ledger line above your output):
 
-## ☕ Good Morning
+${SUNDAY_SECTIONS[0]}
 2-3 sentences. Warm, reflective. "Happy Sunday. Here's what mattered this week — and what we're watching heading into Monday."
 
-## 📍 The Week That Was
+${SUNDAY_SECTIONS[1]}
+The week on the record. From OUR OPEN CALLS in the context: which calls resolved this week and how, which are open, and the single most divergent open call restated in one sentence with its probability, base rate and resolution date. Every number verbatim from the context. If the context lists no calls, write exactly: "No calls on the book this week." Never invent a call.
+
+${SUNDAY_SECTIONS[2]}
 5-7 of the biggest stories from the past 7 days. Each story gets:
 - A **bold headline**
 - 2-3 sentences: what happened, how it developed over the week, where it stands now
 - Focus on TRENDS and TRAJECTORIES, not isolated events
 
-## 🌍 CII Movers: Weekly View
-The 5-6 countries that moved the most over the past 7 days. Format: **Country** CII_SCORE (▲+N or ▼-N) — one-line summary of the week's driver. Sort by absolute change.
+${SUNDAY_SECTIONS[3]}
+The week's state of the board, three parts in one section:
+- **Movers** — the 5-6 countries that moved most over 7 days. Format: **Country** CII_SCORE (▲+N or ▼-N) — driver. THE DRIVER MUST COME FROM THE CONTEXT OR NOT BE GIVEN: if nothing in the context explains a move, write exactly "driver not identified in this week's data." and stop.
+- **Markets** — weekly moves connected to geopolitical developments. THE MARKET LINES ARE ETF SHARE PRICES, NOT THE UNDERLYING — quote the instrument as named, never restate as the underlying's level, and percentage moves are PERCENT, never "basis points".
+- End the section with one line: **What would change our mind:** the single concrete, checkable observation that would most revise our current top read. It must name a source that appears in the context (OONI, an FX rate, a headline). Falsifiable, dated where possible, never a vibe.
 
-## ⛽ Energy & Commodities: Weekly Wrap
-Weekly price movements (not just today). What drove them. Where we think they're headed next week. Reference Hormuz, Bab el-Mandeb, or Suez if relevant.
+${SUNDAY_SECTIONS[4]}
+2-4 bullets of disciplined silence — the section where restraint is the content:
+- Moves we are NOT explaining because no driver is identified.
+- Narratives circulating this week that the data cannot support — cite the item ("[TASS · STATE MEDIA] is framing X as Y; nothing in OONI or the wires corroborates it").
+- Data gaps: feeds down, stale, or missing, named plainly.
+Never speculate under the guise of restraint. If there is nothing to withhold, say "Nothing withheld this week — the data covered what moved."
 
-## 📊 Market Signal
-Weekly market performance connected to geopolitical developments. What was priced in vs. what surprised.
-
-## 🔭 The Week Ahead
+${SUNDAY_SECTIONS[5]}
 5-6 things to watch Monday through Friday. Specific events, thresholds, and dates. This section should feel like a Monday morning prep sheet.`;
   }
 
@@ -268,35 +279,50 @@ Weekly market performance connected to geopolitical developments. What was price
   // wasn't in the Apr 10 Decision 5 locked structure.
   // ---------------------------------------------------------------------------
   // ---------------------------------------------------------------------------
-  // Daily variant (Mon-Sat) — Rundown-style 6-section structure (D-3).
-  // Each section is scannable independently. Designed to work with the
-  // beehiiv "Signal" template and the NexusWatch dossier email renderer.
+  // Daily variant (Mon-Sat) — the accountability loop (owner decision
+  // 2026-08-23): Ledger (mechanical) → Today's Call → Top Signal → The Board
+  // (with the mandatory "what would change our mind" clause) → What We're Not
+  // Saying → The Long Fuse. Scenario Spotlight and One More Thing are killed —
+  // an unfalsifiable hypothetical undermines a graded product, and a section
+  // that advertises the product isn't a section. Headers come from
+  // brief-structure.ts, the same constants the publish gate validates against.
   // ---------------------------------------------------------------------------
   return `${baseVoice}
 
 OUTPUT FORMAT: Clean markdown. Use ## for section headers with emoji prefixes. **bold** for emphasis. Numbered lists for stories. Bullet points for outlook. NO HTML.
 
-STRUCTURE (follow exactly — 6 sections, do NOT add or reorder):
+STRUCTURE (follow exactly — five sections, do NOT add, drop or reorder; the
+template inserts the mechanical Ledger line above your output):
 
-## 📊 Top Signal
+${DAILY_SECTIONS[0]}
+
+The one call we are making today, from the OUR OPEN CALLS section of the
+context — pick the call listed FIRST (they arrive ordered by divergence from
+the base rate; the first is where we are saying the most). Restate it in 1-2
+sentences: the country, the claim, our probability, the base rate beside it,
+and the resolution date. Every number verbatim from the context. If the
+context lists no open calls, write exactly: "No open calls today." Never
+invent a call, never adjust a probability, never editorialise the criterion.
+
+${DAILY_SECTIONS[1]}
 
 Lead with the single most important story of the day. This is the hero.
 - 1 sentence hook that makes the reader stop scrolling (the "hey, you seeing this?" moment)
 - 2-3 sentences on what happened (specific: names, numbers, places, sources)
 - 2-3 sentences on why it matters (the "so what" for the reader's world — portfolio, policy, safety)
-- Cite the source when referencing investigations (Bellingcat, Crisis Group, ISW, ACLED, etc.)
+- Cite the source when referencing investigations (Bellingcat, Crisis Group, ISW, etc.)
 
 If it's a quiet day, lead with the most interesting pattern or trend from the CII data, NOT a recap of yesterday's news.
 
-## 🌍 CII Movers
+${DAILY_SECTIONS[2]}
 
-The countries that moved the most in the last 24 hours. This is data, not narrative.
-Format each mover as: **Country** CII_SCORE (▲+N or ▼-N) — driver.
-Show 4-6 countries. Sort by absolute change (biggest move first).
+The day's state of the board — three parts inside one section, then the clause:
+
+**Movers** — the countries that moved most in 24h. Data, not narrative.
+Format each as: **Country** CII_SCORE (▲+N or ▼-N) — driver. Show 4-6, sorted by absolute change.
 
 THE DRIVER MUST COME FROM THE CONTEXT OR NOT BE GIVEN. This is the strictest
 rule in the brief and it overrides every stylistic instruction above.
-
 - A driver is permitted ONLY when a named, dated item in the data context
   supports it — a headline, a censorship measurement, a sanctions event, a
   quake. Name that source in the line.
@@ -312,63 +338,49 @@ rule in the brief and it overrides every stylistic instruction above.
 Correct, with evidence:  **Iran** 61 (▲+4) — OONI recorded 1,611 confirmed blocking measurements this week, up from 340.
 Correct, without:        **South Korea** 13 (▲+8) — driver not identified in today's data.
 
-Previously this section supplied a worked example that invented a cause
-("RSF advances in El Fasher triggered new displacement") for a number with no
-explanation available. Published briefs consequently asserted a Turkish-brokered
-ceasefire in Idlib, a South Korean political crisis, and reduced drone activity
-over Helmand — none of which were in any input, and the last of which described
-a hardcoded constant changing.
+**Crises** — active crises and escalation risks, 2-4 bullets max, each: **bold
+label** → 1-2 sentences on status and what to watch. Only genuine crises
+(CII > 65 or active conflict/disaster). If none, write "No active crisis triggers today."
 
-## ⚠️ Crisis Watch
+**Markets** — 2-4 sentences. THE MARKET LINES ARE ETF SHARE PRICES, NOT THE
+UNDERLYING. They are labelled as such in the context — "Crude oil ETF (USO)",
+"Dollar index ETF (UUP)". Never restate one as the underlying's level: USO's
+share price is not the price of a barrel and UUP's is not the dollar index.
+Quote the instrument as named, or describe the direction and size of the move
+without asserting a level. Percentage moves in a share price are PERCENT,
+never "basis points" — basis points measure yield, and using them for an
+equity price move is both wrong and the fastest way to lose a reader who
+trades. Reference chokepoints (Hormuz, Bab el-Mandeb, Suez, Malacca) when
+relevant. What's priced in vs. what's a surprise?
 
-Active crises and escalation risks. 2-4 bullet points max.
-Each bullet: **bold label** → 1-2 sentences on status and what to watch.
-Only include genuine crises (CII > 65 or active conflict/disaster). Skip if no active crises — write "No active crisis triggers today." instead.
+End the section with one line: **What would change our mind:** the single
+concrete, checkable observation that would most revise today's top read. It
+must name a source that appears in the context (OONI, an FX rate, a headline,
+a CII component). Falsifiable, dated where possible, never a vibe.
 
-## 📈 Markets & Exposure
+${DAILY_SECTIONS[3]}
 
-Combines energy, commodities, and market signal. 3-4 sentences total.
+2-4 bullets of disciplined silence — the section where restraint is the content:
+- Moves we are NOT explaining, because no driver is identified in the data.
+- Narratives circulating today that the data cannot support — cite the item
+  ("[TASS · STATE MEDIA] is framing X as Y; nothing in OONI or the wires
+  corroborates it"). State framing is quotable AS framing here, never as fact.
+- Data gaps, named plainly: a feed down, a series stale, a country unscored.
+Never speculate under the guise of restraint — "we can't yet confirm the coup"
+implies a coup. If there is nothing to withhold, write "Nothing withheld today
+— the data covered what moved."
 
-THE MARKET LINES ARE ETF SHARE PRICES, NOT THE UNDERLYING. They are labelled as
-such in the context — "Crude oil ETF (USO)", "Dollar index ETF (UUP)". Never
-restate one as the underlying's level: USO's share price is not the price of a
-barrel and UUP's is not the dollar index. Quote the instrument as named, or
-describe the direction and size of the move without asserting a level.
-Percentage moves in a share price are PERCENT, never "basis points" — basis
-points measure yield, and using them for an equity price move is both wrong and
-the fastest way to lose a reader who trades.
+${DAILY_SECTIONS[4]}
 
-Required elements:
-- Energy move + driver + reversal trigger
-- 1-2 market moves connected to geopolitical developments
-- Reference chokepoints (Hormuz, Bab el-Mandeb, Suez, Malacca) when relevant
-What's priced in vs. what's a surprise? Be specific with numbers.
-
-## 🔮 Scenario Spotlight
-
-One what-if scenario of the day. Pick the most relevant based on current data.
-Format:
-- **Scenario name** (e.g., "What if Hormuz closes?")
-- 2-3 sentences: what would happen, which countries' CII would move, what cascades
+One slow-building development, 2-3 sentences — something visible in the 7-day
+trajectories, the censorship series, or repeated headlines, that is weeks from
+mattering rather than hours. Forward-looking and conditional ("if X continues
+through month-end, Y").
 NO HISTORICAL PRECEDENTS. Do not cite past events, past price moves, or past
-NexusWatch observations here or anywhere else in the brief. This section
-previously carried a worked example — "In 2019 tanker attacks, oil spiked 15%
-in 48h" — which is itself wrong (Brent moved ~2% on 13 June 2019 and ~4% on
-19 June), and the model reproduced it verbatim as fact. A precedent recalled
-from memory is unverifiable, and the ATTRIBUTION rule below forbids hedging it,
-so the two instructions together manufacture confident false statements.
-Make this forward-looking and conditional. Nothing retrospective.
-
-## 💬 One More Thing
-
-Quick hit — 1-2 sentences. One of these:
-- A prediction market divergence worth watching (NexusWatch CII vs. Polymarket)
-- A quiet signal that hasn't made headlines yet
-Never an advertisement for our own map, methodology page or tooling. A section
-inside the product that tells the reader to go look at the product is not a
-section.
-- On Fridays: highlight one NexusWatch feature that helped analysts this week
-End with energy. Leave the reader wanting to open the map.`;
+NexusWatch observations here or anywhere else in the brief. A precedent
+recalled from memory is unverifiable, and the attribution rules forbid hedging
+it, so the two instructions together would manufacture confident false
+statements. Nothing retrospective.`;
 }
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
@@ -720,6 +732,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       weeklyTrends,
       correlations,
       newsHeadlines,
+      openCallLines: [],
     };
 
     // === Generate AI brief (outputs markdown text) ===
@@ -769,20 +782,37 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
           // sentence are the ones where recent activity has pulled us away from
           // the long-run rate: that is where we are actually saying something.
           const open = (await sql`
-            SELECT country_code, probability::float AS p, base_rate::float AS base, resolves_on::text AS resolves_on
+            SELECT kind, country_code, probability::float AS p, base_rate::float AS base,
+                   resolves_on::text AS resolves_on, threshold_pct::float AS threshold_pct
             FROM calls
             WHERE status = 'pending' AND base_rate IS NOT NULL
             ORDER BY ABS(probability - base_rate) DESC, probability DESC
             LIMIT 8
-          `) as unknown as Array<{ country_code: string; p: number; base: number; resolves_on: string }>;
+          `) as unknown as Array<{
+            kind: string;
+            country_code: string;
+            p: number;
+            base: number;
+            resolves_on: string;
+            threshold_pct: number | null;
+          }>;
           openCallLines = open.map((c) => {
             const delta = (c.p - c.base) * 100;
             const vs =
               Math.abs(delta) < 1
                 ? 'in line with its base rate'
                 : `${delta > 0 ? '+' : ''}${delta.toFixed(0)}pts vs its base rate of ${(c.base * 100).toFixed(0)}%`;
-            return `${nameOf.get(c.country_code) ?? c.country_code} (${c.country_code}): ${(c.p * 100).toFixed(0)}% chance of a confirmed censorship event by ${c.resolves_on} — ${vs}`;
+            // Phrase the claim by KIND. Before 2026-08-23 every call here was
+            // described as "a confirmed censorship event" — including the FX
+            // calls, which would have handed the model a false claim to
+            // faithfully repeat.
+            const claim =
+              c.kind === 'fx_devaluation'
+                ? `${(c.p * 100).toFixed(0)}% chance the currency depreciates ${c.threshold_pct !== null ? `≥${c.threshold_pct}% ` : ''}peak-vs-issue by ${c.resolves_on}`
+                : `${(c.p * 100).toFixed(0)}% chance of a confirmed censorship event by ${c.resolves_on}`;
+            return `${nameOf.get(c.country_code) ?? c.country_code} (${c.country_code}): ${claim} — ${vs}`;
           });
+          briefData.openCallLines = openCallLines;
         } catch (polErr) {
           console.error(
             '[daily-brief] political signal unavailable (non-fatal):',
@@ -802,7 +832,7 @@ ${movers.length > 0 ? movers.map((m) => `${m.name}: ${m.delta > 0 ? '+' : ''}${m
 === POLITICAL SIGNAL — NETWORK INTERFERENCE (OONI, last 7 days) ===
 ${censorshipLines.length > 0 ? censorshipLines.join('\n') : 'No confirmed blocking events recorded in the last 7 days.'}
 
-=== OUR OPEN CALLS (dated, falsifiable, resolved against OONI) ===
+=== OUR OPEN CALLS (dated, falsifiable, resolved against OONI and FX reference rates) ===
 ${openCallLines.length > 0 ? openCallLines.join('\n') : 'No open calls.'}
 
 === 7-DAY CII TRAJECTORIES ===
@@ -912,9 +942,18 @@ ${(() => {
             // deterministic builder — which is grounded by construction —
             // rather than silently shipping invention.
             grounding = groundDraft(briefText, dataContext);
+            const structure = validateBriefStructure(briefText, now.getUTCDay() === 0);
             if (!grounding.pass) {
               aiDebug = `grounding-failed: ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported numerals [${grounding.unsupported.slice(0, 8).join(', ')}]`;
               console.error('[daily-brief] GROUNDING GATE REFUSED THE DRAFT:', aiDebug);
+              briefText = buildFallbackText(briefData);
+            } else if (!structure.pass) {
+              // The section spine is a contract with the reader (and with the
+              // renderer). A draft that resurrects Scenario Spotlight, drops
+              // What We're Not Saying, or forgets the change-our-mind clause
+              // is refused the same way an ungrounded one is.
+              aiDebug = `structure-failed: missing=[${structure.missing.join('; ')}] extra=[${structure.extra.join('; ')}]${structure.misordered ? ' misordered' : ''}${structure.missingChangeOurMind ? ' no-change-our-mind-clause' : ''}`;
+              console.error('[daily-brief] STRUCTURE GATE REFUSED THE DRAFT:', aiDebug);
               briefText = buildFallbackText(briefData);
             } else {
               aiDebug = `ai-success (grounding ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported)`;
@@ -1012,7 +1051,7 @@ ${(() => {
     const archiveT0 = Date.now();
     await sql`
       UPDATE daily_briefs
-      SET content = ${JSON.stringify({ ...briefData, briefText })},
+      SET content = ${JSON.stringify({ ...briefData, briefText, subject: extractSubject(briefText) })},
           summary = ${briefHtml}
       WHERE brief_date = ${today}
     `;
@@ -2379,7 +2418,13 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 // during A.5 — wasn't in the locked structure). Sunday falls back to the
 // weekday shape rather than Week in Review, because the fallback only fires
 // when Sonnet is fully unavailable and we want coverage parity over format.
-function buildFallbackText(data: BriefData): string {
+export function buildFallbackText(data: BriefData): string {
+  // The deterministic edition — published when the model draft fails a gate
+  // (grounding, structure) or the API fails. Same section spine as the model
+  // version (brief-structure.ts), grounded by construction: every line below
+  // is a restatement of a value already in BriefData. It says plainly that it
+  // is the mechanical edition; on a site whose brand is "we publish our
+  // misses", telling the reader the AI draft was refused today is a feature.
   const trendArrow = (c: CIIEntry) => {
     if (c.prevScore === null) return '';
     const d = c.score - c.prevScore;
@@ -2387,75 +2432,60 @@ function buildFallbackText(data: BriefData): string {
     if (d <= -3) return ` ↓${Math.abs(d).toFixed(0)}`;
     return ' →';
   };
-
   const topCountry = data.topRiskCountries[0];
-  const eqTrend =
-    data.yesterdayEqCount !== null
-      ? data.earthquakeCount > data.yesterdayEqCount
-        ? `, up from ${data.yesterdayEqCount} yesterday`
-        : `, down from ${data.yesterdayEqCount} yesterday`
-      : '';
 
-  const isFriday = new Date().getUTCDay() === 5;
+  let text = `${DAILY_SECTIONS[0]}\n\n`;
+  text += data.openCallLines.length > 0 ? `${data.openCallLines[0]}\n\n` : `No open calls today.\n\n`;
 
-  let text = `## ☕ Good Morning\n\n`;
-  text += topCountry
-    ? `We're tracking ${data.topRiskCountries.filter((c) => c.score >= 50).length} elevated-risk zones across ${data.totalCountries} countries this morning. ${topCountry.name} leads our Country Instability Index at ${topCountry.score}/100. ${data.earthquakeCount} seismic events globally${eqTrend}.\n\n`
-    : `${data.earthquakeCount} seismic events globally${eqTrend}. Here's your scan.\n\n`;
-
-  text += `## 📍 Today's Top Stories\n\n`;
+  text += `${DAILY_SECTIONS[1]}\n\n`;
   if (data.newsHeadlines.length > 0) {
-    data.newsHeadlines.slice(0, 5).forEach((n, i) => {
-      text += `${i + 1}. **${n.title}** (${n.source})\n\n`;
-    });
-  } else if (data.conflictHeadlines.length > 0) {
-    data.conflictHeadlines.slice(0, 5).forEach((h, i) => {
-      text += `${i + 1}. **${h}**\n\n`;
-    });
+    const n = data.newsHeadlines[0];
+    text += `**${n.title}** (${n.source}). This is the mechanical edition — the model draft was withheld today, so we give you the lead as the wire carried it rather than a synthesis.\n\n`;
+  } else if (topCountry) {
+    text += `**${topCountry.name} leads the board at ${topCountry.score}/100${trendArrow(topCountry)}.** ${data.topRiskCountries.filter((c) => c.score >= 50).length} countries sit above CII 50 of ${data.totalCountries} scored.\n\n`;
   } else {
-    text += `CII leaders: ${data.topRiskCountries
-      .slice(0, 5)
-      .map((c) => `${c.name} (${c.score}${trendArrow(c)})`)
-      .join(', ')}\n\n`;
+    text += `A quiet board. ${data.earthquakeCount} seismic events in 24h; nothing above the consequence threshold.\n\n`;
   }
 
-  text += `## 🇺🇸 US Impact\n\n`;
-  text += `${data.topRiskCountries.filter((c) => c.score >= 50).length} countries above CII 50 threshold — elevated global risk posture affecting energy supply chains and alliance commitments.\n\n`;
+  text += `${DAILY_SECTIONS[2]}\n\n`;
+  text += `**Movers**\n\n`;
+  const movers = data.topRiskCountries
+    .filter((c) => c.prevScore !== null && Math.abs(c.score - (c.prevScore as number)) >= 3)
+    .slice(0, 6);
+  if (movers.length > 0) {
+    for (const c of movers) {
+      const d = c.score - (c.prevScore as number);
+      text += `- **${c.name}** ${c.score} (${d > 0 ? '▲+' : '▼'}${d.toFixed(0)}) — driver not identified in today's data.\n`;
+    }
+    text += `\n`;
+  } else {
+    text += `No moves past the ±3 threshold in 24h.\n\n`;
+  }
+  text += `**Crises**\n\n`;
+  const crises = data.topRiskCountries.filter((c) => c.score > 65).slice(0, 4);
+  text +=
+    crises.length > 0
+      ? crises.map((c) => `- **${c.name}** — CII ${c.score}${trendArrow(c)}.`).join('\n') + `\n\n`
+      : `No active crisis triggers today.\n\n`;
+  text += `**Markets**\n\n`;
+  text +=
+    data.markets.length > 0
+      ? data.markets.map((m) => `${m.symbol}: ${m.price} (${m.change})`).join(' | ') + `\n\n`
+      : `Market data unavailable.\n\n`;
+  text += `**What would change our mind:** a confirmed OONI blocking event, or an FX reference-rate move past a stored threshold, in any country on the open book above — the resolvers check daily.\n\n`;
 
-  // Energy section shape per Decision 14: price + driver + reversal trigger.
-  // In the fallback we have prices from the data context but no Sonnet-level
-  // driver analysis, so we state what we have and hint at the reversal lever
-  // (chokepoint news) that readers should watch.
-  text += `## ⛽ Energy & Commodities\n\n`;
-  const oil = data.markets.find((m) => m.symbol === 'Crude Oil');
-  const gas = data.markets.find((m) => m.symbol === 'Nat Gas');
-  const xle = data.markets.find((m) => m.symbol === 'Energy Sector');
-  if (oil) text += `Crude Oil: ${oil.price} (${oil.change}). `;
-  if (gas) text += `Natural Gas: ${gas.price} (${gas.change}). `;
-  if (xle) text += `Energy Sector (XLE): ${xle.price} (${xle.change}). `;
-  text += `Reversal triggers to watch: any Houthi activity in Bab el-Mandeb, renewed Hormuz pressure, or Suez disruption — we flag these live on the map.\n\n`;
-
-  text += `## 📊 Market Signal\n\n`;
-  text += data.markets.map((m) => `${m.symbol}: ${m.price} (${m.change})`).join(' | ');
-  text += `\n\n`;
-
-  text += `## 🔭 48-Hour Outlook\n\n`;
-  text += `- **CII Trajectory**: Watch ${topCountry?.name || 'top risk countries'} for continued instability\n`;
-  text += `- **Seismic Activity**: ${data.earthquakeCount} events in 24h${data.significantQuakes.length > 0 ? ` including ${data.significantQuakes[0]}` : ''}\n`;
-  if (oil) text += `- **Energy**: ${oil.symbol} at ${oil.price} — watch chokepoint headlines for reversal signals\n`;
+  text += `${DAILY_SECTIONS[3]}\n\n`;
+  text += `- This is the mechanical edition: the model draft was withheld by a publish gate, so today carries data without narrative.\n`;
+  text += `- Every mover above is unexplained by construction — we do not attribute causes mechanically.\n`;
+  if (data.conflictHeadlines.length === 0)
+    text += `- The conflict headline feed returned nothing today; that gap is a gap.\n`;
   text += `\n`;
 
-  text += `## 🗺️ Map of the Day\n\n`;
-  text += `Today's map highlights ${topCountry?.name || 'global instability'} and surrounding risk zones. Open the live map at nexuswatch.dev to explore.\n\n`;
-
-  // Friday-only: Tool of the Week. In the fallback we don't have editorial
-  // narrative, so we surface a stable pointer to the CII methodology page
-  // rather than fabricate a feature highlight. Sonnet writes the real version
-  // on Fridays when it's available.
-  if (isFriday) {
-    text += `## 🛠️ Tool of the Week\n\n`;
-    text += `This week we're leaning on the Country Instability Index methodology — 6-component scoring across conflict, disasters, sentiment, infrastructure, governance, and market exposure. See the full breakdown at nexuswatch.dev/#/methodology.\n`;
-  }
+  text += `${DAILY_SECTIONS[4]}\n\n`;
+  const trending = data.weeklyTrends.find((t) => t.direction === 'rising' || t.direction === 'falling');
+  text += trending
+    ? `${trending.name} has ${trending.direction === 'rising' ? 'risen' : 'fallen'} from ${trending.weekAgoScore ?? '?'} to ${trending.currentScore} over 7 days. If the direction holds through month-end, it moves onto the crisis list${trending.direction === 'falling' ? ' — or off it' : ''}.\n`
+    : `No sustained 7-day trajectory stands out; the long fuse is quiet.\n`;
 
   return text;
 }

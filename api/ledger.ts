@@ -63,7 +63,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    return res.send(shell('<h1>The Ledger</h1><p class="lede">Temporarily unavailable.</p>', { title, description, canonicalPath: '/ledger' }));
+    return res.send(
+      shell('<h1>The Ledger</h1><p class="lede">Temporarily unavailable.</p>', {
+        title,
+        description,
+        canonicalPath: '/ledger',
+      }),
+    );
   }
 
   try {
@@ -229,10 +235,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     console.error('[ledger] failed:', err instanceof Error ? err.message : err);
     return res.send(
-      shell(
-        '<h1>The Ledger</h1><p class="lede">The ledger query failed. Nothing is being hidden.</p>',
-        { title, description, canonicalPath: '/ledger' },
-      ),
+      shell('<h1>The Ledger</h1><p class="lede">The ledger query failed. Nothing is being hidden.</p>', {
+        title,
+        description,
+        canonicalPath: '/ledger',
+      }),
     );
   }
 }
