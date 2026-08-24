@@ -80,43 +80,44 @@ export function renderLanding(root: HTMLElement): void {
       </div>
     </section>
 
-    <section class="nw-reveal" aria-label="What it is">
-      <span class="nw-section-eyebrow">What it is</span>
-      <h2 class="nw-section-heading">A command center for a moving world.</h2>
+    <section class="nw-reveal" aria-label="How grading works">
+      <span class="nw-section-eyebrow">How it works</span>
+      <h2 class="nw-section-heading">A call, a criterion, a resolution date.</h2>
       <p class="nw-section-lede">
-        Open the dashboard, watch the globe spin, drop pins on what matters. Every layer is live, every score
-        traces back to a source, every brief is something you'd actually read.
+        Every morning we put dated probabilities on record — censorship events, currency moves — each with a
+        threshold frozen at issue and an external resolver named in advance. OONI and the FX reference rates
+        decide, not us. The score is published either way.
       </p>
       <div class="nw-features-grid">
+        <article class="nw-feature">
+          <span class="nw-feature-label">The Ledger</span>
+          <h3 class="nw-feature-title">Scored in public.</h3>
+          <p class="nw-feature-desc">Every call beside its country's own base rate, so you can see when we're actually saying something. Misses stay on the page — a record that only reports wins is not a record.</p>
+        </article>
+        <article class="nw-feature">
+          <span class="nw-feature-label">Daily Brief</span>
+          <h3 class="nw-feature-title">Three minutes. Every morning.</h3>
+          <p class="nw-feature-desc">Opens with the ledger: what resolved, what's open, one dated call. Then the day's signal, vetted against sources you can read for yourself. Free in your inbox or via RSS.</p>
+        </article>
+        <article class="nw-feature">
+          <span class="nw-feature-label">85 Countries</span>
+          <h3 class="nw-feature-title">The evidence surface.</h3>
+          <p class="nw-feature-desc">The live map and the Country Instability Index are where calls come from — six weighted components, evidence chains, confidence badges. Click a number, see the data behind it.</p>
+        </article>
         <article class="nw-feature">
           <span class="nw-feature-label">45+ Layers</span>
           <h3 class="nw-feature-title">Live data, every minute.</h3>
           <p class="nw-feature-desc">Earthquakes, conflict, sanctions, shipping, satellites, AI sentiment, dark vessels, undersea cables, and thirty-seven more — refreshed continuously.</p>
         </article>
         <article class="nw-feature">
-          <span class="nw-feature-label">85 Countries</span>
-          <h3 class="nw-feature-title">A scored world.</h3>
-          <p class="nw-feature-desc">The Country Instability Index decomposes into six weighted components with evidence chains and confidence badges. Click a number, see the data behind it.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">Daily Brief</span>
-          <h3 class="nw-feature-title">Three minutes. Every morning.</h3>
-          <p class="nw-feature-desc">A synthesized intelligence report, composed by AI, vetted against the sources you can read for yourself. Free in your inbox or via RSS.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">Cinema Mode</span>
-          <h3 class="nw-feature-title">Drop it on a TV.</h3>
-          <p class="nw-feature-desc">A wall-display loop: globe, alerts, instability deltas, briefings cycling on a slow tempo. Trading floors, ops rooms, your living room.</p>
-        </article>
-        <article class="nw-feature">
           <span class="nw-feature-label">Open API</span>
           <h3 class="nw-feature-title">Query the firehose.</h3>
-          <p class="nw-feature-desc">A v2 REST surface over the same data the dashboard reads. No key required for basic queries. Built so other people can build on top.</p>
+          <p class="nw-feature-desc">A v2 REST surface over the same data the dashboard reads, including the full ledger as JSON. No key required for basic queries.</p>
         </article>
         <article class="nw-feature">
           <span class="nw-feature-label">Receipts</span>
-          <h3 class="nw-feature-title">Open-source, evidence-chained.</h3>
-          <p class="nw-feature-desc">MIT-licensed. Every claim traces to a source row and a confidence score. Calls we got wrong stay in the prediction ledger — that's the work.</p>
+          <h3 class="nw-feature-title">Goalposts held by GitHub.</h3>
+          <p class="nw-feature-desc">MIT-licensed, open data. The call book is snapshotted daily to the public repo, so the thresholds carry GitHub's timestamps — verify us without trusting us.</p>
         </article>
       </div>
     </section>
@@ -135,7 +136,7 @@ export function renderLanding(root: HTMLElement): void {
             <span class="nw-layer-count">7 <span class="nw-layer-dot" aria-hidden="true"></span></span>
           </div>
           <ul class="nw-layer-list">
-            <li>ACLED Live Conflicts</li>
+            <li>Conflict Events (GDELT-derived)</li>
             <li>Conflict Zones</li>
             <li>Military Bases (28)</li>
             <li>Cyber Threat Corridors</li>
@@ -278,7 +279,6 @@ export function renderLanding(root: HTMLElement): void {
         <li>USGS</li>
         <li>GDELT</li>
         <li>NASA FIRMS</li>
-        <li>ACLED</li>
         <li>OpenSky</li>
         <li>OpenAQ</li>
         <li>GDACS</li>
