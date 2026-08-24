@@ -26,7 +26,7 @@ body {
 
 /* Legacy variable compatibility — maps old tokens to new design system.
    Used by nexuswatch.css, roadmap.css, auth.css, help.css, timeline.css,
-   briefs.css, brief.css, user-menu.css, tier-gating.css, and others that
+   briefs.css, brief.css, tier-gating.css, and others that
    haven't been migrated to --nw-* tokens yet. */
 :root {
   --font-mono: var(--nw-font-mono);

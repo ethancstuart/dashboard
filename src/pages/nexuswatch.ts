@@ -99,11 +99,9 @@ import { loadRulesFromStorage, openAlertBuilder } from '../ui/alertBuilder.ts';
 import '../styles/alert-builder.css';
 import '../styles/timeline.css';
 import '../styles/brief.css';
-import '../styles/user-menu.css';
 // mobile.css is now imported globally from main.css.
 // Old timeline slider replaced by TimelineBar
 import { openBriefPanel } from '../ui/briefPanel.ts';
-import { createUserMenu } from '../ui/userMenu.ts';
 import { copyShareUrl, getViewStateFromUrl, type ViewState } from '../services/shareView.ts';
 import { createMapStyleToggle } from '../map/MapStyleToggle.ts';
 import type { IntelItem, MapLayerCategory } from '../types/index.ts';
@@ -243,8 +241,6 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
 
   // Mobile sidebar toggle
   const mobileToggle = createElement('button', { className: 'nw-mobile-sidebar-toggle', textContent: '☰' });
-
-  const userMenuSlot = createElement('div', {});
 
   // ── Notification Bell ──
   const bellWrapper = createElement('div', { className: 'nw-bell-wrapper' });
@@ -392,7 +388,6 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
   document.addEventListener('click', () => moreMenu.classList.remove('open'));
 
   topRight.appendChild(moreWrapper);
-  topRight.appendChild(userMenuSlot);
   topRight.appendChild(statusArea);
 
   // Platform health badge — aggregate data confidence
@@ -739,7 +734,6 @@ export async function renderNexusWatch(root: HTMLElement): Promise<void> {
   });
 
   // ── User Menu ──
-  createUserMenu(userMenuSlot);
 
   // ── Permalink handling — auto-open detail panel if ?country= present ──
   {

@@ -213,7 +213,6 @@ body {
 @media (max-width: 640px) {
   .nw-modal,
   .nw-dialog,
-  .nw-login-modal,
   .nw-alert-builder,
   .nw-brief-panel,
   .nw-investigations-panel,
@@ -495,9 +494,6 @@ body {
     width: calc(100vw - 16px) !important;
   }
   .nw-brief-panel {
-    width: calc(100vw - 16px) !important;
-  }
-  .nw-login-modal {
     width: calc(100vw - 16px) !important;
   }
 }

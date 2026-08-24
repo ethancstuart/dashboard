@@ -14,7 +14,6 @@ import {
   type Interests,
 } from '../services/interests.ts';
 import { colors as dossierColors, fonts as dossierFonts } from '../styles/email-tokens.ts';
-import { getUser, logout } from '../services/auth.ts';
 
 /**
  * Account Settings page — /#/settings (Track F.3).
@@ -99,27 +98,15 @@ export function renderSettings(root: HTMLElement): void {
 // ---------------------------------------------------------------------------
 
 function renderAccountHeader(): HTMLElement {
-  const user = getUser();
+  // No account concept. Sign-in was removed 2026-08-23: it gated nothing, and
+  // its modal promised syncing that never existed. Preferences are honest about
+  // where they live — this browser.
   const wrap = createElement('section', {});
   wrap.style.marginBottom = '24px';
-
-  if (!user) {
-    wrap.innerHTML = `
-      <div class="dossier-kicker" style="text-align: left; margin-bottom: 8px;">ACCOUNT</div>
-      <h1 class="dossier-title" style="text-align: left; font-size: 32px; margin-bottom: 12px;">Not signed in</h1>
-      <p style="${leadStyle()}">Sign in to sync your interests across devices. You can still edit interests below — they'll save to this browser only.</p>
-    `;
-    return wrap;
-  }
-
   wrap.innerHTML = `
-    <div class="dossier-kicker" style="text-align: left; margin-bottom: 8px;">ACCOUNT</div>
-    <h1 class="dossier-title" style="text-align: left; font-size: 32px; margin-bottom: 12px;">${escapeHtml(user.name)}</h1>
-    <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-family: ${dossierFonts.mono}; font-size: 12px; color: ${dossierColors.textTertiary};">
-      <span>${escapeHtml(user.email)}</span>
-      <span aria-hidden="true">\u00b7</span>
-      <span>via ${escapeHtml(user.provider)}</span>
-    </div>
+    <div class="dossier-kicker" style="text-align: left; margin-bottom: 8px;">SETTINGS</div>
+    <h1 class="dossier-title" style="text-align: left; font-size: 32px; margin-bottom: 12px;">Preferences</h1>
+    <p style="${leadStyle()}">Saved in this browser. The daily brief is a separate subscription — your email address, nothing else.</p>
   `;
   return wrap;
 }
@@ -236,7 +223,6 @@ function renderFooterActions(draft: DraftState, scrollContainer: HTMLElement): H
       <button type="button" id="nw-settings-save" disabled style="${primaryButtonStyle(false)}">Saved</button>
       <div id="nw-settings-status" style="${statusStyle()}" role="status" aria-live="polite"></div>
       <div style="flex: 1;"></div>
-      ${getUser() ? '<button type="button" id="nw-settings-signout" style="' + dangerButtonStyle() + '">Sign out</button>' : ''}
     </div>
   `;
 
@@ -273,14 +259,6 @@ function renderFooterActions(draft: DraftState, scrollContainer: HTMLElement): H
         statusEl.style.color = dossierColors.down;
       }
     }
-  });
-
-  // Sign out wiring.
-  const signoutBtn = wrap.querySelector<HTMLButtonElement>('#nw-settings-signout');
-  signoutBtn?.addEventListener('click', () => {
-    logout();
-    // Redirect home so the signed-out state is obvious.
-    window.location.hash = '#/';
   });
 
   return wrap;
@@ -369,21 +347,6 @@ function primaryButtonStyle(enabled: boolean): string {
   ].join(';');
 }
 
-function dangerButtonStyle(): string {
-  return [
-    `padding: 10px 20px`,
-    `background: transparent`,
-    `color: ${dossierColors.down}`,
-    `border: 1px solid ${dossierColors.down}`,
-    `border-radius: 2px`,
-    `font-family: ${dossierFonts.mono}`,
-    `font-size: 11px`,
-    `font-weight: 700`,
-    `letter-spacing: 0.12em`,
-    `text-transform: uppercase`,
-    `cursor: pointer`,
-  ].join(';');
-}
 
 function summaryStyle(): string {
   return [
