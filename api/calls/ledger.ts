@@ -10,6 +10,7 @@ import {
   calibrationBins,
   murphyDecomposition,
   CALIBRATION_KINDS,
+  isScored,
   type ScoredCall,
 } from '../_lib/calls.js';
 
@@ -89,7 +90,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // aggregate toward zero skill and count earthquake windows as
     // geopolitical claims. They still score inside by_kind, where the
     // harness's ≈0 skill is the point.
-    const claimResolved = resolved.filter((c) => !CALIBRATION_KINDS.has(c.kind));
+    // isScored, not `status !== 'pending'`. The resolved SELECT deliberately
+    // still returns void and unresolvable rows so a reader can SEE them — but
+    // they carry no outcome, and mapping them through `status === 'hit' ? 1 : 0`
+    // scored every one of them as a MISS. That is the false miss this change
+    // exists to prevent, and it was already happening to `void`.
+    const claimResolved = resolved.filter((c) => !CALIBRATION_KINDS.has(c.kind) && isScored(c.status));
     const claimOpen = open.filter((c) => !CALIBRATION_KINDS.has(c.kind));
     const scored: ScoredCall[] = claimResolved.map((c) => ({
       probability: c.probability,
@@ -101,10 +107,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totalsRows = (await sql`
       SELECT
         COUNT(*) FILTER (WHERE status = 'pending' AND kind <> 'seismicity_window')::int AS open,
-        COUNT(*) FILTER (WHERE status <> 'pending' AND kind <> 'seismicity_window')::int AS resolved,
+        COUNT(*) FILTER (WHERE status IN ('hit','miss') AND kind <> 'seismicity_window')::int AS resolved,
         COUNT(*) FILTER (WHERE status = 'hit' AND kind <> 'seismicity_window')::int AS hits,
         COUNT(*) FILTER (WHERE status = 'pending' AND kind = 'seismicity_window')::int AS calibration_open,
-        COUNT(*) FILTER (WHERE status <> 'pending' AND kind = 'seismicity_window')::int AS calibration_resolved,
+        COUNT(*) FILTER (WHERE status IN ('hit','miss') AND kind = 'seismicity_window')::int AS calibration_resolved,
         MIN(resolves_on) FILTER (WHERE status = 'pending')::text AS next_resolves_on,
         MIN(made_on)::text AS first_call_on
       FROM calls
@@ -138,6 +144,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         skill_vs_base_rate: number | null;
         units: number;
         batches: number;
+        /** Carried no outcome: void (our defect) or unresolvable (too little evidence). */
+        unscored: number;
       }
     > = {};
     for (const c of [...open, ...resolved]) {
@@ -149,15 +157,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         skill_vs_base_rate: null,
         units: 0,
         batches: 0,
+        unscored: 0,
       };
       if (c.status === 'pending') byKind[c.kind].open++;
-      else {
+      else if (isScored(c.status)) {
         byKind[c.kind].resolved++;
         if (c.status === 'hit') byKind[c.kind].hits++;
+      } else {
+        // Counted and published, never scored and never hidden. A ledger that
+        // drops its inconvenient rows is what this table exists to replace.
+        byKind[c.kind].unscored++;
       }
     }
     for (const kind of Object.keys(byKind)) {
-      const rows = resolved.filter((c) => c.kind === kind);
+      const rows = resolved.filter((c) => c.kind === kind && isScored(c.status));
       const s: ScoredCall[] = rows.map((c) => ({
         probability: c.probability,
         outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,

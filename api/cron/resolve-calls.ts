@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { resolveOutcome, fxDepreciationPct } from '../_lib/calls.js';
+import { resolveOutcome, fxDepreciationPct, coverageRequirement } from '../_lib/calls.js';
 import { usgsCountUrl, type RegionBox } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
@@ -27,6 +27,8 @@ interface DueCall {
   country_code: string;
   made_on: string;
   resolves_on: string;
+  /** Frozen at issue. The coverage requirement is derived from it, not hardcoded. */
+  horizon_days: number;
   threshold: number;
   threshold_pct: number | null;
   reference_value: number | null;
@@ -44,8 +46,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const due = (await sql`
       SELECT id, kind, country_code, made_on::text AS made_on, resolves_on::text AS resolves_on,
-             threshold, threshold_pct::float AS threshold_pct, reference_value::float AS reference_value,
-             resolver_params
+             horizon_days, threshold, threshold_pct::float AS threshold_pct,
+             reference_value::float AS reference_value, resolver_params
       FROM calls
       WHERE status = 'pending' AND resolves_on <= CURRENT_DATE
       ORDER BY resolves_on ASC
@@ -125,19 +127,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // in the last fortnight, so real misses would have been manufactured
           // out of a collector gap on the very first resolution day. A call is
           // only resolvable if the resolver actually observed the country.
+          // AND THE GATE IS A DENSITY, NOT A BOOLEAN. It used to test `=== 0`,
+          // so a SINGLE measurement row anywhere in a fourteen-day window
+          // certified the country as observed, and a call with no block seen
+          // was then written as an irreversible public MISS.
+          //
+          // Measured against the live 2026-09-05 cohort on 2026-08-28: SD and
+          // SS each had exactly ONE covered day and would have resolved MISS.
+          // Sudan and South Sudan are among the most shutdown-affected
+          // countries on earth; publishing "no censorship event" for them off
+          // one probe-day is wrong on the facts.
+          //
+          // Day count alone is not enough either: Cuba had 15 of 15 days
+          // covered on 479 measurements against Russia's 95,531, a 200x spread.
+          // So both dimensions, and BOTH DERIVED FROM THE WINDOW, so a future
+          // kind with a different horizon is in scope by construction rather
+          // than by someone remembering to add it to a list.
+          //
+          // The structural finding underneath, which belongs on /methodology:
+          // the thin countries are CF, ML, TD, SS, NE, SD — Sahel and Horn
+          // conflict states. OONI's coverage is ANTI-CORRELATED with the thing
+          // it measures, because volunteers are thinnest where running a
+          // measurement tool is most dangerous. The countries we most want to
+          // be right about are the ones we have least evidence for.
           const coverage = (await sql`
-          SELECT COUNT(*)::int AS measurements
+          SELECT COUNT(DISTINCT measurement_date)::int AS covered_days,
+                 COALESCE(SUM(total_measurements), 0)::int AS measurements
           FROM ooni_measurements
           WHERE country_code = ${call.country_code}
             AND measurement_date >= ${call.made_on}::date
             AND measurement_date <= ${call.resolves_on}::date
-        `) as unknown as Array<{ measurements: number }>;
+        `) as unknown as Array<{ covered_days: number; measurements: number }>;
 
-          if ((coverage[0]?.measurements ?? 0) === 0) {
-            console.error(
-              `[resolve-calls] call ${call.id} (${call.country_code}) has NO OONI coverage in ` +
-                `[${call.made_on}, ${call.resolves_on}] — left pending rather than scored a miss`,
-            );
+          const coveredDays = coverage[0]?.covered_days ?? 0;
+          const observed = coverage[0]?.measurements ?? 0;
+          const req = coverageRequirement(call.horizon_days);
+
+          if (coveredDays < req.minDays || observed < req.minMeasurements) {
+            const why =
+              `resolver coverage ${coveredDays}/${req.minDays} days, ` +
+              `${observed}/${req.minMeasurements} measurements in [${call.made_on}, ${call.resolves_on}]`;
+            console.error(`[resolve-calls] call ${call.id} (${call.country_code}) unresolvable — ${why}`);
+            // Recorded, not hidden. Leaving it pending would park an overdue
+            // call in the open book forever, drag next_resolves_on into the
+            // past, and give a reader no way to see why it never resolved.
+            //
+            // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
+            // docs/migrations/2026-08-28-calls-unresolvable-status.sql. Pushing
+            // to main deploys, and a migration is applied by hand, so the code
+            // WILL be live before the constraint on any ordering we do not
+            // control. If the write is rejected we fall back to the old
+            // behaviour — left pending — which is conservative in the right
+            // direction: the call still is not scored as a miss, which is the
+            // property that actually matters. Never let a missing migration
+            // turn into a false public verdict.
+            try {
+              await sql`
+                UPDATE calls
+                SET status = 'unresolvable', void_reason = ${why}, resolved_at = NOW()
+                WHERE id = ${call.id} AND status = 'pending'
+              `;
+            } catch (e) {
+              console.error(
+                `[resolve-calls] could not mark call ${call.id} unresolvable (migration not applied?) — ` +
+                  `left pending, still NOT scored: ${e instanceof Error ? e.message : String(e)}`,
+              );
+            }
             unresolvable++;
             continue;
           }
