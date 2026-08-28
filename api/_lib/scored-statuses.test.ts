@@ -2,7 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCORED_STATUSES, isScored, coverageRequirement, MIN_MEASUREMENTS_PER_REQUIRED_DAY } from './calls.js';
+import {
+  SCORED_STATUSES,
+  isScored,
+  coverageRequirement,
+  MIN_MEASUREMENTS_PER_REQUIRED_DAY,
+  daysSinceResolution,
+  UNRESOLVABLE_GRACE_DAYS,
+} from './calls.js';
 
 const API_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -129,5 +136,35 @@ describe('coverageRequirement', () => {
     // And a densely-observed country must still resolve, or the gate is just
     // a way of never being wrong.
     expect(15 >= req.minDays && 95531 >= req.minMeasurements).toBe(true);
+  });
+});
+
+describe('unresolvable grace period', () => {
+  it('counts whole days since maturity, in UTC', () => {
+    const now = new Date('2026-09-12T00:00:00Z');
+    expect(daysSinceResolution('2026-09-05', now)).toBe(7);
+    expect(daysSinceResolution('2026-09-12', now)).toBe(0);
+    expect(daysSinceResolution('2026-09-13', now)).toBe(-1);
+  });
+
+  it('keeps a freshly-matured thin call PENDING rather than settling it', () => {
+    // An independent review caught this: resolve-calls only ever selects
+    // status='pending', so writing a terminal status on the resolution day
+    // removes the call from the retry set permanently — and OONI's ingest lags
+    // ~24h, so late evidence is real.
+    const onTheDay = daysSinceResolution('2026-09-05', new Date('2026-09-05T09:45:00Z'));
+    expect(onTheDay).toBe(0);
+    expect(onTheDay < UNRESOLVABLE_GRACE_DAYS).toBe(true);
+  });
+
+  it('settles it once the evidence is genuinely not coming', () => {
+    const later = daysSinceResolution('2026-09-05', new Date('2026-09-13T09:45:00Z'));
+    expect(later).toBe(8);
+    expect(later >= UNRESOLVABLE_GRACE_DAYS).toBe(true);
+  });
+
+  it('never throws on a malformed date, which would abort the batch', () => {
+    expect(daysSinceResolution('not-a-date')).toBe(0);
+    expect(daysSinceResolution('')).toBe(0);
   });
 });

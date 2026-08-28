@@ -125,6 +125,31 @@ export interface CoverageRequirement {
   minMeasurements: number;
 }
 
+/**
+ * How long a matured call waits for late evidence before it is declared
+ * unresolvable.
+ *
+ * Marking on the resolution day itself is wrong and an independent review
+ * caught it: `resolve-calls` only ever selects `status = 'pending'`, so a
+ * terminal write removes the call from the retry set permanently. OONI's
+ * ingest lags roughly 24 hours and `source-ooni.ts` fetches only
+ * `since = yesterday`, so a run that misses leaves a hole that a later
+ * backfill or a collector fix could still fill — and a call marked terminal on
+ * day one can never benefit from either.
+ *
+ * So: below the grace period a thin call stays pending, exactly as before.
+ * Past it, the evidence is not coming and the row is settled with its reason.
+ * Either way it is never scored as a miss, which is the property that matters.
+ */
+export const UNRESOLVABLE_GRACE_DAYS = 7;
+
+/** Whole days elapsed since a call matured. Both inputs are ISO dates (UTC). */
+export function daysSinceResolution(resolvesOn: string, now: Date = new Date()): number {
+  const due = Date.parse(`${resolvesOn}T00:00:00Z`);
+  if (!Number.isFinite(due)) return 0;
+  return Math.floor((now.getTime() - due) / 86_400_000);
+}
+
 export function coverageRequirement(horizonDays: number): CoverageRequirement {
   // Half the declared window, rounded up, floored at one day so a degenerate
   // horizon can never produce a zero requirement — which would restore the
@@ -149,7 +174,12 @@ export interface Call {
   claim: string;
   /** The named external source that decides it. */
   resolver: string;
-  status: 'pending' | 'hit' | 'miss';
+  /**
+   * `void` — our criterion was unsound; we withdrew it.
+   * `unresolvable` — the resolver did not observe enough evidence to score it.
+   * Neither carries an outcome; see SCORED_STATUSES.
+   */
+  status: 'pending' | 'hit' | 'miss' | 'void' | 'unresolvable';
   /** Count of qualifying external events found at resolution time. */
   evidenceCount?: number;
 }

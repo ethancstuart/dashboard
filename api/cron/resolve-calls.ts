@@ -1,6 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { resolveOutcome, fxDepreciationPct, coverageRequirement } from '../_lib/calls.js';
+import {
+  resolveOutcome,
+  fxDepreciationPct,
+  coverageRequirement,
+  daysSinceResolution,
+  UNRESOLVABLE_GRACE_DAYS,
+} from '../_lib/calls.js';
 import { usgsCountUrl, type RegionBox } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
@@ -57,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let hits = 0;
     let misses = 0;
     let unresolvable = 0;
+    // Thin coverage, but inside the grace window — still pending, not settled.
+    let stillWaiting = 0;
     let errored = 0;
 
     for (const call of due) {
@@ -181,19 +189,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // direction: the call still is not scored as a miss, which is the
             // property that actually matters. Never let a missing migration
             // turn into a false public verdict.
+            // GRACE FIRST. Marking terminally on the resolution day removes
+            // the call from the retry set forever, because this job only ever
+            // selects status='pending'. OONI's ingest lags ~24h and
+            // source-ooni.ts fetches only `since = yesterday`, so late
+            // evidence and manual backfills are both real. Below the grace
+            // period we leave it pending exactly as before; past it, the
+            // evidence is not coming.
+            const overdueBy = daysSinceResolution(call.resolves_on);
+            if (overdueBy < UNRESOLVABLE_GRACE_DAYS) {
+              stillWaiting++;
+              continue;
+            }
             try {
               await sql`
                 UPDATE calls
                 SET status = 'unresolvable', void_reason = ${why}, resolved_at = NOW()
                 WHERE id = ${call.id} AND status = 'pending'
               `;
+              unresolvable++;
             } catch (e) {
               console.error(
                 `[resolve-calls] could not mark call ${call.id} unresolvable (migration not applied?) — ` +
                   `left pending, still NOT scored: ${e instanceof Error ? e.message : String(e)}`,
               );
+              stillWaiting++;
             }
-            unresolvable++;
             continue;
           }
 
@@ -236,7 +257,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(
       `[resolve-calls] due ${due.length} — ${hits} hit, ${misses} miss, ` +
-        `${unresolvable} unresolvable (left pending), ${errored} errored`,
+        `${unresolvable} unresolvable (settled, never scored), ` +
+        `${stillWaiting} awaiting late evidence (still pending), ${errored} errored`,
     );
     return res.status(200).json({
       ok: true,
