@@ -5,6 +5,9 @@ import {
   validateBriefStructure,
   extractSubject,
   normalizeHeader,
+  parseDeclaredSubject,
+  isUsableSubject,
+  chooseSubject,
 } from './brief-structure.js';
 
 const goodDaily = [
@@ -113,5 +116,53 @@ describe('section constants', () => {
       expect(list.some((s) => s.includes('Call'))).toBe(true);
       expect(list.some((s) => s.includes("What We're Not Saying"))).toBe(true);
     }
+  });
+});
+
+describe('subject lines — declared, validated, clamped', () => {
+  it('parses a declared SUBJECT line and STRIPS it from the body', () => {
+    const draft = 'SUBJECT: Russia and Iran hit record censorship this week\n\n## 📊 Top Signal\n\nBody.';
+    const r = parseDeclaredSubject(draft);
+    expect(r.subject).toBe('Russia and Iran hit record censorship this week');
+    expect(r.body.startsWith('## 📊 Top Signal')).toBe(true);
+    expect(r.body).not.toContain('SUBJECT:');
+  });
+
+  it('rejects every real-world bad subject this shipped before the fix', () => {
+    expect(isUsableSubject('Thailand')).toBe(false); // one word is a label
+    expect(isUsableSubject('Why it matters')).toBe(false); // transition phrase
+    expect(isUsableSubject('Movers')).toBe(false); // section label
+    expect(isUsableSubject('The Board')).toBe(false);
+    expect(isUsableSubject('**bolded**')).toBe(false); // stray markdown
+    expect(isUsableSubject('')).toBe(false);
+    expect(isUsableSubject(null)).toBe(false);
+  });
+
+  it('accepts a real headline', () => {
+    expect(isUsableSubject('Russia and Iran hit record censorship this week')).toBe(true);
+  });
+
+  it('CLAMPS an over-long subject at a word boundary rather than discarding it', () => {
+    const long = 'OFAC designated Palestine Action and Autistici Inventati as SDGTs on Tuesday';
+    const r = parseDeclaredSubject(`SUBJECT: ${long}\n\n## 📊 Top Signal\n\nBody.`);
+    expect(r.subject).not.toBeNull();
+    expect((r.subject as string).length).toBeLessThanOrEqual(68);
+    expect(r.subject).not.toMatch(/\s$/);
+    expect(long.startsWith(r.subject as string)).toBe(true); // truncated, not mangled
+  });
+
+  it('falls back to extraction when the model omits the line, and to null when nothing is usable', () => {
+    const noDecl = '## 📊 Top Signal\n\n**Sudan ceasefire collapses in El Fasher** — OONI recorded blocks.';
+    expect(chooseSubject(null, noDecl)).toBe('Sudan ceasefire collapses in El Fasher');
+    // A body whose only bold is a section label yields nothing rather than junk.
+    const junk = '## 📊 Top Signal\n\nQuiet.\n\n## 🌍 The Board\n\n**Movers** — Sudan 61.';
+    expect(chooseSubject(null, junk)).toBeNull();
+  });
+
+  it('prefers the declared line over a scrapeable one', () => {
+    const body = '## 📊 Top Signal\n\n**Sudan ceasefire collapses in El Fasher** — blocks.';
+    expect(chooseSubject('We are calling Thailand at 52% against a 70% base rate', body)).toBe(
+      'We are calling Thailand at 52% against a 70% base rate',
+    );
   });
 });

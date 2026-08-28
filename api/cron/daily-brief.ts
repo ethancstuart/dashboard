@@ -243,6 +243,21 @@ OUTPUT FORMAT: Clean markdown. Use ## for section headers with emoji prefixes. *
 
 THIS IS THE SUNDAY WEEK IN REVIEW EDITION. Different structure from daily briefs — reflective, trajectory-focused.
 
+FIRST LINE OF YOUR OUTPUT — before any section header — must be exactly one line
+in this form:
+
+SUBJECT: <the email subject line for today's issue>
+
+Rules for it: 40-65 characters. It names the specific thing that happened today,
+in plain words a busy professional would understand at a glance in an inbox. No
+markdown, no date, no publication name, no section label, no colon-prefixed
+category. It is a headline, not a topic.
+Good:  Russia and Iran hit record censorship in the same week
+Good:  We are calling Thailand at 52% against a 70% base rate
+Bad:   Why it matters          (a transition phrase, not a story)
+Bad:   Thailand                (a label, not a headline)
+Bad:   NexusWatch Brief for Friday   (says nothing)
+
 STRUCTURE (follow exactly — six sections, do NOT add, drop or reorder; the
 template inserts the mechanical Ledger line above your output):
 
@@ -294,6 +309,21 @@ ${SUNDAY_SECTIONS[5]}
   return `${baseVoice}
 
 OUTPUT FORMAT: Clean markdown. Use ## for section headers with emoji prefixes. **bold** for emphasis. Numbered lists for stories. Bullet points for outlook. NO HTML.
+
+FIRST LINE OF YOUR OUTPUT — before any section header — must be exactly one line
+in this form:
+
+SUBJECT: <the email subject line for today's issue>
+
+Rules for it: 40-65 characters. It names the specific thing that happened today,
+in plain words a busy professional would understand at a glance in an inbox. No
+markdown, no date, no publication name, no section label, no colon-prefixed
+category. It is a headline, not a topic.
+Good:  Russia and Iran hit record censorship in the same week
+Good:  We are calling Thailand at 52% against a 70% base rate
+Bad:   Why it matters          (a transition phrase, not a story)
+Bad:   Thailand                (a label, not a headline)
+Bad:   NexusWatch Brief for Friday   (says nothing)
 
 STRUCTURE (follow exactly — five sections, do NOT add, drop or reorder; the
 template inserts the mechanical Ledger line above your output):
@@ -762,6 +792,9 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     let briefText: string;
     let aiDebug: string | null = null;
     let grounding: GroundingReport | null = null;
+    // The model's declared subject. Cleared if a gate refuses the draft — a
+    // subject describing a refused issue must never ship with the fallback.
+    let declaredSubject: string | null = null;
 
     if (anthropicKey) {
       try {
@@ -985,9 +1018,16 @@ ${(() => {
           // a full Sonnet brief, every day at 10:00 UTC — and until now it
           // recorded nothing, leaving the $9/day kill-switch blind to it.
           await recordAnthropicSpend('claude-sonnet-4-5-20250929', aiData.usage, 'daily-brief');
-          briefText = aiData.content?.[0]?.text || '';
+          const rawDraft = aiData.content?.[0]?.text || '';
+          // Strip the declared SUBJECT line before anything else reads the
+          // draft: the gates must score the body, and the line must never
+          // reach a reader.
+          const parsedSubject = parseDeclaredSubject(rawDraft);
+          declaredSubject = parsedSubject.subject;
+          briefText = rawDraft ? parsedSubject.body : '';
           if (!briefText) {
             aiDebug = 'ai-empty-response';
+            declaredSubject = null;
             briefText = buildFallbackText(briefData);
           } else {
             // === Mechanical grounding gate (Phase 2) ===
@@ -1004,6 +1044,7 @@ ${(() => {
             if (!grounding.pass) {
               aiDebug = `grounding-failed: ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported numerals [${grounding.unsupported.slice(0, 8).join(', ')}]`;
               console.error('[daily-brief] GROUNDING GATE REFUSED THE DRAFT:', aiDebug);
+              declaredSubject = null;
               briefText = buildFallbackText(briefData);
             } else if (!structure.pass) {
               // The section spine is a contract with the reader (and with the
@@ -1012,6 +1053,7 @@ ${(() => {
               // is refused the same way an ungrounded one is.
               aiDebug = `structure-failed: missing=[${structure.missing.join('; ')}] extra=[${structure.extra.join('; ')}]${structure.misordered ? ' misordered' : ''}${structure.missingChangeOurMind ? ' no-change-our-mind-clause' : ''}`;
               console.error('[daily-brief] STRUCTURE GATE REFUSED THE DRAFT:', aiDebug);
+              declaredSubject = null;
               briefText = buildFallbackText(briefData);
             } else {
               aiDebug = `ai-success (grounding ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported)`;
@@ -1110,7 +1152,7 @@ ${(() => {
     const archiveT0 = Date.now();
     await sql`
       UPDATE daily_briefs
-      SET content = ${JSON.stringify({ ...briefData, briefText, subject: extractSubject(briefText) })},
+      SET content = ${JSON.stringify({ ...briefData, briefText, subject: chooseSubject(declaredSubject, briefText) })},
           summary = ${briefHtml}
       WHERE brief_date = ${today}
     `;
