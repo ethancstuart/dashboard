@@ -36,6 +36,50 @@ export function renderMethodology(root: HTMLElement): void {
         <li><strong>The Ledger</strong> — every dated, falsifiable call, resolved against external sources, at <a class="method-link" href="#/ledger">/ledger</a></li>
       </ul>
 
+      <h2 class="brief-section-header">How the Ledger forecasts — and what the first score can show</h2>
+      <p><em>Published 2026-08-28, before the first calls resolve on 5 September. We are stating this
+      ahead of the number rather than after it, because after a bad number the same paragraph would
+      read as an excuse.</em></p>
+      <p>Each call's probability is that country's own long-run rate, re-weighted toward its recent
+      behaviour. The base rate we score against is <strong>that same long-run rate</strong>. The
+      forecast and the baseline are therefore two summaries of one series, and the honest description
+      of what the first cohort measures is narrower than "the world, graded":
+      <strong>does weighting recent behaviour beat the long-run average?</strong></p>
+      <p>That is a real and answerable question, and as far as we know nobody publishes the answer.
+      But it is not a claim to understand geopolitics, and we would rather say so ourselves than have
+      a careful reader say it for us. A negative score means recency weighting did not help — a valid
+      result we expect to publish in the same size type as any other.</p>
+      <p>It is also why the Ledger <strong>withholds any skill number until three independent
+      resolution batches exist</strong>. One fortnight cannot separate a forecasting method from the
+      weather it happened to land in, and 39 calls issued on one day against one data source are far
+      fewer independent observations than 39.</p>
+      <p>What changes next: we are building a forecast input that is genuinely independent of the
+      base-rate series — election and referendum dates, sanctions designations, conflict deltas — so
+      that a future version of this number measures something about the world rather than about our
+      own choice of window. That work is dated and will be described here when it ships.</p>
+
+      <h2 class="brief-section-header">When a call cannot be resolved</h2>
+      <p><em>Published 2026-08-28, before this rule is applied to any call.</em></p>
+      <p>A call is resolved by counting qualifying events at an external source inside a window fixed
+      before the outcome was known. Sometimes that source has no coverage of that country in that
+      window at all — not zero events, but zero measurements. Three of the calls resolving on
+      5 September are in exactly that position.</p>
+      <p><strong>Absence of evidence is not evidence of absence, and we will not score it as a miss.</strong>
+      The rule, applied mechanically:</p>
+      <ul class="method-list">
+        <li>If the resolver produced <strong>no coverage</strong> for that country and window, the call
+        stays <code>pending</code> rather than being scored.</li>
+        <li>If coverage has still not appeared <strong>7 days after the resolution date</strong>, the
+        call is marked <code>void</code> with the reason recorded in the row, and it is
+        <strong>excluded from scoring</strong>.</li>
+        <li>Voided calls stay visible on the Ledger with their reason, counted in an
+        <strong>unresolvable</strong> column beside hits and misses. A withdrawn call that vanishes is
+        indistinguishable from a moved goalpost, so nothing is ever deleted.</li>
+      </ul>
+      <p>The distinction that matters: this rule fires on the <em>resolver's</em> silence, never on an
+      unwelcome outcome. It cannot be used to withdraw a call that is heading for a miss, because a
+      miss requires coverage and coverage is exactly what voiding requires the absence of.</p>
+
       <h2 class="brief-section-header">What is CII?</h2>
       <p>As of <strong>2026-08-23</strong> the Country Instability Index is <strong>two numbers, never one sum</strong>:</p>
       <ul class="method-list">

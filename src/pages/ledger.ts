@@ -197,6 +197,23 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
     }),
   );
 
+  // The construction disclosure — published 2026-08-28, before the first
+  // resolution, because published afterwards it would read as an excuse.
+  // Mirrors the SSR copy in api/ledger.ts exactly.
+  main.appendChild(
+    sectionRule({
+      kicker: 'READ THIS BEFORE THE FIRST SCORE',
+      title: 'How we forecast, and what this first score can and cannot show',
+      lede:
+        'Each call’s probability is that country’s own long-run rate, re-weighted toward its recent behaviour. ' +
+        'The base rate we score against is that same long-run rate. So this first cohort is not a test of whether ' +
+        'we understand the world — it is a narrower and more answerable question: does weighting recent behaviour ' +
+        'beat the long-run average? A negative score means it does not, and that is a valid result we expect to ' +
+        'publish. It is also why we withhold any skill number until three independent resolution batches exist: ' +
+        'one fortnight cannot separate a forecasting method from the weather it happened to land in.',
+    }),
+  );
+
   const loading = createElement('p', { textContent: 'Loading the book…' });
   main.appendChild(loading);
 

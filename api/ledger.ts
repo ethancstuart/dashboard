@@ -142,6 +142,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'The score is published whether it flatters us or not — a record that only reports its wins is not a record.</p>',
     );
 
+    // THE CONSTRUCTION DISCLOSURE, published 2026-08-28 — before the first
+    // resolution on 09-05, and deliberately so. record-calls.ts computes
+    // probability = blendRates(recent, longRun) while storing base_rate =
+    // longRun: the forecast and the baseline are two summaries of the SAME
+    // series. Stating that after a bad number would be an excuse, and everyone
+    // would know which it was. Stating it first makes it methodology.
+    parts.push(
+      '<div class="rule"></div><div class="kicker">Read this before the first score</div>' +
+        '<h2>How we forecast, and what this first score can and cannot show</h2>' +
+        '<p class="lede">Each call’s probability is that country’s own long-run rate, re-weighted toward its ' +
+        'recent behaviour. The base rate we score against is that same long-run rate. So this first cohort is ' +
+        'not a test of whether we understand the world — it is a narrower and more answerable question: ' +
+        '<strong>does weighting recent behaviour beat the long-run average?</strong> A negative score means it ' +
+        'does not, and that is a valid result we expect to publish. It is also why we withhold any skill number ' +
+        'until three independent resolution batches exist: one fortnight cannot separate a forecasting method ' +
+        'from the weather it happened to land in.</p>',
+    );
+
     // The honest hero. With nothing resolved, report the open book rather than
     // borrowing a confident number from somewhere it does not belong.
     parts.push('<div class="grid">');
