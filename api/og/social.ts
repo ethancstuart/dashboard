@@ -1,4 +1,5 @@
 import { ImageResponse } from '@vercel/og';
+import { htmlToSatori } from '../_lib/satori-html.js';
 import type { VercelRequest } from '@vercel/node';
 
 export const config = { runtime: 'edge' };
@@ -145,8 +146,12 @@ export default async function handler(req: VercelRequest) {
     html = renderBrandCard();
   }
 
+  // htmlToSatori, NOT `html as any` — see api/_lib/satori-html.ts. Every card
+  // in this file was rendering blank in production for the same reason
+  // /api/og was: Satori takes an element tree, and a string handed to it is
+  // laid out as prose, which still returns a valid PNG with a 200 on it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return new ImageResponse(html as any, { width, height });
+  return new ImageResponse(htmlToSatori(html) as any, { width, height });
 }
 
 function renderCiiCard(country: string, countryName: string, score: number, delta: number, date: string): string {

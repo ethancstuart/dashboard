@@ -60,6 +60,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=900');
 
   const title = 'The Ledger — every call NexusWatch has made, scored';
+  // The unfurl card. /ledger is the page the whole repositioning depends on
+  // being forwardable; it previously declared a large twitter card and shipped
+  // no image, which unfurls to nothing at all.
+  const ogImage = 'https://nexuswatch.dev/api/og?type=ledger';
   const description =
     'Dated, falsifiable calls resolved against external sources on a date fixed in advance, with the score published whether it flatters us or not.';
 
@@ -70,6 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title,
         description,
         canonicalPath: '/ledger',
+        ogImage,
       }),
     );
   }
@@ -297,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `</p>`,
     );
 
-    return res.send(shell(parts.join('\n'), { title, description, canonicalPath: '/ledger' }));
+    return res.send(shell(parts.join('\n'), { title, description, canonicalPath: '/ledger', ogImage }));
   } catch (err) {
     console.error('[ledger] failed:', err instanceof Error ? err.message : err);
     return res.send(
@@ -305,6 +310,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         title,
         description,
         canonicalPath: '/ledger',
+        ogImage,
       }),
     );
   }
