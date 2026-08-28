@@ -53,6 +53,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!dbUrl) return res.status(500).json({ error: 'database_not_configured' });
   const sql = neon(dbUrl);
 
+  // The daily GitHub snapshot must archive the WHOLE book, not a page of it.
+  // Until 2026-08-28 it stored a LIMIT-200 response, so 440 of 680 calls were
+  // never attested while /call/:id told every reader to "diff any two dated
+  // files" — a verification procedure that could not be performed for most of
+  // the book. `?all=1` returns everything; browsers keep the paged default.
+  const wantsAll = req.query.all === '1' || req.query.all === 'true';
+  const openLimit = wantsAll ? 100000 : 200;
+  const resolvedLimit = wantsAll ? 100000 : 500;
+
   try {
     const resolved = (await sql`
       SELECT id, kind, country_code, claim, probability::float AS probability,
@@ -60,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              status, evidence_count, resolved_at::text AS resolved_at
       FROM calls WHERE status <> 'pending'
       ORDER BY resolved_at DESC
-      LIMIT 500
+      LIMIT ${resolvedLimit}
     `) as unknown as CallRow[];
 
     const open = (await sql`
@@ -69,7 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
              status, evidence_count, resolved_at::text AS resolved_at
       FROM calls WHERE status = 'pending'
       ORDER BY ABS(probability - COALESCE(base_rate, probability)) DESC, probability DESC
-      LIMIT 200
+      LIMIT ${openLimit}
     `) as unknown as CallRow[];
 
     // baseRate is REQUIRED for a publishable skill score — without it
@@ -87,6 +96,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       outcome: c.status === 'hit' ? 1 : 0,
       baseRate: c.base_rate ?? undefined,
     }));
+
+    // The whole book, from the table — the source of every published count.
+    const totalsRows = (await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pending' AND kind <> 'seismicity_window')::int AS open,
+        COUNT(*) FILTER (WHERE status <> 'pending' AND kind <> 'seismicity_window')::int AS resolved,
+        COUNT(*) FILTER (WHERE status = 'hit' AND kind <> 'seismicity_window')::int AS hits,
+        COUNT(*) FILTER (WHERE status = 'pending' AND kind = 'seismicity_window')::int AS calibration_open,
+        COUNT(*) FILTER (WHERE status <> 'pending' AND kind = 'seismicity_window')::int AS calibration_resolved,
+        MIN(resolves_on) FILTER (WHERE status = 'pending')::text AS next_resolves_on,
+        MIN(made_on)::text AS first_call_on
+      FROM calls
+    `) as unknown as Array<{
+      open: number;
+      resolved: number;
+      hits: number;
+      calibration_open: number;
+      calibration_resolved: number;
+      next_resolves_on: string | null;
+      first_call_on: string | null;
+    }>;
+    const tot = totalsRows[0];
 
     // NaN is a real answer here — "not enough resolved calls to say" — and it
     // must reach the page as null rather than becoming a confident-looking 0.
@@ -143,20 +174,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       generated_at: new Date().toISOString(),
+      // COUNTS COME FROM COUNT(*), NEVER FROM THE PAGE. Three deep-dive lanes
+      // independently converged on this: `open` was the length of a
+      // LIMIT-200 result, so the API reported 200 while the SSR /ledger said
+      // 666 and a brief's meta description said 562 — three surfaces, three
+      // numbers, none of them the book. The landing hero read the truncated
+      // one. Paging is a display concern; the count is a fact.
       counts: {
-        open: claimOpen.length,
-        resolved: claimResolved.length,
-        hits: claimResolved.filter((c) => c.status === 'hit').length,
-        calibration_open: open.length - claimOpen.length,
-        calibration_resolved: resolved.length - claimResolved.length,
-        next_resolves_on: open.reduce<string | null>(
-          (min, c) => (min === null || c.resolves_on < min ? c.resolves_on : min),
-          null,
-        ),
-        first_call_on: [...open, ...resolved].reduce<string | null>(
-          (min, c) => (min === null || c.made_on < min ? c.made_on : min),
-          null,
-        ),
+        open: tot.open,
+        resolved: tot.resolved,
+        hits: tot.hits,
+        calibration_open: tot.calibration_open,
+        calibration_resolved: tot.calibration_resolved,
+        returned_open: claimOpen.length,
+        returned_resolved: claimResolved.length,
+        complete: claimOpen.length >= tot.open && claimResolved.length >= tot.resolved,
+        next_resolves_on: tot.next_resolves_on,
+        first_call_on: tot.first_call_on,
       },
       // n is NOT the number of independent observations: record-calls.ts writes
       // a fresh 14-day call per country every day, so consecutive calls share 13
@@ -184,7 +218,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       by_kind: byKind,
       open,
-      resolved: resolved.slice(0, 100),
+      resolved: wantsAll ? resolved : resolved.slice(0, 100),
     });
   } catch (err) {
     console.error('[calls/ledger] failed:', err instanceof Error ? err.message : err);

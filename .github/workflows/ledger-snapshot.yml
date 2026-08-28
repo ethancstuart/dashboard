@@ -37,14 +37,26 @@ jobs:
           set -euo pipefail
           mkdir -p ledger-snapshots
           DATE=$(date -u +%F)
-          curl -sf --max-time 60 https://nexuswatch.dev/api/calls/ledger -o "ledger-snapshots/${DATE}.json"
+          curl -sf --max-time 120 "https://nexuswatch.dev/api/calls/ledger?all=1" -o "ledger-snapshots/${DATE}.json"
           # Refuse to commit an error page or an empty body as a "snapshot".
           python3 - "ledger-snapshots/${DATE}.json" <<'EOF'
           import json, sys
           with open(sys.argv[1]) as f:
               d = json.load(f)
           assert 'counts' in d and 'open' in d, 'not a ledger payload'
-          print(f"snapshot ok: {d['counts']}")
+          c = d['counts']
+          # A snapshot that covers PART of the book is worse than none: every
+          # /call/:id page tells readers to diff two dated files, and until
+          # 2026-08-28 that instruction was false for 440 of 680 calls because
+          # this archived a LIMIT-200 page. The payload now declares whether it
+          # is complete, and an incomplete one fails the run loudly.
+          assert c.get('complete') is True, (
+              f"INCOMPLETE snapshot: returned {c.get('returned_open')}/{c.get('open')} open, "
+              f"{c.get('returned_resolved')}/{c.get('resolved')} resolved — refusing to archive a "
+              f"partial book as an attestation"
+          )
+          assert len(d['open']) >= c['open'], 'open rows fewer than the declared count'
+          print(f"snapshot ok (complete): {c}")
           EOF
 
       - name: Commit if changed
