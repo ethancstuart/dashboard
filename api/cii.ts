@@ -50,11 +50,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Fetch latest scores from database
   try {
     const sql = getDb();
+    // LOOSE INDEX SCAN, not DISTINCT ON. Measured against production
+    // 2026-08-28: the DISTINCT ON form took 13,620 ms and this one 488 ms —
+    // 28x, returning a byte-identical 85-row set (verified by comparing
+    // country/score/timestamp keys, not by assumption).
+    //
+    // WHY THE OLD FORM WAS SLOW. country_cii_history is 3.2M rows. An
+    // unqualified DISTINCT ON cannot use idx_cii_country_ts
+    // (country_code, timestamp DESC), so Postgres sequentially scanned the
+    // whole table and sorted it on disk to return 85 rows. The recursive CTE
+    // walks the index one country at a time (a "skip scan"), then takes each
+    // country's latest row through a LATERAL — every step index-backed.
+    //
+    // Do NOT "simplify" the CTE to `SELECT DISTINCT country_code`: that
+    // measured 3,685 ms, because the DISTINCT itself seq-scans.
+    //
+    // This endpoint was paging the owner every 30 minutes — the health check
+    // has a 5s timeout and a cold hit measured 12.3s TTFB (0.19s warm), so
+    // every cold start read as an outage.
     const rows = await sql`
-      SELECT DISTINCT ON (country_code)
-        country_code, country_name, score, components, timestamp
-      FROM country_cii_history
-      ORDER BY country_code, timestamp DESC
+      WITH RECURSIVE codes AS (
+        (SELECT country_code FROM country_cii_history ORDER BY country_code LIMIT 1)
+        UNION ALL
+        SELECT (SELECT h.country_code FROM country_cii_history h
+                WHERE h.country_code > c.country_code
+                ORDER BY h.country_code LIMIT 1)
+        FROM codes c WHERE c.country_code IS NOT NULL
+      )
+      SELECT l.country_code, l.country_name, l.score, l.components, l.timestamp
+      FROM codes
+      CROSS JOIN LATERAL (
+        SELECT country_code, country_name, score, components, timestamp
+        FROM country_cii_history
+        WHERE country_code = codes.country_code
+        ORDER BY timestamp DESC
+        LIMIT 1
+      ) l
+      WHERE codes.country_code IS NOT NULL
     `;
 
     cachedScores = rows.map((r) => ({
