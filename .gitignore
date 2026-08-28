@@ -34,3 +34,6 @@ coverage/
 .vercel/
 .vercel
 .env*.local
+
+# Codex MR reviews — evidence for the author, not repo content.
+.codex-reviews/
