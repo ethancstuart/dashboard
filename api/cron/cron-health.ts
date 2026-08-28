@@ -1,4 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { raiseAlert } from '../_lib/alert.js';
+import { neon } from '@neondatabase/serverless';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -68,20 +70,73 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(502).json({ error: 'status fetch failed', message: String(err) });
   }
 
+  // LEDGER TRUTH — the assertion that matters most before 2026-09-05.
+  // resolve-calls runs unattended at 09:45 UTC. If it silently fails, calls sit
+  // past their resolution date and the product's entire pre-commitment claim
+  // quietly stops being true, with nothing on any surface saying so. Absence of
+  // resolution is exactly the failure that looks like nothing happening.
+  //
+  // Note the deliberate 1-day grace: a call whose window closes today is
+  // resolved by the 09:45 run, so only rows older than that are overdue.
+  // Calls left pending for want of resolver COVERAGE are expected and are
+  // reported separately rather than paged on — that disposition is published
+  // on /methodology.
+  let ledgerIssue: { overdue: number; oldest: string | null } | null = null;
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl) {
+    try {
+      const sql = neon(dbUrl);
+      const rows = (await sql`
+        SELECT COUNT(*)::int AS overdue, MIN(resolves_on)::text AS oldest
+        FROM calls
+        WHERE status = 'pending' AND resolves_on < CURRENT_DATE - 1
+      `) as unknown as Array<{ overdue: number; oldest: string | null }>;
+      if ((rows[0]?.overdue ?? 0) > 0) {
+        ledgerIssue = rows[0];
+        await raiseAlert({
+          title: `${rows[0].overdue} call(s) overdue for resolution`,
+          body:
+            `${rows[0].overdue} call(s) are still pending past their resolution date; the oldest was due ` +
+            `${rows[0].oldest}. resolve-calls runs 09:45 UTC daily. Either it is failing, or the resolver ` +
+            `has no coverage for those countries — check /api/cron/resolve-calls output for the ` +
+            `"unresolvable" and "errored" counts.`,
+          severity: 'critical',
+        });
+      }
+    } catch (err) {
+      console.error('[cron-health] ledger truth check failed:', err instanceof Error ? err.message : err);
+    }
+  }
+
   const downEndpoints = status.endpoints.filter((e) => e.status === 'down');
   const degradedEndpoints = status.endpoints.filter((e) => e.status === 'degraded');
   const issuesCount = downEndpoints.length + degradedEndpoints.length;
 
   if (issuesCount === 0) {
-    return res.status(200).json({ ok: true, allHealthy: true, generatedAt: status.generatedAt });
+    return res.status(200).json({ ok: true, allHealthy: true, ledgerIssue, generatedAt: status.generatedAt });
   }
 
-  // We have issues — alert if Discord is configured.
+  // ALERT ON WHATEVER CHANNEL EXISTS. This used to return `alertingDisabled`
+  // and stop, because DISCORD_APPROVAL_WEBHOOK_URL has never been set in
+  // production — so the health monitor detected issues and told nobody, for
+  // months. raiseAlert() prefers Discord when configured and otherwise emails
+  // ADMIN_EMAILS through Resend, both of which ARE configured today.
   if (!webhook || !enabled) {
+    const summary = [
+      ...downEndpoints.map(
+        (e) => `DOWN  ${e.path} — HTTP ${e.httpCode}${e.lastError ? ` — ${e.lastError.slice(0, 100)}` : ''}`,
+      ),
+      ...degradedEndpoints.map((e) => `SLOW  ${e.path} — ${e.latencyMs}ms`),
+    ].join('\n');
+    const alert = await raiseAlert({
+      title: `${issuesCount} endpoint issue(s) on nexuswatch.dev`,
+      body: `${summary}\n\nChecked ${status.endpoints.length} endpoints at ${status.generatedAt}.`,
+      severity: downEndpoints.length > 0 ? 'critical' : 'warning',
+    });
     return res.status(200).json({
       ok: true,
       issuesDetected: issuesCount,
-      alertingDisabled: true,
+      alert,
       issues: [...downEndpoints, ...degradedEndpoints],
     });
   }
