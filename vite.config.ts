@@ -47,5 +47,14 @@ export default defineConfig({
         }),
       ]
     : [],
-  test: { environment: 'happy-dom' },
+  test: {
+    environment: 'happy-dom',
+    // EXCLUDE AGENT WORKTREES. `.claude/worktrees/` sits INSIDE the repo, so a
+    // running agent's checkout doubled the suite (429 -> 868 on 2026-08-28) and
+    // every test count taken during that window was measuring the wrong thing.
+    // Worse: a stale worktree pinned to an older commit can fail CI on main for
+    // code main does not contain. Default excludes are restated because
+    // supplying `exclude` replaces them rather than extending them.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.claude/worktrees/**', '**/.git/**'],
+  },
 });
