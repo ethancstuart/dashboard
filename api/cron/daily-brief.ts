@@ -1163,6 +1163,35 @@ ${(() => {
           summary = ${briefHtml}
       WHERE brief_date = ${today}
     `;
+
+    // === Email rendering, stored separately (2026-08-28) ===
+    // `summary` above is beehiivHtml — inner modules only — because the
+    // archive page embeds it straight into its DOM. The email needs the FULL
+    // document: masthead, footer, and the unsubscribe link that makes the
+    // send lawful. Those live in their own columns so neither shape has to
+    // compromise for the other.
+    //
+    // Deliberately a SEPARATE, non-fatal statement rather than more SET
+    // clauses on the archive write above. That write failing means the whole
+    // run is broken and must 500; this one failing must not, because the
+    // columns arrive with a migration that may not have been applied when
+    // this code deploys. If they are missing we log and move on, and
+    // deliver-briefs.ts falls back to `summary` — exactly today's behaviour.
+    // Ordering the deploy still matters; it just isn't load-bearing.
+    try {
+      await sql`
+        UPDATE daily_briefs
+        SET email_html = ${dossier.emailHtml},
+            plain_text = ${dossier.plainText}
+        WHERE brief_date = ${today}
+      `;
+    } catch (emailColErr) {
+      console.error(
+        '[daily-brief] email_html/plain_text not stored (non-fatal — send falls back to summary; is 2026-08-28-brief-email-html.sql applied?):',
+        emailColErr instanceof Error ? emailColErr.message : emailColErr,
+      );
+    }
+
     await logDelivery({
       channel: 'archive',
       status: 'success',

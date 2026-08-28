@@ -27,11 +27,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const currentUtcHour = now.getUTCHours();
 
   // 1. Get today's brief from archive
-  const briefs = await sql`
-    SELECT brief_date, summary, content FROM daily_briefs
-    WHERE brief_date = ${today}
-    LIMIT 1
-  `;
+  //
+  // `email_html` / `plain_text` arrive with 2026-08-28-brief-email-html.sql.
+  // Probe for them rather than assuming: if this code is live before the
+  // migration is applied, naming a missing column would fail the SELECT and
+  // stop delivery entirely. Absent columns simply mean the legacy path.
+  let hasEmailColumns = false;
+  try {
+    const cols = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'daily_briefs'
+        AND column_name IN ('email_html', 'plain_text')
+    `;
+    hasEmailColumns = cols.length === 2;
+  } catch (probeErr) {
+    console.error(
+      '[deliver-briefs] column probe failed, assuming legacy schema:',
+      probeErr instanceof Error ? probeErr.message : probeErr,
+    );
+  }
+
+  const briefs = hasEmailColumns
+    ? await sql`
+        SELECT brief_date, summary, content, email_html, plain_text FROM daily_briefs
+        WHERE brief_date = ${today}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT brief_date, summary, content FROM daily_briefs
+        WHERE brief_date = ${today}
+        LIMIT 1
+      `;
 
   if (briefs.length === 0) {
     return res.status(200).json({
@@ -41,15 +67,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const briefHtml = briefs[0].summary as string;
+  // What a subscriber actually receives.
+  //
+  // `summary` is beehiivHtml — inner modules with no masthead, no permalink
+  // and NO UNSUBSCRIBE LINK, because beehiiv supplies that chrome and Resend
+  // does not. Sending it directly was a CAN-SPAM / bulk-sender exposure.
+  // `email_html` is the full document that carries the unsubscribe footer.
+  //
+  // The fallback to `summary` is for rows written before the column existed:
+  // it restores exactly the previous behaviour rather than failing the send.
+  // It is a compatibility path for history, NOT an acceptable steady state —
+  // if it is still firing for fresh briefs, generation is not populating the
+  // column and the mail is going out non-compliant again.
+  const storedEmailHtml = (briefs[0] as { email_html?: unknown }).email_html;
+  const usingFullDocument = typeof storedEmailHtml === 'string' && storedEmailHtml.length > 0;
+  const briefHtml = usingFullDocument ? (storedEmailHtml as string) : (briefs[0].summary as string);
 
-  // Guard: skip if brief generation hasn't completed yet
+  const storedPlainText = (briefs[0] as { plain_text?: unknown }).plain_text;
+  const briefText = typeof storedPlainText === 'string' && storedPlainText.length > 0 ? storedPlainText : null;
+
+  // Guard: skip if brief generation hasn't completed yet.
+  // The placeholder row has summary='generating...' and email_html NULL, so
+  // it lands here via the fallback — which is why the compliance warning
+  // below sits AFTER this guard rather than before it. Warning first would
+  // fire every hour of a pending generation and cry wolf.
   if (!briefHtml || briefHtml === 'generating...') {
     return res.status(200).json({
       success: true,
       skipped: true,
       reason: `Brief for ${today} is still generating. Skipping delivery.`,
     });
+  }
+
+  if (!usingFullDocument) {
+    console.warn(
+      `[deliver-briefs] ${today}: no email_html — sending the fragment with no unsubscribe link. Expected only for briefs predating 2026-08-28.`,
+    );
   }
 
   // 2. Find timezone buckets where local time is 7:00–7:59 AM right now
@@ -146,11 +199,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const chunk = recipients.slice(i, i + BATCH_SIZE);
+    // `text` is omitted rather than sent empty when a historical row has no
+    // stored plain text — an empty text/plain part reads worse to spam
+    // filters than no alternative at all.
     const payload = chunk.map((email) => ({
       from,
       to: [email],
       subject,
       html: briefHtml,
+      ...(briefText ? { text: briefText } : {}),
     }));
 
     try {
