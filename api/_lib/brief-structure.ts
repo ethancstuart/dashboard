@@ -152,7 +152,7 @@ function clampSubject(s: string): string {
  * a good 70-character line to fall back on a worse source would be the
  * checker making the product worse.
  */
-export function isUsableSubject(s: string | null | undefined): boolean {
+export function isUsableSubject(s: string | null | undefined): s is string {
   if (!s) return false;
   const t = s.trim();
   if (t.length < SUBJECT_MIN) return false;
@@ -178,7 +178,7 @@ export function parseDeclaredSubject(markdown: string): { subject: string | null
  * from the lead sections, else null (caller uses the dated fallback).
  */
 export function chooseSubject(declared: string | null, body: string): string | null {
-  if (isUsableSubject(declared)) return clampSubject(declared as string);
+  if (isUsableSubject(declared)) return clampSubject(declared);
   const scraped = extractSubject(body);
   return isUsableSubject(scraped) ? clampSubject(scraped) : null;
 }

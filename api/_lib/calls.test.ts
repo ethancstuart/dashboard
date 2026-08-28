@@ -17,6 +17,9 @@ import {
   formatLedgerSummary,
   type ScoredCall,
   type Call,
+  independentUnits,
+  resolutionBatches,
+  MIN_RESOLUTION_BATCHES,
 } from './calls.js';
 
 const c = (probability: number, outcome: 0 | 1): ScoredCall => ({ probability, outcome });
@@ -410,5 +413,21 @@ describe('fxDepreciationPct — rate is units-per-USD, so UP is weaker', () => {
 
   it('does not divide by zero', () => {
     expect(fxDepreciationPct(0, 5)).toBe(0);
+  });
+});
+
+describe('honest sample size — clusters, not a rho-discounted row count', () => {
+  it('counts distinct units, so seven daily calls for one country are ONE unit', () => {
+    const week = ['censorship:IR', 'censorship:IR', 'censorship:IR', 'censorship:IR'];
+    expect(independentUnits(week)).toBe(1);
+    expect(independentUnits([...week, 'censorship:RU', 'fx_devaluation:IR'])).toBe(3);
+  });
+
+  it('counts distinct resolution batches and ignores missing dates', () => {
+    expect(resolutionBatches(['2026-09-05', '2026-09-05', '2026-09-19', '', ''])).toBe(2);
+  });
+
+  it('the first batch falls below the honesty threshold, so skill stays withheld', () => {
+    expect(resolutionBatches(['2026-09-05'])).toBeLessThan(MIN_RESOLUTION_BATCHES);
   });
 });

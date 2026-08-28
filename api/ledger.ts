@@ -4,8 +4,9 @@ import {
   brierScore,
   brierSkillScore,
   baseRate,
-  calibrationBins,
-  murphyDecomposition,
+  independentUnits,
+  resolutionBatches,
+  MIN_RESOLUTION_BATCHES,
   type ScoredCall,
 } from './_lib/calls.js';
 import { shell, esc, pct } from './_lib/ssr-shell.js';
@@ -97,9 +98,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // and because record-calls.ts writes FX after censorship, those 40 would
     // have been almost entirely one leg presented as the whole book.
     const scoredRows = (await sql`
-      SELECT kind, probability::float AS probability, base_rate::float AS base_rate, status
+      SELECT kind, country_code, probability::float AS probability, base_rate::float AS base_rate,
+             status, resolved_at::text AS resolved_at
       FROM calls WHERE status <> 'pending' AND kind <> 'seismicity_window'
-    `) as unknown as Array<{ kind: string; probability: number; base_rate: number | null; status: string }>;
+    `) as unknown as Array<{
+      kind: string;
+      country_code: string;
+      probability: number;
+      base_rate: number | null;
+      status: string;
+      resolved_at: string | null;
+    }>;
 
     const totals = (await sql`
       SELECT
@@ -148,34 +157,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           '<div class="p">reported from the first resolution onward</div></div>',
       );
     } else {
-      const skill = brierSkillScore(scored);
-      const bs = brierScore(scored);
+      // PER-KIND, and no pooled headline. An independent review (2026-08-28)
+      // refuted the single mixed "skill vs base rate" tile that used to sit
+      // here: censorship and FX have different resolvers, base-rate
+      // estimators and dependence structures, so a row-weighted average
+      // across them reports whichever kind wrote more rows. And with one
+      // resolution batch, no skill number separates forecasting from the
+      // fortnight the world happened to have — so it is withheld and SAID to
+      // be withheld, which is the more honest artifact anyway.
       const br = baseRate(scored);
       parts.push(
-        `<div class="stat"><div class="v">${Number.isFinite(skill) ? `${skill >= 0 ? '+' : ''}${Math.round(skill * 100)}%` : '—'}</div>` +
-          '<div class="l">skill vs base rate</div>' +
-          `<div class="d">${Number.isFinite(skill) ? (skill >= 0 ? 'better than climatology' : 'WORSE than climatology') : 'not enough variation to score'}</div>` +
-          `<div class="p">as of ${asOf} · ${t.resolved} resolved calls</div></div>`,
-      );
-      parts.push(
-        `<div class="stat"><div class="v">${Number.isFinite(bs) ? bs.toFixed(3) : '—'}</div><div class="l">Brier score</div>` +
-          '<div class="d">lower is better · 0.25 is always saying 50%</div>' +
-          `<div class="p">as of ${asOf} · calls table</div></div>`,
-      );
-      parts.push(
         `<div class="stat"><div class="v">${t.hits}/${t.resolved}</div><div class="l">calls that landed</div>` +
-          `<div class="d">${Number.isFinite(br) ? `base rate ${pct(br)}` : ''}</div>` +
+          `<div class="d">${Number.isFinite(br) ? `stated base rate ${pct(br)}` : ''}</div>` +
           `<div class="p">as of ${asOf} · calls table</div></div>`,
       );
-      const m = murphyDecomposition(scored);
-      const bins = calibrationBins(scored);
-      if (bins.length > 0) {
+
+      const batches = resolutionBatches(scoredRows.map((r) => (r.resolved_at ?? '').slice(0, 10)));
+      const units = independentUnits(scoredRows.map((r) => `${r.kind}:${r.country_code}`));
+      parts.push(
+        `<div class="stat"><div class="v">${units}</div><div class="l">independent units</div>` +
+          `<div class="d">${t.resolved} rows, but one call per country per day overlaps 13 of 14 days</div>` +
+          `<div class="p">distinct country × kind · ${batches} resolution batch${batches === 1 ? '' : 'es'}</div></div>`,
+      );
+
+      if (batches < MIN_RESOLUTION_BATCHES) {
         parts.push(
-          `<div class="stat"><div class="v">${m.reliability.toFixed(3)}</div><div class="l">reliability</div>` +
-            `<div class="d">resolution ${m.resolution.toFixed(3)} · uncertainty ${m.uncertainty.toFixed(3)}</div>` +
-            `<div class="p">Murphy decomposition · ${scored.length} calls</div></div>`,
+          `<div class="stat"><div class="v">—</div><div class="l">skill vs base rate</div>` +
+            `<div class="d">withheld until ${MIN_RESOLUTION_BATCHES} independent resolution batches</div>` +
+            `<div class="p">one batch cannot separate skill from one fortnight's weather</div></div>`,
         );
       }
+      parts.push('</div>');
+
+      // Per-kind table: the honest unit of scoring.
+      parts.push('<div class="rule"></div><div class="kicker">By domain</div><h2>Scored separately, on purpose</h2>');
+      parts.push(
+        '<p class="lede">Each domain has its own resolver, its own base-rate estimator and its own ' +
+          'dependence structure. Pooling them would produce one number dominated by whichever domain ' +
+          'happened to write more rows, which is not a track record.</p>',
+      );
+      const kinds = [...new Set(scoredRows.map((r) => r.kind))];
+      for (const kind of kinds) {
+        const rows = scoredRows.filter((r) => r.kind === kind);
+        const ks: ScoredCall[] = rows.map((r) => ({
+          probability: r.probability,
+          outcome: (r.status === 'hit' ? 1 : 0) as 0 | 1,
+          baseRate: r.base_rate ?? undefined,
+        }));
+        const kBatches = resolutionBatches(rows.map((r) => (r.resolved_at ?? '').slice(0, 10)));
+        const kHits = rows.filter((r) => r.status === 'hit').length;
+        const kBrier = brierScore(ks);
+        const kSkill = kBatches >= MIN_RESOLUTION_BATCHES ? brierSkillScore(ks) : NaN;
+        const trail = Number.isFinite(kSkill)
+          ? `skill ${kSkill >= 0 ? '+' : ''}${Math.round(kSkill * 100)}%`
+          : 'skill withheld';
+        parts.push(
+          `<div class="row pending"><span class="lead">${esc(kind === 'fx_devaluation' ? 'FX' : 'OONI')}</span>` +
+            `<span class="det">${esc(KIND_LABEL[kind] ?? kind)} — ${kHits}/${rows.length} landed` +
+            `${Number.isFinite(kBrier) ? `, Brier ${kBrier.toFixed(3)}` : ''}, ` +
+            `${independentUnits(rows.map((r) => r.country_code))} units, ${kBatches} batch${kBatches === 1 ? '' : 'es'}` +
+            `</span><span class="trail">${esc(trail)}</span></div>`,
+        );
+      }
+      parts.push('<div class="grid">');
     }
     parts.push('</div>');
 

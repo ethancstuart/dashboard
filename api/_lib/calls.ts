@@ -193,6 +193,49 @@ export function effectiveSampleSize(n: number, rho = 0.15): number {
   return n / (1 + (n - 1) * r);
 }
 
+/**
+ * The HONEST sample size: how many independent things were actually observed.
+ *
+ * WHY THIS REPLACES A rho-DISCOUNTED ROW COUNT. An independent review
+ * (2026-08-28) refuted `effectiveSampleSize(n, 0.15)` as a defensible
+ * correction for this book, and it was right. The recorder writes one call per
+ * country per day on a 14-day horizon, so seven consecutive calls for one
+ * country share 13 of 14 days and resolve against the same external source in
+ * the same batch. A single assumed correlation of 0.15 turns 273 censorship
+ * rows into ~6.5 "effective" observations, which is a number with a decimal
+ * point and no defence: the true structure is CLUSTERED, not exchangeable.
+ *
+ * So count clusters instead of discounting rows. A cluster is one
+ * (kind, country) unit — 273 censorship calls across 39 countries are at most
+ * 39 units, and because every one of them resolves on the same date against
+ * one source, the first batch is closer to ONE common draw than to 39
+ * independent ones. That is why `MIN_RESOLUTION_BATCHES` exists below.
+ */
+export function independentUnits(clusterKeys: string[]): number {
+  return new Set(clusterKeys).size;
+}
+
+/**
+ * Distinct resolution dates. One batch is one common-factor draw: everything
+ * in it shares a resolver, a date, and whatever the world happened to do that
+ * fortnight.
+ */
+export function resolutionBatches(resolvedOnDates: string[]): number {
+  return new Set(resolvedOnDates.filter(Boolean)).size;
+}
+
+/**
+ * How many independent batches before a SKILL number means anything.
+ *
+ * Three is not a statistical threshold — it is an honesty threshold. With one
+ * batch there is no way to separate forecasting skill from the fortnight the
+ * world happened to have. Below this, the surfaces publish the raw record
+ * (what was claimed, what happened) and say plainly that the skill number is
+ * not yet meaningful. That sentence is a stronger differentiator than any
+ * number we could put in its place.
+ */
+export const MIN_RESOLUTION_BATCHES = 3;
+
 export interface CalibrationBin {
   /** Lower edge of the probability bin, 0..1. */
   from: number;

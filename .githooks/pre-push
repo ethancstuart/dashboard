@@ -21,5 +21,11 @@ if [ -n "$files" ]; then
   echo "$files" | xargs npx prettier --check --ignore-unknown || {
     echo "push blocked: prettier — run npx prettier --write on the files above"; exit 1; }
 fi
-npx tsc --noEmit || { echo "push blocked: typecheck"; exit 1; }
+# BOTH tsconfigs. A bare `npx tsc --noEmit` covers only tsconfig.json (the
+# SPA) and is blind to the entire api/ directory — which is most of the
+# backend. That hole let a broken import reach main on 2026-08-28 while this
+# hook reported clean: the mechanism existed, the prettier half was
+# plant-tested, and the typecheck half was assumed. `npm run typecheck` runs
+# tsc against tsconfig.json AND tsconfig.api.json.
+npm run typecheck || { echo "push blocked: typecheck (src and/or api)"; exit 1; }
 echo "pre-push: clean"

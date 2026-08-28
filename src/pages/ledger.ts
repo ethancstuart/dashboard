@@ -53,14 +53,27 @@ interface LedgerData {
     next_resolves_on: string | null;
     first_call_on: string | null;
   };
+  independent_units?: number;
+  resolution_batches?: number;
+  min_batches_for_skill?: number;
   scoring: {
-    brier: number | null;
+    note?: string;
     base_rate: number | null;
-    skill_vs_base_rate: number | null;
     murphy: { reliability: number; resolution: number; uncertainty: number } | null;
     calibration: CalibrationBin[];
   };
-  by_kind: Record<string, { open: number; resolved: number; hits: number; brier: number | null }>;
+  by_kind: Record<
+    string,
+    {
+      open: number;
+      resolved: number;
+      hits: number;
+      brier: number | null;
+      skill_vs_base_rate?: number | null;
+      units?: number;
+      batches?: number;
+    }
+  >;
   open: LedgerCall[];
   resolved: LedgerCall[];
 }
@@ -226,29 +239,41 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
       }),
     );
   } else {
-    const skill = scoring.skill_vs_base_rate;
+    // No pooled headline. An independent review (2026-08-28) refuted the mixed
+    // "skill vs base rate" hero: the two domains have different resolvers,
+    // base-rate estimators and dependence structures, so averaging their rows
+    // reports whichever wrote more of them. Per-kind scores live in the
+    // domain rows below; here we show only what is true of the whole book.
+    const units = data.independent_units ?? counts.resolved;
+    const batches = data.resolution_batches ?? 0;
+    const minBatches = data.min_batches_for_skill ?? 3;
     grid.appendChild(
       stat({
-        value: skill === null ? '—' : `${skill >= 0 ? '+' : ''}${Math.round(skill * 100)}%`,
-        label: 'skill vs base rate',
-        detail:
-          skill === null
-            ? 'not enough variation to score'
-            : skill >= 0
-              ? 'better than climatology'
-              : 'WORSE than climatology',
-        provenance: `as of ${asOf} · ${counts.resolved} resolved calls`,
+        value: `${counts.hits}/${counts.resolved}`,
+        label: 'calls that landed',
+        detail: scoring.base_rate === null ? undefined : `stated base rate ${pct(scoring.base_rate)}`,
+        provenance: `as of ${asOf} · calls table`,
         size: 'hero',
       }),
     );
     grid.appendChild(
       stat({
-        value: scoring.brier === null ? '—' : scoring.brier.toFixed(3),
-        label: 'Brier score',
-        detail: 'lower is better · 0.25 is always saying 50%',
-        provenance: `as of ${asOf} · calls table`,
+        value: String(units),
+        label: 'independent units',
+        detail: `${counts.resolved} rows, but one call per country per day overlaps 13 of 14 days`,
+        provenance: `distinct country × domain · ${batches} resolution batch${batches === 1 ? '' : 'es'}`,
       }),
     );
+    if (batches < minBatches) {
+      grid.appendChild(
+        stat({
+          value: '—',
+          label: 'skill vs base rate',
+          detail: `withheld until ${minBatches} independent resolution batches`,
+          provenance: "one batch cannot separate skill from one fortnight's weather",
+        }),
+      );
+    }
     grid.appendChild(
       stat({
         value: `${counts.hits}/${counts.resolved}`,
@@ -276,7 +301,12 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
       row({
         lead: KIND_RESOLVER[kind] ?? kind,
         detail: `${KIND_LABEL[kind] ?? kind} — ${k.open} open, ${k.resolved} resolved`,
-        trail: k.brier === null ? 'not yet scored' : `Brier ${k.brier.toFixed(3)}`,
+        trail:
+          k.brier === null
+            ? 'not yet scored'
+            : k.skill_vs_base_rate === null || k.skill_vs_base_rate === undefined
+              ? `Brier ${k.brier.toFixed(3)} · skill withheld`
+              : `Brier ${k.brier.toFixed(3)} · skill ${k.skill_vs_base_rate >= 0 ? '+' : ''}${Math.round(k.skill_vs_base_rate * 100)}%`,
         state: k.resolved === 0 ? 'pending' : undefined,
       }),
     );

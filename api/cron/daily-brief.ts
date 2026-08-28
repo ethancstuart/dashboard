@@ -3,7 +3,13 @@ import { neon } from '@neondatabase/serverless';
 import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
 import { groundDraft, type GroundingReport } from '../_lib/grounding.js';
-import { DAILY_SECTIONS, SUNDAY_SECTIONS, validateBriefStructure, extractSubject } from '../_lib/brief-structure.js';
+import {
+  DAILY_SECTIONS,
+  SUNDAY_SECTIONS,
+  validateBriefStructure,
+  parseDeclaredSubject,
+  chooseSubject,
+} from '../_lib/brief-structure.js';
 import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 

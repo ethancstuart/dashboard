@@ -3,7 +3,9 @@ import { neon } from '@neondatabase/serverless';
 import {
   brierScore,
   brierSkillScore,
-  effectiveSampleSize,
+  independentUnits,
+  resolutionBatches,
+  MIN_RESOLUTION_BATCHES,
   baseRate,
   calibrationBins,
   murphyDecomposition,
@@ -86,9 +88,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       baseRate: c.base_rate ?? undefined,
     }));
 
-    const byKind: Record<string, { open: number; resolved: number; hits: number; brier: number | null }> = {};
+    // NaN is a real answer here — "not enough resolved calls to say" — and it
+    // must reach the page as null rather than becoming a confident-looking 0.
+    const num = (v: number) => (Number.isFinite(v) ? v : null);
+
+    // PER-KIND scoring only. An independent review (2026-08-28) refuted the
+    // single mixed aggregate: censorship and FX have different resolvers,
+    // different base-rate estimators, different dependence structures and
+    // different counts, so a row-weighted average across them is dominated by
+    // whichever kind happened to write more rows — not a track record.
+    const byKind: Record<
+      string,
+      {
+        open: number;
+        resolved: number;
+        hits: number;
+        brier: number | null;
+        skill_vs_base_rate: number | null;
+        units: number;
+        batches: number;
+      }
+    > = {};
     for (const c of [...open, ...resolved]) {
-      byKind[c.kind] ??= { open: 0, resolved: 0, hits: 0, brier: null };
+      byKind[c.kind] ??= {
+        open: 0,
+        resolved: 0,
+        hits: 0,
+        brier: null,
+        skill_vs_base_rate: null,
+        units: 0,
+        batches: 0,
+      };
       if (c.status === 'pending') byKind[c.kind].open++;
       else {
         byKind[c.kind].resolved++;
@@ -96,15 +126,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
     for (const kind of Object.keys(byKind)) {
-      const s = resolved
-        .filter((c) => c.kind === kind)
-        .map((c) => ({ probability: c.probability, outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1 }));
-      byKind[kind].brier = s.length > 0 ? brierScore(s) : null;
+      const rows = resolved.filter((c) => c.kind === kind);
+      const s: ScoredCall[] = rows.map((c) => ({
+        probability: c.probability,
+        outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
+        baseRate: c.base_rate ?? undefined,
+      }));
+      byKind[kind].units = independentUnits(rows.map((c) => c.country_code));
+      byKind[kind].batches = resolutionBatches(rows.map((c) => (c.resolved_at ?? '').slice(0, 10)));
+      byKind[kind].brier = s.length > 0 ? num(brierScore(s)) : null;
+      // Skill is withheld until the kind has resolved in enough independent
+      // batches for the number to separate skill from one fortnight's weather.
+      byKind[kind].skill_vs_base_rate =
+        s.length > 0 && byKind[kind].batches >= MIN_RESOLUTION_BATCHES ? num(brierSkillScore(s)) : null;
     }
-
-    // NaN is a real answer here — "not enough resolved calls to say" — and it
-    // must reach the page as null rather than becoming a confident-looking 0.
-    const num = (v: number) => (Number.isFinite(v) ? v : null);
 
     return res.status(200).json({
       generated_at: new Date().toISOString(),
@@ -126,13 +161,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // n is NOT the number of independent observations: record-calls.ts writes
       // a fresh 14-day call per country every day, so consecutive calls share 13
       // of 14 days and all resolve against one set of external data.
-      effective_sample_size: scored.length ? Math.round(effectiveSampleSize(scored.length) * 10) / 10 : 0,
+      // The honest sample size: distinct (kind, country) units and distinct
+      // resolution batches. A rho-discounted row count used to sit here; it
+      // turned 273 correlated rows into "6.5 effective observations", a
+      // number with a decimal point and no defence.
+      independent_units: independentUnits(claimResolved.map((c) => `${c.kind}:${c.country_code}`)),
+      resolution_batches: resolutionBatches(claimResolved.map((c) => (c.resolved_at ?? '').slice(0, 10))),
+      min_batches_for_skill: MIN_RESOLUTION_BATCHES,
+      // No mixed-kind aggregate is published. `by_kind` carries the scores;
+      // this block carries only what is defensible across the whole book plus
+      // the reason the headline number is absent.
       scoring: {
-        brier: scored.length ? num(brierScore(scored)) : null,
+        note:
+          'Scores are published PER KIND, never pooled: censorship and FX have different resolvers, ' +
+          'base-rate estimators and dependence structures, so a row-weighted average across them is ' +
+          'dominated by whichever wrote more rows. Skill is withheld for any kind until it has resolved ' +
+          `in at least ${MIN_RESOLUTION_BATCHES} independent batches — with one batch there is no way to ` +
+          'separate forecasting skill from the fortnight the world happened to have.',
         base_rate: scored.length ? num(baseRate(scored)) : null,
-        skill_vs_base_rate: scored.length ? num(brierSkillScore(scored)) : null,
-        murphy: scored.length ? murphyDecomposition(scored) : null,
         calibration: scored.length ? calibrationBins(scored) : [],
+        murphy: scored.length ? murphyDecomposition(scored) : null,
       },
       by_kind: byKind,
       open,
