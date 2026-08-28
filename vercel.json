@@ -383,6 +383,10 @@
       "schedule": "45 9 * * *"
     },
     {
+      "path": "/api/cron/ledger-truth",
+      "schedule": "15 10 * * *"
+    },
+    {
       "path": "/api/cron/source-worldbank-governance",
       "schedule": "0 4 2 * *"
     },
