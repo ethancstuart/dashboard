@@ -80,12 +80,21 @@ export const SEISMIC_REGIONS: SeismicRegion[] = [
 
 export const SEISMIC_HORIZON_DAYS = 14;
 
-/** The USGS count query the resolver uses — built from STORED params, so the
- *  criterion cannot drift if the region table changes after issue. */
+/**
+ * The USGS count query the resolver uses — built from STORED params, so the
+ * criterion cannot drift if the region table changes after issue.
+ *
+ * THE TIMES ARE EXPLICIT AND THAT IS LOAD-BEARING. USGS fdsnws reads a bare
+ * `endtime=YYYY-MM-DD` as that day at T00:00:00, which silently excludes the
+ * whole of the final day — a 14-day call would resolve on 13 days of data
+ * while its base rate was tuned on 14, biasing the calibration harness toward
+ * misses. Found by independent review 2026-08-28, before the first
+ * resolution. The window is inclusive of both endpoints.
+ */
 export function usgsCountUrl(box: RegionBox, minMag: number, startDate: string, endDate: string): string {
   return (
     `https://earthquake.usgs.gov/fdsnws/event/1/count?format=geojson` +
-    `&starttime=${startDate}&endtime=${endDate}&minmagnitude=${minMag}` +
+    `&starttime=${startDate}T00:00:00&endtime=${endDate}T23:59:59&minmagnitude=${minMag}` +
     `&minlatitude=${box.minLat}&maxlatitude=${box.maxLat}` +
     `&minlongitude=${box.minLon}&maxlongitude=${box.maxLon}`
   );

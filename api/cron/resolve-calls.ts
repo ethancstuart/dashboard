@@ -54,18 +54,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     let hits = 0;
     let misses = 0;
+    let unresolvable = 0;
+    let errored = 0;
 
     for (const call of due) {
-      let count = 0;
-      let outcome: 0 | 1;
+      try {
+        // Per-call isolation: one malformed upstream body used to throw out of
+        // the loop and abort the whole batch after earlier rows had already
+        // been written. A bad row now costs its own call, not the run.
+        let count = 0;
+        let outcome: 0 | 1;
 
-      if (call.kind === 'fx_devaluation') {
-        // Did the currency touch the declared depreciation at ANY point inside
-        // the window? The peak matters, not the endpoint — a currency that
-        // falls 8% and recovers by day 14 still had the devaluation the call
-        // was about. Both the threshold and the reference rate were fixed at
-        // creation, so nothing here can move the bar.
-        const peak = (await sql`
+        if (call.kind === 'fx_devaluation') {
+          // Did the currency touch the declared depreciation at ANY point inside
+          // the window? The peak matters, not the endpoint — a currency that
+          // falls 8% and recovers by day 14 still had the devaluation the call
+          // was about. Both the threshold and the reference rate were fixed at
+          // creation, so nothing here can move the bar.
+          const peak = (await sql`
           SELECT MAX(rate_vs_usd)::float AS peak
           FROM fx_rates
           WHERE country_code = ${call.country_code}
@@ -73,39 +79,70 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             AND date <= ${call.resolves_on}::date
         `) as unknown as Array<{ peak: number | null }>;
 
-        const ref = call.reference_value;
-        const pct = call.threshold_pct;
-        if (ref === null || pct === null || peak[0]?.peak == null) {
-          // Unresolvable through no fault of the call — leave it pending
-          // rather than record a miss we cannot justify.
-          continue;
-        }
-        const moved = fxDepreciationPct(ref, peak[0].peak);
-        outcome = moved >= pct ? 1 : 0;
-        count = Math.round(moved * 100) / 100;
-      } else if (call.kind === 'seismicity_window') {
-        // Calibration harness: did USGS record a qualifying event inside the
-        // frozen box and window? The box and magnitude come from
-        // resolver_params, stored at issue — never from the current region
-        // table, which may have been re-tuned since.
-        const params = call.resolver_params;
-        if (!params?.box || typeof params.mag !== 'number') {
-          console.error(`[resolve-calls] call ${call.id} seismicity without frozen params — left pending`);
-          continue;
-        }
-        const url = usgsCountUrl(params.box, params.mag, call.made_on, call.resolves_on);
-        const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
-        if (!r.ok) {
-          console.error(`[resolve-calls] USGS ${r.status} for call ${call.id} — left pending for retry`);
-          continue;
-        }
-        const d = (await r.json()) as { count: number };
-        count = d.count;
-        outcome = resolveOutcome(count, call.threshold);
-      } else if (call.kind === 'censorship_event') {
-        // The only question asked of the outside world: did OONI confirm a block
-        // in this country inside the declared window?
-        const evidence = (await sql`
+          const ref = call.reference_value;
+          const pct = call.threshold_pct;
+          if (ref === null || pct === null || peak[0]?.peak == null) {
+            // Unresolvable through no fault of the call — leave it pending
+            // rather than record a miss we cannot justify.
+            continue;
+          }
+          const moved = fxDepreciationPct(ref, peak[0].peak);
+          outcome = moved >= pct ? 1 : 0;
+          count = Math.round(moved * 100) / 100;
+        } else if (call.kind === 'seismicity_window') {
+          // Calibration harness: did USGS record a qualifying event inside the
+          // frozen box and window? The box and magnitude come from
+          // resolver_params, stored at issue — never from the current region
+          // table, which may have been re-tuned since.
+          const params = call.resolver_params;
+          if (!params?.box || typeof params.mag !== 'number') {
+            console.error(`[resolve-calls] call ${call.id} seismicity without frozen params — left pending`);
+            continue;
+          }
+          const url = usgsCountUrl(params.box, params.mag, call.made_on, call.resolves_on);
+          const r = await fetch(url, { signal: AbortSignal.timeout(30000) });
+          if (!r.ok) {
+            console.error(`[resolve-calls] USGS ${r.status} for call ${call.id} — left pending for retry`);
+            continue;
+          }
+          const d = (await r.json()) as { count?: unknown };
+          if (typeof d.count !== 'number' || !Number.isFinite(d.count)) {
+            console.error(`[resolve-calls] USGS returned no numeric count for call ${call.id} — left pending`);
+            unresolvable++;
+            continue;
+          }
+          count = d.count;
+          outcome = resolveOutcome(count, call.threshold);
+        } else if (call.kind === 'censorship_event') {
+          // The only question asked of the outside world: did OONI confirm a block
+          // in this country inside the declared window?
+          //
+          // COVERAGE FIRST — absence of evidence is not evidence of absence.
+          // This query used to count blocking rows and score zero as a MISS,
+          // which meant a country OONI simply had not measured resolved as
+          // "we said it would be censored and it wasn't". Verified 2026-08-28:
+          // 39 countries carried pending calls while only 37 had any OONI rows
+          // in the last fortnight, so real misses would have been manufactured
+          // out of a collector gap on the very first resolution day. A call is
+          // only resolvable if the resolver actually observed the country.
+          const coverage = (await sql`
+          SELECT COUNT(*)::int AS measurements
+          FROM ooni_measurements
+          WHERE country_code = ${call.country_code}
+            AND measurement_date >= ${call.made_on}::date
+            AND measurement_date <= ${call.resolves_on}::date
+        `) as unknown as Array<{ measurements: number }>;
+
+          if ((coverage[0]?.measurements ?? 0) === 0) {
+            console.error(
+              `[resolve-calls] call ${call.id} (${call.country_code}) has NO OONI coverage in ` +
+                `[${call.made_on}, ${call.resolves_on}] — left pending rather than scored a miss`,
+            );
+            unresolvable++;
+            continue;
+          }
+
+          const evidence = (await sql`
           SELECT COUNT(*)::int AS n
           FROM ooni_measurements
           WHERE country_code = ${call.country_code}
@@ -114,29 +151,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             AND measurement_date <= ${call.resolves_on}::date
         `) as unknown as Array<{ n: number }>;
 
-        count = evidence[0]?.n ?? 0;
-        outcome = resolveOutcome(count, call.threshold);
-      } else {
-        // An unknown kind must NEVER fall into another kind's resolver — that
-        // is how a wrong criterion resolves a call silently. Before this
-        // branch existed, any third kind would have been scored against OONI.
-        console.error(`[resolve-calls] call ${call.id} has unknown kind '${call.kind}' — left pending`);
-        continue;
-      }
-      const status = outcome === 1 ? 'hit' : 'miss';
+          count = evidence[0]?.n ?? 0;
+          outcome = resolveOutcome(count, call.threshold);
+        } else {
+          // An unknown kind must NEVER fall into another kind's resolver — that
+          // is how a wrong criterion resolves a call silently. Before this
+          // branch existed, any third kind would have been scored against OONI.
+          console.error(`[resolve-calls] call ${call.id} has unknown kind '${call.kind}' — left pending`);
+          continue;
+        }
+        const status = outcome === 1 ? 'hit' : 'miss';
 
-      await sql`
+        await sql`
         UPDATE calls
         SET status = ${status}, evidence_count = ${count}, resolved_at = NOW()
         WHERE id = ${call.id} AND status = 'pending'
       `;
 
-      if (outcome === 1) hits++;
-      else misses++;
+        if (outcome === 1) hits++;
+        else misses++;
+      } catch (callErr) {
+        errored++;
+        console.error(
+          `[resolve-calls] call ${call.id} (${call.kind}) threw — left pending:`,
+          callErr instanceof Error ? callErr.message : callErr,
+        );
+      }
     }
 
-    console.log(`[resolve-calls] resolved ${due.length} — ${hits} hit, ${misses} miss`);
-    return res.status(200).json({ ok: true, resolved: due.length, hits, misses });
+    console.log(
+      `[resolve-calls] due ${due.length} — ${hits} hit, ${misses} miss, ` +
+        `${unresolvable} unresolvable (left pending), ${errored} errored`,
+    );
+    return res.status(200).json({
+      ok: true,
+      due: due.length,
+      resolved: hits + misses,
+      hits,
+      misses,
+      unresolvable,
+      errored,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[resolve-calls] failed:', msg);
