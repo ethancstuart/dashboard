@@ -76,7 +76,7 @@ function stripComments(src: string): string {
 interface Finding {
   file: string;
   hosts: string[];
-  missing: 'recording' | 'gating';
+  missing: string;
 }
 
 const violations: Finding[] = [];
@@ -95,6 +95,16 @@ for (const file of walk(SCAN_DIR)) {
   const records = RECORDING_MARKERS.some((m) => code.includes(m));
   const gates = GATING_MARKERS.some((m) => code.includes(m));
 
+  // The presence of `checkBudget` is not the property — how bypassCap is BOUND
+  // is. api/v2/council.ts passed `bypassCap: body.bypass_budget` from an
+  // unauthenticated request body, defeating both the $9/day hard kill and the
+  // DISABLE_LLM_USER_FACING switch, and this guard reported it green because
+  // the string was present. bypassCap must be a literal: anything else is a
+  // caller-influenced kill-switch and fails by default.
+  const badBypass = [...code.matchAll(/bypassCap\s*:\s*([^,}\n]+)/g)]
+    .map((m) => m[1].trim())
+    .filter((v) => v !== 'true' && v !== 'false');
+
   if (!records) {
     const exemption = src.match(EXEMPT_RE);
     if (exemption) exempt.push({ file: rel, reason: exemption[1].trim() });
@@ -105,6 +115,13 @@ for (const file of walk(SCAN_DIR)) {
     const gateExemption = src.match(GATE_EXEMPT_RE);
     if (gateExemption) exempt.push({ file: rel, reason: `gate: ${gateExemption[1].trim()}` });
     else violations.push({ file: rel, hosts, missing: 'gating' });
+  }
+
+  // A caller-influenced bypass is worse than a missing gate: the gate is
+  // present, so every other check reports compliance while the kill-switch
+  // answers to the request.
+  if (badBypass.length > 0) {
+    violations.push({ file: rel, hosts, missing: `bypassCap bound to non-literal (${badBypass.join(', ')})` });
   }
 }
 

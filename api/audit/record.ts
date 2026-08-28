@@ -4,17 +4,29 @@ import { neon } from '@neondatabase/serverless';
 export const config = { runtime: 'nodejs' };
 
 /**
- * Internal audit recording endpoint.
- * POST /api/audit/record
+ * Internal audit recording endpoint — SERVER-SIDE ONLY.
+ * POST /api/audit/record   (requires CRON_SECRET)
  * Body: { type: 'lineage' | 'audit' | 'ai-audit', record: {...} }
  *
- * Called server-side by cron jobs and (optionally) client-side to
- * persist lineage + audit records to Neon. Rate-limited by origin.
+ * WHY IT IS LOCKED. Until 2026-08-28 this was an unauthenticated POST with
+ * `Access-Control-Allow-Origin: *` that inserted caller-supplied rows into
+ * data_lineage, audit_log and ai_analyst_audit — the three tables
+ * /api/v2/audit and /api/v2/lineage publish keylessly AS the provenance
+ * product. All three were empty, so anything an attacker wrote would have
+ * been the only rows the transparency API ever served: on a platform whose
+ * pitch is an auditable public record, a writable audit log is the whole
+ * claim undone. The docstring also asserted "Rate-limited by origin", which
+ * was never true of this file. No caller exists in the repo.
  */
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
+
+  // Fail closed: an unset secret must refuse, never wave everything through.
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return res.status(500).json({ error: 'cron_secret_not_configured' });
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (token !== cronSecret) return res.status(401).json({ error: 'unauthorized' });
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return res.status(500).json({ error: 'db_not_configured' });

@@ -24,6 +24,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { fanout, singleAnthropic, type AnthropicCallSpec } from '../_lib/anthropic-fanout.js';
 import { checkBudget, estimateAnthropicCost, recordSpend } from '../_lib/llm-budget.js';
+import { rateLimit } from '../_lib/rateLimit.js';
 import {
   PERSONAS,
   SYNTHESIZER_SYSTEM,
@@ -43,7 +44,6 @@ interface CouncilBody {
   context?: string;
   country_code?: string;
   /** When true, skip the user-facing budget gate (cron only). */
-  bypass_budget?: boolean;
   /** Where the run came from (logging only). */
   source?: 'live-brief' | 'daily-brief' | 'audio-brief' | 'manual';
 }
@@ -63,6 +63,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
+  const rl = await rateLimit(req, { key: 'council', limit: 5, windowSec: 3600 });
+  if (!rl.ok) {
+    res.setHeader('Retry-After', String(rl.retryAfterSec));
+    return res.status(429).json({ error: 'rate_limited', limit: rl.limit, retry_after_sec: rl.retryAfterSec });
+  }
+
   const body = (req.body ?? {}) as CouncilBody;
   const question = (body.question ?? '').trim();
   if (!question) return res.status(400).json({ error: 'question required' });
@@ -70,7 +76,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const source = body.source ?? 'manual';
 
   // Budget gate
-  const gate = await checkBudget({ endpoint: 'council', bypassCap: body.bypass_budget });
+  // The cap-bypass argument is a CONSTANT here, never a request field. Until
+  // 2026-08-28 this endpoint read that flag off the unauthenticated JSON body,
+  // so a single boolean from any caller skipped BOTH spend defences at once:
+  // the $9/day hard kill (llm-budget.ts:74) and the DISABLE_LLM_USER_FACING
+  // operator switch (llm-budget.ts:50), on a ~$0.09 five-Sonnet-plus-Opus
+  // fan-out that had no rate limit either. Nothing in the repo ever set it —
+  // the field existed only to be abused.
+  const gate = await checkBudget({ endpoint: 'council', bypassCap: false });
   if (!gate.ok) {
     res.setHeader('Retry-After', '3600');
     return res.status(503).json(gate);
