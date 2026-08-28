@@ -1650,7 +1650,17 @@ ${(() => {
 //                   are on text-only clients + higher deliverability)
 // ============================================================================
 
-import { colors, fonts, type, space, layout, style, typeStyle } from '../../src/styles/email-tokens.js';
+import {
+  colors,
+  fonts,
+  type,
+  space,
+  layout,
+  style,
+  typeStyle,
+  escapeHtml,
+  styleAttr,
+} from '../../src/styles/email-tokens.js';
 import {
   REGIONS,
   THREATS,
@@ -1743,24 +1753,6 @@ function parseSections(markdown: string): BriefSection[] {
     }
   }
   return sections;
-}
-
-/**
- * Escape HTML-significant characters for safe inline rendering. We do NOT
- * escape inside raw HTML tags (that would break them) — only when inserting
- * user-generated or LLM-generated text into element bodies and attributes.
- */
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => {
-    const map: Record<string, string> = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    };
-    return map[c] || c;
-  });
 }
 
 /**
@@ -1880,11 +1872,6 @@ function renderInline(text: string): string {
   // *italic*
   out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   return out;
-}
-
-/** Convenience: wrap an inline-style string in a `style="..."` HTML attribute. */
-function styleAttr(inline: string): string {
-  return `style="${inline}"`;
 }
 
 /**
