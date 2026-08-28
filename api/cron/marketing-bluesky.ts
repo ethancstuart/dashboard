@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runDispatch } from '../marketing/lib/dispatcher.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -11,6 +12,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * register. 300-char limit enforced by the adapter.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}`;
   const summary = await runDispatch('bluesky', baseUrl);
   return res.json(summary);

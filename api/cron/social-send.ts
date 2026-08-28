@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -91,7 +92,8 @@ const SEND_BATCH_SIZE = 10;
 // which account to post from.
 const BUFFER_CHANNEL_ID_X = '69d95485031bfa423cee6b71';
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   // Kill switch — the invariant that gates every Track C surface.
   if (process.env.SOCIAL_AUTONOMY_ENABLED !== 'true') {
     return res.json({

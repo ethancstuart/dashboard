@@ -18,7 +18,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { cronJitter } from '../_cron-utils.js';
+import { cronJitter, requireCron } from '../_cron-utils.js';
 import { uploadBlob, blobEnabled } from '../_lib/storage.js';
 import { checkBudget, estimateOpenAiTtsCost, recordSpend } from '../_lib/llm-budget.js';
 import { singleAnthropic } from '../_lib/anthropic-fanout.js';
@@ -48,7 +48,8 @@ const HOST_VOICES: Record<string, string> = {
 
 const OPENAI_TTS_URL = 'https://api.openai.com/v1/audio/speech';
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   await cronJitter(15);
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;

@@ -15,7 +15,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { cronJitter } from '../_cron-utils.js';
+import { cronJitter, requireCron } from '../_cron-utils.js';
 import { combine, DEFAULT_WEIGHTS } from '../_lib/forecast/ensemble.js';
 import { MODELS, type ModelInputs } from '../_lib/forecast/models.js';
 
@@ -28,7 +28,8 @@ interface Row {
   scores: number[]; // oldest first
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   await cronJitter(15);
 
   const dbUrl = process.env.DATABASE_URL;

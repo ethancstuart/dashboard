@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -36,7 +37,8 @@ const SENSITIVE_AREAS: { name: string; lat: number; lon: number; radiusKm: numbe
 // Only track cargo/tanker types (not recreational/fishing)
 const TRACKED_TYPES = new Set(['cargo', 'tanker', 'military']);
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL not configured' });
 

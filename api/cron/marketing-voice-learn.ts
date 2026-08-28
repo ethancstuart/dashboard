@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { runVoiceRetune } from '../marketing/lib/marketingVoice.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -20,7 +21,8 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * run because buildVoiceProfile() reads marketing_voice_context fresh
  * each call.
  */
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   // Honor pause flag even for the learning loop — chairman might want
   // to freeze voice evolution during a sensitive moment.
   if (process.env.MARKETING_AUTOMATION_ENABLED !== 'true') {

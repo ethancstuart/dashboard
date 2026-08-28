@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runDispatch } from '../marketing/lib/dispatcher.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -13,6 +14,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * Schedule: 0 14,20 * * * (14:00 UTC = 7am PDT, 20:00 UTC = 1pm PDT)
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}`;
   const summary = await runDispatch('instagram', baseUrl);
   return res.json(summary);

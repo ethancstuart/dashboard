@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runDispatch } from '../marketing/lib/dispatcher.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 90 };
 
@@ -14,6 +15,7 @@ export const config = { runtime: 'nodejs', maxDuration: 90 };
  * contentGenerator.ts). Sonnet adds ~$0.30 per long-form draft vs Haiku.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}`;
   const summary = await runDispatch('substack', baseUrl);
   return res.json(summary);

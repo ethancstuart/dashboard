@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { runDispatch } from '../marketing/lib/dispatcher.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -18,6 +19,7 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * X. Flip marketing:shadow_mode=false in KV to go live.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const baseUrl = `${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}`;
   const summary = await runDispatch('x', baseUrl);
   return res.json(summary);

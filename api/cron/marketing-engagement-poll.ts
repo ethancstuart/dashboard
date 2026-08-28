@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -22,7 +23,8 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * voice-learn cron has rows to score against, and future work can
  * upgrade the per-adapter pollers without changing the cron contract.
  */
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   if (process.env.MARKETING_AUTOMATION_ENABLED !== 'true') {
     return res.status(200).json({ success: true, skipped: true, reason: 'MARKETING_AUTOMATION_ENABLED is not true' });
   }

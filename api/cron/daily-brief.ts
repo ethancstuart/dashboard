@@ -425,7 +425,8 @@ it, so the two instructions together would manufacture confident false
 statements. Nothing retrospective.`;
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const dbUrl = process.env.DATABASE_URL;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL not configured' });
@@ -1658,6 +1659,7 @@ import {
   type RegionId,
 } from '../../src/services/interests-types.js';
 import { enqueueDraftCore } from '../social/enqueue-core.js';
+import { requireCron } from '../_cron-utils.js';
 
 export interface RenderedBrief {
   emailHtml: string;

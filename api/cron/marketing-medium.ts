@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { preflight, recordRun } from '../marketing/lib/flags.js';
 import { mediumAdapter } from '../marketing/adapters/mediumAdapter.js';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -17,7 +18,8 @@ export const config = { runtime: 'nodejs', maxDuration: 60 };
  * Substack post from marketing_posts, rebuilds it with a canonical
  * URL header, and POSTs to Medium.
  */
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const pf = await preflight('medium');
   if (!pf.proceed) return res.json({ proceeded: false, reason: pf.reason });
 

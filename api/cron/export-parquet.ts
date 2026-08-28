@@ -17,7 +17,7 @@ import { neon } from '@neondatabase/serverless';
 import { promises as fs } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { cronJitter } from '../_cron-utils.js';
+import { cronJitter, requireCron } from '../_cron-utils.js';
 import { uploadBlob, blobEnabled } from '../_lib/storage.js';
 
 // parquetjs-lite has no types — declare the minimal shape we use.
@@ -204,7 +204,8 @@ async function exportOne(
   }
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   await cronJitter(20);
 
   const dbUrl = process.env.DATABASE_URL;

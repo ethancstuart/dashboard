@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { requireCron } from '../_cron-utils.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
 
@@ -40,7 +41,8 @@ interface AlertPayload {
   priority: number; // lower = more urgent
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!requireCron(req, res)) return;
   const dbUrl = process.env.DATABASE_URL;
   const bufferToken = process.env.BUFFER_ACCESS_TOKEN;
   if (!dbUrl) return res.status(500).json({ error: 'DATABASE_URL not configured' });
