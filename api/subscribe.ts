@@ -1,15 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { colors, fonts, type, space, layout, style, typeStyle } from '../src/styles/email-tokens.js';
+// `s` and `ts` used to be defined locally here, and both built the style
+// attribute WITHOUT escaping — which truncated every declaration list at the
+// first quote in a font stack. This is the WELCOME email, so that made the
+// first thing a new subscriber ever saw the worst-rendered of the three.
+// They are now aliases for the shared, escaping helpers.
+import {
+  colors,
+  fonts,
+  type,
+  space,
+  layout,
+  styleAttrOf as s,
+  typeStyleAttr as ts,
+} from '../src/styles/email-tokens.js';
 
 export const config = { runtime: 'nodejs' };
-
-function s(declarations: Parameters<typeof style>[0]): string {
-  return `style="${style(declarations)}"`;
-}
-function ts(token: Parameters<typeof typeStyle>[0], overrides?: Parameters<typeof typeStyle>[1]): string {
-  return `style="${typeStyle(token, overrides)}"`;
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', 'https://nexuswatch.dev');

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildFallbackText, type BriefData } from './daily-brief.js';
+import { buildFallbackText, renderDossierEmail, type BriefData } from './daily-brief.js';
 import { validateBriefStructure } from '../_lib/brief-structure.js';
+import { type, typeStyleAttr } from '../../src/styles/email-tokens.js';
 
 /**
  * The one fixture that must never break: the deterministic fallback is the
@@ -87,4 +88,110 @@ describe('buildFallbackText — the safe harbor honours the structure contract',
     const text = buildFallbackText(base);
     expect(text).toContain("driver not identified in today's data.");
   });
+});
+
+/**
+ * THE EMAIL IDENTITY MUST ACTUALLY REACH THE PARSER.
+ *
+ * For 4.5 months every `style="..."` attribute that began with a font stack
+ * was truncated at the first quote of `"Tiempos Headline"` / `"Inter"` /
+ * `"JetBrains Mono"`, because the three renderers each built the attribute
+ * with an UNESCAPED `style="${inline}"`. The parser saw `style="font-family:"`
+ * and dropped the colour, size, weight and letter-spacing behind it. Nothing
+ * failed: the HTML was still well-formed, just wearing none of the design.
+ *
+ * These assertions DERIVE over every attribute in a real render rather than
+ * listing the ones we happen to know about, so a NEW call site that hardcodes
+ * an unescaped attribute fails by default instead of passing by omission.
+ */
+describe('rendered brief — no style attribute is truncated by an embedded quote', () => {
+  /**
+   * Split a document into style attributes exactly the way an HTML parser
+   * does: a double-quoted attribute value ends at the FIRST `"`. The tell for
+   * a truncated attribute is therefore not that the value looks wrong — it is
+   * that the character after the closing quote is not a legal attribute
+   * boundary (whitespace, `/` or `>`).
+   */
+  function styleAttrs(html: string): { value: string; nextChar: string; truncated: boolean }[] {
+    const needle = 'style="';
+    const out: { value: string; nextChar: string; truncated: boolean }[] = [];
+    let i = html.indexOf(needle);
+    while (i !== -1) {
+      const start = i + needle.length;
+      const end = html.indexOf('"', start);
+      if (end === -1) break;
+      const nextChar = html.slice(end + 1, end + 2);
+      out.push({
+        value: html.slice(start, end),
+        nextChar,
+        truncated: !(nextChar === '' || /[\s/>]/.test(nextChar)),
+      });
+      i = html.indexOf(needle, end + 1);
+    }
+    return out;
+  }
+
+  const rendered = renderDossierEmail({
+    briefText: buildFallbackText(base),
+    date: base.date,
+    time: base.utcTime,
+    markets: base.markets,
+  });
+
+  for (const surface of ['emailHtml', 'beehiivHtml'] as const) {
+    it(`${surface}: every style attribute value is free of raw double quotes`, () => {
+      const attrs = styleAttrs(rendered[surface]);
+      // Guard the guard: if the extractor finds nothing, it is broken, and a
+      // vacuous pass would be indistinguishable from a real one.
+      expect(attrs.length).toBeGreaterThan(20);
+
+      const truncated = attrs.filter((a) => a.truncated);
+      expect(truncated.map((a) => `${JSON.stringify(a.value)} → next char ${JSON.stringify(a.nextChar)}`)).toEqual([]);
+
+      for (const a of attrs) expect(a.value).not.toContain('"');
+    });
+  }
+
+  it('emailHtml: the masthead keeps its whole declaration list, not just font-family', () => {
+    // The positive half. A style attribute that survives the scan above could
+    // still be empty; this asserts the identity is actually present.
+    const attrs = styleAttrs(rendered.emailHtml).map((a) => a.value);
+    const masthead = attrs.find((v) => v.includes('Tiempos Headline') && v.includes('28px'));
+    expect(masthead, 'no masthead style attribute carrying the serif stack at 28px').toBeDefined();
+    expect(masthead).toContain('font-weight:700');
+    expect(masthead).toContain('color:');
+  });
+
+  it('no style attribute anywhere ends mid-declaration on a dangling colon', () => {
+    for (const surface of ['emailHtml', 'beehiivHtml'] as const) {
+      for (const a of styleAttrs(rendered[surface])) {
+        expect(a.value, `${surface} has a declaration cut off at its colon`).not.toMatch(/:\s*$/);
+      }
+    }
+  });
+});
+
+/**
+ * The two other renderers (api/send-alert-email.ts, api/subscribe.ts — the
+ * WELCOME email) are request handlers and cannot be rendered without a live
+ * request, DB and Resend key. They are covered structurally instead: all three
+ * files now build their attributes through the one shared helper, so asserting
+ * the helper is correct for EVERY typography token covers them by construction.
+ * A new token whose font stack contains a quote is covered automatically.
+ */
+describe('typeStyleAttr — the one shared helper is safe for every token', () => {
+  for (const [name, token] of Object.entries(type)) {
+    it(`${name} produces a well-formed, non-truncated style attribute`, () => {
+      const attr = typeStyleAttr(token, { color: '#12161C' });
+      expect(attr.startsWith('style="')).toBe(true);
+      expect(attr.endsWith('"')).toBe(true);
+      // The value is everything between the delimiters; it must contain no
+      // raw quote of its own, or the attribute ends early.
+      const value = attr.slice('style="'.length, -1);
+      expect(value).not.toContain('"');
+      // And the declaration list must have survived past the font family.
+      expect(value).toContain('font-size:');
+      expect(value).toContain('color:#12161C');
+    });
+  }
 });

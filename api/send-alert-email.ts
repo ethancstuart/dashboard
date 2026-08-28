@@ -1,5 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { colors, fonts, type, space, layout, style, typeStyle } from '../src/styles/email-tokens.js';
+// `s` and `ts` used to be defined locally here, and both built the style
+// attribute WITHOUT escaping — which truncated every declaration list at the
+// first quote in a font stack. They are now aliases for the shared, escaping
+// helpers so a private unescaped copy cannot reappear.
+import {
+  colors,
+  fonts,
+  type,
+  space,
+  layout,
+  styleAttrOf as s,
+  typeStyleAttr as ts,
+} from '../src/styles/email-tokens.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -10,16 +22,6 @@ function severityColor(sev: string): string {
   if (sev === 'critical') return colors.down;
   if (sev === 'elevated') return colors.accent;
   return colors.divider;
-}
-
-/** Wrap a CSS declaration string in a style="..." HTML attribute. */
-function s(declarations: Parameters<typeof style>[0]): string {
-  return `style="${style(declarations)}"`;
-}
-
-/** Wrap a typeStyle result in a style="..." HTML attribute. */
-function ts(token: Parameters<typeof typeStyle>[0], overrides?: Parameters<typeof typeStyle>[1]): string {
-  return `style="${typeStyle(token, overrides)}"`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

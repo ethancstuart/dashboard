@@ -219,3 +219,80 @@ export function typeStyle(
     ...overrides,
   });
 }
+
+// -----------------------------------------------------------------------------
+// HTML attribute emission — the ONE place a style="..." attribute is built
+// -----------------------------------------------------------------------------
+
+/**
+ * Escape HTML-significant characters for safe rendering inside element bodies
+ * and quoted attribute values.
+ *
+ * This lived in api/cron/daily-brief.ts and was moved here so the email
+ * renderers (the brief, the alert email, the welcome email) share ONE
+ * implementation rather than each growing a private copy.
+ */
+export function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (c) => {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    };
+    return map[c] || c;
+  });
+}
+
+/**
+ * Wrap a CSS declaration string in a `style="..."` HTML attribute — ESCAPED.
+ *
+ * This is the only function in the codebase allowed to build a `style="`
+ * attribute. It exists because the three email renderers each carried a
+ * private, UNESCAPED copy of this one line:
+ *
+ *     return `style="${inline}"`;          // ← the bug
+ *
+ * Every font stack in `fonts` opens with a double-quoted family name
+ * (`"Tiempos Headline"`, `"Inter"`, `"JetBrains Mono"`), and `typeStyle()`
+ * emits `font-family` FIRST. So an unescaped attribute TERMINATES at that
+ * first embedded quote: the parser sees `style="font-family:"` and discards
+ * the colour, size, weight and letter-spacing that followed it. Measured on a
+ * real render, 38 of the brief's 75 style attributes were truncated this way.
+ *
+ * WHAT IS ESCAPED, AND WHY
+ *   `"` — REQUIRED. A double-quoted attribute value ends at the first `"`.
+ *         This is the entire bug.
+ *   `&` — REQUIRED. Inside an attribute value `&` begins a character
+ *         reference, so leaving it raw makes the encoding ambiguous and
+ *         non-idempotent: a literal `&quot;` in a value would decode back to
+ *         `"` and re-open the same hole. Escaping keeps the mapping injective.
+ *   `<`, `>`, `'` — NOT required by the HTML spec inside a double-quoted
+ *         value, but they arrive with the shared `escapeHtml` and are
+ *         harmless (see below). Reusing one escaper beats maintaining a
+ *         second, narrower one.
+ *
+ * WHY THIS CANNOT CHANGE THE MEANING OF THE CSS: character references are
+ * resolved by the HTML TOKENIZER, before the attribute value is ever handed
+ * to the CSS parser. `font-family:&quot;Inter&quot;,sans-serif` reaches CSS
+ * as `font-family:"Inter",sans-serif` — byte-identical. Escaping can only
+ * restore declarations that were being dropped; it cannot alter one that was
+ * already surviving.
+ */
+export function styleAttr(inline: string): string {
+  return `style="${escapeHtml(inline)}"`;
+}
+
+/** `styleAttr` over a declaration object — `style()` composed with escaping. */
+export function styleAttrOf(declarations: Parameters<typeof style>[0]): string {
+  return styleAttr(style(declarations));
+}
+
+/** `styleAttr` over a typography token — `typeStyle()` composed with escaping. */
+export function typeStyleAttr(
+  token: Parameters<typeof typeStyle>[0],
+  overrides?: Parameters<typeof typeStyle>[1],
+): string {
+  return styleAttr(typeStyle(token, overrides));
+}
