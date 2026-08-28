@@ -28,4 +28,20 @@ fi
 # plant-tested, and the typecheck half was assumed. `npm run typecheck` runs
 # tsc against tsconfig.json AND tsconfig.api.json.
 npm run typecheck || { echo "push blocked: typecheck (src and/or api)"; exit 1; }
+
+# The test suite and the four derived guards. Added 2026-08-28 after an audit
+# found this hook ran ONLY prettier and typecheck, while `npm run validate`
+# ran five more checks that nothing on the push path executed. Pushing to main
+# DEPLOYS and GitHub Actions reports afterwards, so on the one path that ships,
+# "every fix ships with a guard" was enforced by habit rather than by anything.
+#
+# Measured before wiring: the whole suite is 454 tests in 1.81s and the four
+# guards total ~6s. The "a slow hook gets skipped" argument does not apply at
+# this cost — and each of these guards exists because a real defect reached
+# production past its absence.
+npm run test || { echo "push blocked: tests"; exit 1; }
+npm run check:llm-spend  || { echo "push blocked: check:llm-spend"; exit 1; }
+npm run check:collectors || { echo "push blocked: check:collectors"; exit 1; }
+npm run check:cron-auth  || { echo "push blocked: check:cron-auth"; exit 1; }
+npm run check:style-attr || { echo "push blocked: check:style-attr"; exit 1; }
 echo "pre-push: clean"
