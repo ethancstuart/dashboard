@@ -4,7 +4,18 @@ import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', 'public/sw.js', 'scripts/', 'mcp/'],
+    ignores: [
+      // Branch snapshots written by scripts/codex-review-mr.sh. Gitignored, so
+      // CI never sees them — but eslint did, and failed every LOCAL run with a
+      // parsing error. A lint that always fails is a lint people stop running,
+      // which is the same failure mode as a hook too slow to keep.
+      '.codex-reviews/**',
+      'dist/',
+      'node_modules/',
+      'public/sw.js',
+      'scripts/',
+      'mcp/',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

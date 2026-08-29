@@ -62,8 +62,25 @@ for f in $FILES; do
   SAFE=$(echo "$f" | tr '/' '-')
   BRIEF="$OUT/brief-$SAFE.txt"
   REVIEW="$OUT/review-$SAFE.txt"
-  ABS="$(pwd)/$f"
+  SNAP="$OUT/snapshot/$f"
+  mkdir -p "$(dirname "$SNAP")"
+  git show "$BRANCH:$f" > "$SNAP" 2>/dev/null || {
+    echo "  $f — SKIPPED (not present on $BRANCH)"; continue; }
+  ABS="$(cd "$(dirname "$SNAP")" && pwd)/$(basename "$SNAP")"
 
+  # MATERIALISE THE BRANCH VERSION, and do not trust the working tree.
+  #
+  # This script used to point Codex at "$(pwd)/$f" — the file ON DISK. So it
+  # reviewed whatever branch happened to be checked out, while showing Codex a
+  # diff from a different one. Run from `main` after a merge, it read main's
+  # files and reported that a branch's changes "are not present in the file" —
+  # a confident, sourced, entirely wrong verdict.
+  #
+  # Caught 2026-08-29 only because one review said the change was absent when it
+  # demonstrably was not. Every earlier review happened to be run while checked
+  # out on the branch under review, so they were correct by luck rather than by
+  # construction. `git show` makes the branch the source of truth regardless of
+  # what is checked out, and touches nothing in the worktree.
   SUBJECT=$(git log --format=%s "$BASE..$BRANCH" -- "$f" | head -3 | sed 's/^/  - /')
   # Prompt size is the difference between a review and a dead run. A ~7 KB
   # prompt did 4,300 lines of real work; a 28 KB prompt died almost
