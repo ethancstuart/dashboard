@@ -47,6 +47,7 @@ const KIND: CallKind = 'censorship_event';
 const RESOLVER = 'OONI (ooni.org) confirmed_blocked > 0';
 
 const FX_KIND: CallKind = 'fx_devaluation';
+const SEIS_KIND: CallKind = 'seismicity_window';
 const FX_RESOLVER = 'fx_rates (daily USD reference rates)';
 /** Recent window for the FX signal, in 14-day horizons. */
 const FX_RECENT_WINDOWS = 3;
@@ -146,6 +147,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // clothes.
     let fxWritten = 0;
     let fxSkippedPegs = 0;
+    // The SAME rule, applied to every generator rather than only the one it was
+    // written for. An independent review caught that: a rule claimed to be
+    // general, gating one loop, is a censorship-shaped fix wearing a general
+    // rule's language. FX passes today (weight 0.4, so it can depart), which is
+    // exactly why applying it here is safe and why it belongs here — the guard
+    // has to be structural before it can protect a kind nobody has written yet.
+    if (!shouldIssue(FX_KIND)) {
+      console.log(`[record-calls] ${FX_KIND} not issued — generator states its own base rate.`);
+    }
     try {
       // FORWARD PEAK depreciation from each anchor day — deliberately the same
       // quantity the resolver measures, and the fix for a real defect.
@@ -253,6 +263,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // at issue, so re-tuning the region table can never move a live call's
     // criterion.
     let seisWritten = 0;
+    // The harness is expected to pass — its whole purpose is to sit on
+    // climatology — but it is checked by the same rule rather than exempted by
+    // position in the file. An exemption that works because of where the code
+    // sits is not a rule.
+    if (!shouldIssue(SEIS_KIND)) {
+      console.log(`[record-calls] ${SEIS_KIND} not issued — generator states its own base rate.`);
+    }
     try {
       const pending = (await sql`
         SELECT country_code FROM calls
@@ -260,7 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `) as unknown as Array<{ country_code: string }>;
       const pendingRegions = new Set(pending.map((r) => r.country_code));
 
-      for (const region of SEISMIC_REGIONS) {
+      for (const region of shouldIssue(SEIS_KIND) ? SEISMIC_REGIONS : []) {
         if (pendingRegions.has(region.code)) continue;
         const box = SEISMIC_REGION_BOXES[region.code];
         if (!box) continue; // tuned entry without a box cannot state a criterion

@@ -52,12 +52,22 @@ describe('issuance rule', () => {
     }
   });
 
-  it('the recorder actually consults the rule, rather than merely importing it', () => {
-    // A rule nothing calls is a comment. This is the same reason the repo
-    // distinguishes a check from a log line.
+  it('EVERY generator in the recorder is gated, not just the one this was written for', () => {
+    // An independent review caught the first version applying the rule to the
+    // censorship loop alone: a rule claimed to be general, gating one caller,
+    // is a censorship-shaped fix wearing a general rule's language. FX and the
+    // harness both PASS today, which is exactly why gating them is safe — the
+    // guard has to be structural before it can protect a kind nobody has
+    // written yet.
+    //
+    // Derived, not listed: every kind constant the recorder declares must be
+    // passed through shouldIssue somewhere in the file. A fourth generator
+    // added tomorrow fails this by default.
     const recorder = readFileSync(join(API, 'cron/record-calls.ts'), 'utf8');
-    expect(recorder).toContain('shouldIssue(KIND)');
-    expect(recorder).toMatch(/issuing \? rows : \[\]/);
+    const kindConsts = [...recorder.matchAll(/const (\w*KIND\w*): CallKind =/g)].map((m) => m[1]);
+    expect(kindConsts.length, 'no kind constants found — the recorder shape changed').toBeGreaterThan(2);
+    const ungated = kindConsts.filter((k) => !recorder.includes(`shouldIssue(${k})`));
+    expect(ungated, 'these generators issue without consulting the rule').toEqual([]);
   });
 
   it('the retirement is PUBLISHED, not merely enacted', () => {
