@@ -65,7 +65,11 @@ describe('pre-push hook covers npm run validate', () => {
       if (step in COVERED_DIFFERENTLY) continue;
       // Either named outright in the hook, or picked up by its derived
       // `check:*` loop.
-      const namedInHook = hook.includes(`npm run ${step}`) || hook.includes(`npm run "${step}"`);
+      // EXACT match, not substring. `hook.includes('npm run test')` is also
+      // satisfied by `npm run test:smoke`, which would let a future edit swap
+      // the real suite for a fast subset while this assertion stayed green.
+      const exact = new RegExp(String.raw`npm run "?${step.replace(/[:\-]/g, '\\$&')}"?(?![\w:-])`);
+      const namedInHook = exact.test(hook);
       const derivedByLoop = step.startsWith('check:') && hook.includes("indexOf('check:')");
       if (!namedInHook && !derivedByLoop) uncovered.push(step);
     }
@@ -80,6 +84,19 @@ describe('pre-push hook covers npm run validate', () => {
     expect(hook).toContain("indexOf('check:')");
     expect(hook).toContain('for c in $CHECKS');
     expect(hook).toContain('EMPTY guard list');
+  });
+
+  it('the exception register cannot quietly grow', () => {
+    // The register is a whitelist, and Codex is right that a whitelist can
+    // excuse anything. It cannot be eliminated — format:check genuinely must be
+    // delta-scoped — so it is BOUNDED instead: adding a third exception fails
+    // here and forces a deliberate change to this number, in a diff, with a
+    // reason. Silent excusal becomes reviewed excusal.
+    expect(Object.keys(COVERED_DIFFERENTLY).length).toBeLessThanOrEqual(2);
+    // And every exception must carry a non-trivial reason, not an empty string.
+    for (const [step, reason] of Object.entries(COVERED_DIFFERENTLY)) {
+      expect(reason.length, `${step} needs a real reason`).toBeGreaterThan(20);
+    }
   });
 
   it('every excused step is real, so the exception list cannot rot', () => {
