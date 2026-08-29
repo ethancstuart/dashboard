@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { blendRates, historicalRate, fxThreshold, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
+import { blendRates, historicalRate, fxThreshold, shouldIssue, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
 import { SEISMIC_REGIONS, SEISMIC_REGION_BOXES, SEISMIC_HORIZON_DAYS } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
@@ -47,6 +47,7 @@ const KIND: CallKind = 'censorship_event';
 const RESOLVER = 'OONI (ooni.org) confirmed_blocked > 0';
 
 const FX_KIND: CallKind = 'fx_devaluation';
+const SEIS_KIND: CallKind = 'seismicity_window';
 const FX_RESOLVER = 'fx_rates (daily USD reference rates)';
 /** Recent window for the FX signal, in 14-day horizons. */
 const FX_RECENT_WINDOWS = 3;
@@ -92,8 +93,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const longWindows = LONG_RUN_DAYS / HORIZON_DAYS;
     const recentWindows = RECENT_DAYS / HORIZON_DAYS;
 
+    // RETIRED 2026-08-29, and the rule is general rather than a censorship
+    // special case: a generator that cannot state a probability differing from
+    // its own base rate issues nothing, unless it is a declared calibration
+    // harness whose job is to sit on climatology.
+    //
+    // Censorship has had a recency weight of zero since 2026-08-23, set there
+    // because a walk-forward backtest measured recency at -7.1% skill on this
+    // domain. The tuning was right; continuing to issue under it was not. Every
+    // call written since has had probability bit-identical to base_rate, so its
+    // skill is exactly 0.000 by algebra — and each one dilutes the pooled score
+    // when the three-batch gate opens.
+    //
+    // The 273 calls already on the book are NOT touched. They were made, and
+    // they resolve as made. This stops adding to them.
     let written = 0;
-    for (const r of rows) {
+    const issuing = shouldIssue(KIND);
+    if (!issuing) {
+      console.log(
+        `[record-calls] ${KIND} not issued — this generator states its own base rate, ` +
+          `so every call would score exactly 0.000 by construction. Rule published on /ledger.`,
+      );
+    }
+    for (const r of issuing ? rows : []) {
       const longRun = historicalRate(r.long_hits, longWindows);
       const recent = historicalRate(r.recent_hits, recentWindows);
       const probability = blendRates(recent, longRun, RECENCY_WEIGHT[KIND]);
@@ -125,6 +147,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // clothes.
     let fxWritten = 0;
     let fxSkippedPegs = 0;
+    // The SAME rule, applied to every generator rather than only the one it was
+    // written for. An independent review caught that: a rule claimed to be
+    // general, gating one loop, is a censorship-shaped fix wearing a general
+    // rule's language. FX passes today (weight 0.4, so it can depart), which is
+    // exactly why applying it here is safe and why it belongs here — the guard
+    // has to be structural before it can protect a kind nobody has written yet.
+    if (!shouldIssue(FX_KIND)) {
+      console.log(`[record-calls] ${FX_KIND} not issued — generator states its own base rate.`);
+    }
     try {
       // FORWARD PEAK depreciation from each anchor day — deliberately the same
       // quantity the resolver measures, and the fix for a real defect.
@@ -232,6 +263,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // at issue, so re-tuning the region table can never move a live call's
     // criterion.
     let seisWritten = 0;
+    // The harness is expected to pass — its whole purpose is to sit on
+    // climatology — but it is checked by the same rule rather than exempted by
+    // position in the file. An exemption that works because of where the code
+    // sits is not a rule.
+    if (!shouldIssue(SEIS_KIND)) {
+      console.log(`[record-calls] ${SEIS_KIND} not issued — generator states its own base rate.`);
+    }
     try {
       const pending = (await sql`
         SELECT country_code FROM calls
@@ -239,7 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `) as unknown as Array<{ country_code: string }>;
       const pendingRegions = new Set(pending.map((r) => r.country_code));
 
-      for (const region of SEISMIC_REGIONS) {
+      for (const region of shouldIssue(SEIS_KIND) ? SEISMIC_REGIONS : []) {
         if (pendingRegions.has(region.code)) continue;
         const box = SEISMIC_REGION_BOXES[region.code];
         if (!box) continue; // tuned entry without a box cannot state a criterion

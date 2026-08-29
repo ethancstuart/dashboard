@@ -163,6 +163,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'from the weather it happened to land in.</p>',
     );
 
+    // THE RETIREMENT, PUBLISHED WITH THE CHANGE THAT CAUSES IT. Not after.
+    // A documented retirement is a credibility artifact; an undocumented one is
+    // a book that quietly stopped growing and a reader left to guess why.
+    parts.push(
+      '<div class="rule"></div><div class="kicker">A retired generator</div>' +
+        '<h2>We have stopped issuing censorship calls, and this is why</h2>' +
+        '<p class="lede">Until 23 August, each censorship call was priced by weighting a country’s ' +
+        'recent behaviour against its long-run rate. A walk-forward backtest then measured that ' +
+        'weighting at <strong>−7.1% skill</strong> on this domain — worse than using the long-run rate ' +
+        'alone — so the weight was set to zero.</p>' +
+        '<p class="lede">That correction was right, and it had a consequence we did not act on for ' +
+        'six days. With the weight at zero the stated probability <em>is</em> the long-run rate, and ' +
+        'the long-run rate is what we score against. Every censorship call issued since has had a ' +
+        'skill of exactly zero — <strong>not approximately zero, and not because the forecast was ' +
+        'poor, but by arithmetic</strong>. A number divided by itself.</p>' +
+        '<p class="lede">So we have stopped issuing them, under a rule that is not specific to ' +
+        'censorship: a generator that cannot state a probability different from its own base rate ' +
+        'issues nothing, unless it is a declared calibration harness whose entire purpose is to sit on ' +
+        'climatology. <strong>State a claim, or be a control.</strong></p>' +
+        '<p class="lede">The censorship calls already on the book are untouched. They were made, and ' +
+        'they resolve as made — including the 39 due on 5 September. What stops is adding more. We do ' +
+        'not have a replacement generator yet, and we will not issue censorship calls again until we ' +
+        'have one that is capable of being wrong.</p>',
+    );
+
     // THE UNRESOLVABLE PROJECTION, COMPUTED AT RENDER TIME.
     //
     // Deliberately not a literal. The window for the next cohort is still

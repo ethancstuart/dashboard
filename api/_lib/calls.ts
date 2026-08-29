@@ -548,6 +548,46 @@ export const RECENCY_WEIGHT: Record<CallKind, number> = {
 };
 
 /**
+ * Can this generator ever state a probability that DEPARTS from its own base
+ * rate — that is, can it make a claim at all?
+ *
+ * With a recency weight of zero, `blendRates` returns `longRun` unchanged and
+ * the recorder stores that same value as `base_rate`. Probability and baseline
+ * are then bit-identical on every row, and `brierSkillScore` divides a sum by
+ * itself: skill is exactly 0.000 for any outcome sequence. Such a generator is
+ * publishing climatology and grading it against itself.
+ *
+ * That is true of censorship since 2026-08-23, when the weight was set to zero
+ * because a walk-forward backtest measured recency at -7.1% skill there. The
+ * tuning was right. Continuing to ISSUE under it was not: every such call is a
+ * row that cannot inform anything and that dilutes the pooled score when the
+ * three-batch gate opens.
+ *
+ * Stated as a property of the generator rather than a check on each call, so it
+ * generalises: any future kind whose weight is zero is caught by the same rule,
+ * with nothing to remember.
+ */
+export function canDepartFromBaseRate(kind: CallKind): boolean {
+  return RECENCY_WEIGHT[kind] !== 0;
+}
+
+/**
+ * Should this kind issue new calls today?
+ *
+ * A generator that cannot depart from its base rate issues nothing — UNLESS it
+ * is a declared calibration harness, whose whole purpose is to sit exactly on
+ * climatology and prove the scoring machinery is honest on a domain where the
+ * right answer is computable. That is not an exception carved out for an
+ * awkward case; it is the one kind for which zero skill is the intended
+ * reading, and it is already declared as such in CALIBRATION_KINDS.
+ *
+ * So the rule reads: state a claim, or be a control. Nothing else is issued.
+ */
+export function shouldIssue(kind: CallKind): boolean {
+  return canDepartFromBaseRate(kind) || CALIBRATION_KINDS.has(kind);
+}
+
+/**
  * Blend a country's recent rate with its long-run rate into a stated probability.
  *
  * This is the whole forecast, and it is deliberately small enough to argue
