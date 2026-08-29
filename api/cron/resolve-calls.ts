@@ -118,7 +118,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const d = (await r.json()) as { count?: unknown };
           if (typeof d.count !== 'number' || !Number.isFinite(d.count)) {
             console.error(`[resolve-calls] USGS returned no numeric count for call ${call.id} — left pending`);
-            unresolvable++;
+            // Left PENDING, so it is awaiting evidence — not settled. Counting
+            // it as unresolvable made the completion log call a pending row
+            // "settled", which a reader would act on.
+            stillWaiting++;
             continue;
           }
           count = d.count;
@@ -171,36 +174,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const observed = coverage[0]?.measurements ?? 0;
           const req = coverageRequirement(call.horizon_days);
 
-          if (coveredDays < req.minDays || observed < req.minMeasurements) {
+          // EVIDENCE FIRST, AND THE ASYMMETRY IS THE WHOLE POINT.
+          //
+          // An independent review caught the previous ordering: the coverage
+          // gate ran before the evidence query, so a sparse country that DID
+          // record a confirmed block was withheld instead of scored as a hit.
+          // That is wrong, because the two directions are not epistemically
+          // symmetric:
+          //
+          //   a confirmed block OBSERVED is positive evidence. The event
+          //   happened. Thin coverage does not weaken it — we saw it.
+          //
+          //   NO block observed is only evidence of ABSENCE if we looked hard
+          //   enough. That is the case the coverage gate exists for, and the
+          //   only case it may govern.
+          //
+          // So a hit resolves on the evidence alone, and the density gate
+          // applies solely to the would-be miss.
+          const evidence = (await sql`
+          SELECT COUNT(DISTINCT measurement_date)::int AS n
+          FROM ooni_measurements
+          WHERE country_code = ${call.country_code}
+            AND confirmed_blocked > 0
+            AND measurement_date >= ${call.made_on}::date
+            AND measurement_date <= ${call.resolves_on}::date
+        `) as unknown as Array<{ n: number }>;
+
+          const blockedDays = evidence[0]?.n ?? 0;
+          const wouldBeHit = resolveOutcome(blockedDays, call.threshold) === 1;
+
+          if (!wouldBeHit && (coveredDays < req.minDays || observed < req.minMeasurements)) {
             const why =
               `resolver coverage ${coveredDays}/${req.minDays} days, ` +
               `${observed}/${req.minMeasurements} measurements in [${call.made_on}, ${call.resolves_on}]`;
             console.error(`[resolve-calls] call ${call.id} (${call.country_code}) unresolvable — ${why}`);
-            // Recorded, not hidden. Leaving it pending would park an overdue
-            // call in the open book forever, drag next_resolves_on into the
-            // past, and give a reader no way to see why it never resolved.
-            //
-            // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
-            // docs/migrations/2026-08-28-calls-unresolvable-status.sql. Pushing
-            // to main deploys, and a migration is applied by hand, so the code
-            // WILL be live before the constraint on any ordering we do not
-            // control. If the write is rejected we fall back to the old
-            // behaviour — left pending — which is conservative in the right
-            // direction: the call still is not scored as a miss, which is the
-            // property that actually matters. Never let a missing migration
-            // turn into a false public verdict.
-            // GRACE FIRST. Marking terminally on the resolution day removes
-            // the call from the retry set forever, because this job only ever
+
+            // GRACE FIRST. Marking terminally on the resolution day removes the
+            // call from the retry set forever, because this job only ever
             // selects status='pending'. OONI's ingest lags ~24h and
-            // source-ooni.ts fetches only `since = yesterday`, so late
-            // evidence and manual backfills are both real. Below the grace
-            // period we leave it pending exactly as before; past it, the
-            // evidence is not coming.
+            // source-ooni.ts fetches only `since = yesterday`, so late evidence
+            // and manual backfills are both real.
             const overdueBy = daysSinceResolution(call.resolves_on);
             if (overdueBy < UNRESOLVABLE_GRACE_DAYS) {
               stillWaiting++;
               continue;
             }
+
+            // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
+            // docs/migrations/2026-08-28-calls-unresolvable-status.sql, applied
+            // by hand, while pushing to main deploys. If the write is rejected
+            // we fall back to leaving it pending — still not scored as a miss,
+            // which is the property that matters. A missing migration must
+            // never become a false public verdict.
             try {
               await sql`
                 UPDATE calls
@@ -218,17 +243,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             continue;
           }
 
-          const evidence = (await sql`
-          SELECT COUNT(*)::int AS n
-          FROM ooni_measurements
-          WHERE country_code = ${call.country_code}
-            AND confirmed_blocked > 0
-            AND measurement_date >= ${call.made_on}::date
-            AND measurement_date <= ${call.resolves_on}::date
-        `) as unknown as Array<{ n: number }>;
-
-          count = evidence[0]?.n ?? 0;
-          outcome = resolveOutcome(count, call.threshold);
+          count = blockedDays;
+          outcome = wouldBeHit ? 1 : 0;
         } else {
           // An unknown kind must NEVER fall into another kind's resolver — that
           // is how a wrong criterion resolves a call silently. Before this
@@ -266,7 +282,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       resolved: hits + misses,
       hits,
       misses,
+      /** Settled: past the grace window with too little evidence. Never scored. */
       unresolvable,
+      /** Still pending: matured but inside the grace window, or awaiting retry. */
+      still_waiting: stillWaiting,
       errored,
     });
   } catch (err) {
