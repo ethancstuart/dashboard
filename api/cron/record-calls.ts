@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { blendRates, historicalRate, fxThreshold, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
+import { blendRates, historicalRate, fxThreshold, shouldIssue, RECENCY_WEIGHT, type CallKind } from '../_lib/calls.js';
 import { SEISMIC_REGIONS, SEISMIC_REGION_BOXES, SEISMIC_HORIZON_DAYS } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
@@ -92,8 +92,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const longWindows = LONG_RUN_DAYS / HORIZON_DAYS;
     const recentWindows = RECENT_DAYS / HORIZON_DAYS;
 
+    // RETIRED 2026-08-29, and the rule is general rather than a censorship
+    // special case: a generator that cannot state a probability differing from
+    // its own base rate issues nothing, unless it is a declared calibration
+    // harness whose job is to sit on climatology.
+    //
+    // Censorship has had a recency weight of zero since 2026-08-23, set there
+    // because a walk-forward backtest measured recency at -7.1% skill on this
+    // domain. The tuning was right; continuing to issue under it was not. Every
+    // call written since has had probability bit-identical to base_rate, so its
+    // skill is exactly 0.000 by algebra — and each one dilutes the pooled score
+    // when the three-batch gate opens.
+    //
+    // The 273 calls already on the book are NOT touched. They were made, and
+    // they resolve as made. This stops adding to them.
     let written = 0;
-    for (const r of rows) {
+    const issuing = shouldIssue(KIND);
+    if (!issuing) {
+      console.log(
+        `[record-calls] ${KIND} not issued — this generator states its own base rate, ` +
+          `so every call would score exactly 0.000 by construction. Rule published on /ledger.`,
+      );
+    }
+    for (const r of issuing ? rows : []) {
       const longRun = historicalRate(r.long_hits, longWindows);
       const recent = historicalRate(r.recent_hits, recentWindows);
       const probability = blendRates(recent, longRun, RECENCY_WEIGHT[KIND]);
