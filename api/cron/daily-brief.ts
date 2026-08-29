@@ -10,7 +10,7 @@ import {
   parseDeclaredSubject,
   chooseSubject,
 } from '../_lib/brief-structure.js';
-import { formatLedgerSummary, type Call, type ScoredCall } from '../_lib/calls.js';
+import { formatLedgerSummary, type Call, type LedgerSummaryRow } from '../_lib/calls.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
@@ -1099,26 +1099,39 @@ ${(() => {
           AND kind <> 'seismicity_window'
       `) as unknown as Array<{ country_code: string; status: string; probability: number }>;
 
+      // kind and resolved_at are REQUIRED, not decorative: the summary scores
+      // per kind and gates on the number of distinct resolution batches. The
+      // previous query selected neither, which is why the brief could only
+      // produce one pooled, ungated number.
       const allScoredRows = (await sql`
-        SELECT probability::float AS probability, base_rate::float AS base_rate, status
+        SELECT kind, probability::float AS probability, base_rate::float AS base_rate,
+               status, resolved_at::text AS resolved_at
         FROM calls
         WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
-      `) as unknown as Array<{ probability: number; base_rate: number | null; status: string }>;
+      `) as unknown as Array<{
+        kind: string;
+        probability: number;
+        base_rate: number | null;
+        status: string;
+        resolved_at: string | null;
+      }>;
 
       const openRows = (await sql`
         SELECT COUNT(*)::int AS n, MIN(resolves_on)::text AS next_resolves
         FROM calls WHERE status = 'pending' AND kind <> 'seismicity_window'
       `) as unknown as Array<{ n: number; next_resolves: string | null }>;
 
-      const allScored: ScoredCall[] = allScoredRows.map((r) => ({
+      const scoredRows: LedgerSummaryRow[] = allScoredRows.map((r) => ({
+        kind: r.kind,
         probability: r.probability,
-        outcome: r.status === 'hit' ? 1 : 0,
+        outcome: (r.status === 'hit' ? 1 : 0) as 0 | 1,
         baseRate: r.base_rate ?? undefined,
+        resolvedOn: (r.resolved_at ?? '').slice(0, 10),
       }));
 
       const ledger = formatLedgerSummary({
         resolvedToday: resolvedToday as unknown as Call[],
-        allScored,
+        scored: scoredRows,
         openCount: openRows[0]?.n ?? 0,
         nextResolvesOn: openRows[0]?.next_resolves ?? null,
       });
