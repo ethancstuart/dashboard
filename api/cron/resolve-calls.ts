@@ -1,6 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { resolveOutcome, fxDepreciationPct } from '../_lib/calls.js';
+import {
+  resolveOutcome,
+  fxDepreciationPct,
+  coverageRequirement,
+  daysSinceResolution,
+  UNRESOLVABLE_GRACE_DAYS,
+} from '../_lib/calls.js';
 import { usgsCountUrl, type RegionBox } from '../_lib/seismicity.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
@@ -27,6 +33,8 @@ interface DueCall {
   country_code: string;
   made_on: string;
   resolves_on: string;
+  /** Frozen at issue. The coverage requirement is derived from it, not hardcoded. */
+  horizon_days: number;
   threshold: number;
   threshold_pct: number | null;
   reference_value: number | null;
@@ -44,8 +52,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const due = (await sql`
       SELECT id, kind, country_code, made_on::text AS made_on, resolves_on::text AS resolves_on,
-             threshold, threshold_pct::float AS threshold_pct, reference_value::float AS reference_value,
-             resolver_params
+             horizon_days, threshold, threshold_pct::float AS threshold_pct,
+             reference_value::float AS reference_value, resolver_params
       FROM calls
       WHERE status = 'pending' AND resolves_on <= CURRENT_DATE
       ORDER BY resolves_on ASC
@@ -55,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let hits = 0;
     let misses = 0;
     let unresolvable = 0;
+    // Thin coverage, but inside the grace window — still pending, not settled.
+    let stillWaiting = 0;
     let errored = 0;
 
     for (const call of due) {
@@ -108,7 +118,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const d = (await r.json()) as { count?: unknown };
           if (typeof d.count !== 'number' || !Number.isFinite(d.count)) {
             console.error(`[resolve-calls] USGS returned no numeric count for call ${call.id} — left pending`);
-            unresolvable++;
+            // Left PENDING, so it is awaiting evidence — not settled. Counting
+            // it as unresolvable made the completion log call a pending row
+            // "settled", which a reader would act on.
+            stillWaiting++;
             continue;
           }
           count = d.count;
@@ -125,25 +138,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // in the last fortnight, so real misses would have been manufactured
           // out of a collector gap on the very first resolution day. A call is
           // only resolvable if the resolver actually observed the country.
-          const coverage = (await sql`
-          SELECT COUNT(*)::int AS measurements
-          FROM ooni_measurements
-          WHERE country_code = ${call.country_code}
-            AND measurement_date >= ${call.made_on}::date
-            AND measurement_date <= ${call.resolves_on}::date
-        `) as unknown as Array<{ measurements: number }>;
+          // AND THE GATE IS A DENSITY, NOT A BOOLEAN. It used to test `=== 0`,
+          // so a SINGLE measurement row anywhere in a fourteen-day window
+          // certified the country as observed, and a call with no block seen
+          // was then written as an irreversible public MISS.
+          //
+          // Measured against the live 2026-09-05 cohort on 2026-08-28: SD and
+          // SS each had exactly ONE covered day and would have resolved MISS.
+          // Sudan and South Sudan are among the most shutdown-affected
+          // countries on earth; publishing "no censorship event" for them off
+          // one probe-day is wrong on the facts.
+          //
+          // Day count alone is not enough either: Cuba had 15 of 15 days
+          // covered on 479 measurements against Russia's 95,531, a 200x spread.
+          // So both dimensions, and BOTH DERIVED FROM THE WINDOW, so a future
+          // kind with a different horizon is in scope by construction rather
+          // than by someone remembering to add it to a list.
+          //
+          // The structural finding underneath, which belongs on /methodology:
+          // the thin countries are CF, ML, TD, SS, NE, SD — Sahel and Horn
+          // conflict states. OONI's coverage is ANTI-CORRELATED with the thing
+          // it measures, because volunteers are thinnest where running a
+          // measurement tool is most dangerous. The countries we most want to
+          // be right about are the ones we have least evidence for.
 
-          if ((coverage[0]?.measurements ?? 0) === 0) {
-            console.error(
-              `[resolve-calls] call ${call.id} (${call.country_code}) has NO OONI coverage in ` +
-                `[${call.made_on}, ${call.resolves_on}] — left pending rather than scored a miss`,
-            );
-            unresolvable++;
-            continue;
-          }
-
+          // EVIDENCE FIRST, AND THE ASYMMETRY IS THE WHOLE POINT.
+          //
+          // An independent review caught the previous ordering: the coverage
+          // gate ran before the evidence query, so a sparse country that DID
+          // record a confirmed block was withheld instead of scored as a hit.
+          // That is wrong, because the two directions are not epistemically
+          // symmetric:
+          //
+          //   a confirmed block OBSERVED is positive evidence. The event
+          //   happened. Thin coverage does not weaken it — we saw it.
+          //
+          //   NO block observed is only evidence of ABSENCE if we looked hard
+          //   enough. That is the case the coverage gate exists for, and the
+          //   only case it may govern.
+          //
+          // So a hit resolves on the evidence alone, and the density gate
+          // applies solely to the would-be miss.
           const evidence = (await sql`
-          SELECT COUNT(*)::int AS n
+          SELECT COUNT(DISTINCT measurement_date)::int AS n
           FROM ooni_measurements
           WHERE country_code = ${call.country_code}
             AND confirmed_blocked > 0
@@ -151,8 +188,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             AND measurement_date <= ${call.resolves_on}::date
         `) as unknown as Array<{ n: number }>;
 
-          count = evidence[0]?.n ?? 0;
-          outcome = resolveOutcome(count, call.threshold);
+          const blockedDays = evidence[0]?.n ?? 0;
+          const wouldBeHit = resolveOutcome(blockedDays, call.threshold) === 1;
+
+          // Coverage is queried ONLY here, inside the would-be-miss branch.
+          // It cannot gate a hit even by failing, and we do not pay for a query
+          // whose result the hit path ignores.
+          if (wouldBeHit) {
+            count = blockedDays;
+            outcome = 1;
+          } else {
+            const coverage = (await sql`
+          SELECT COUNT(DISTINCT measurement_date)::int AS covered_days,
+                 COALESCE(SUM(total_measurements), 0)::int AS measurements
+          FROM ooni_measurements
+          WHERE country_code = ${call.country_code}
+            AND measurement_date >= ${call.made_on}::date
+            AND measurement_date <= ${call.resolves_on}::date
+        `) as unknown as Array<{ covered_days: number; measurements: number }>;
+
+            const coveredDays = coverage[0]?.covered_days ?? 0;
+            const observed = coverage[0]?.measurements ?? 0;
+            const req = coverageRequirement(call.horizon_days);
+
+            if (coveredDays < req.minDays || observed < req.minMeasurements) {
+              const why =
+                `resolver coverage ${coveredDays}/${req.minDays} days, ` +
+                `${observed}/${req.minMeasurements} measurements in [${call.made_on}, ${call.resolves_on}]`;
+              console.error(`[resolve-calls] call ${call.id} (${call.country_code}) unresolvable — ${why}`);
+
+              // GRACE FIRST. Marking terminally on the resolution day removes the
+              // call from the retry set forever, because this job only ever
+              // selects status='pending'. OONI's ingest lags ~24h and
+              // source-ooni.ts fetches only `since = yesterday`, so late evidence
+              // and manual backfills are both real.
+              const overdueBy = daysSinceResolution(call.resolves_on);
+              if (overdueBy < UNRESOLVABLE_GRACE_DAYS) {
+                stillWaiting++;
+                continue;
+              }
+
+              // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
+              // docs/migrations/2026-08-28-calls-unresolvable-status.sql, applied
+              // by hand, while pushing to main deploys. If the write is rejected
+              // we fall back to leaving it pending — still not scored as a miss,
+              // which is the property that matters. A missing migration must
+              // never become a false public verdict.
+              try {
+                await sql`
+                UPDATE calls
+                SET status = 'unresolvable', void_reason = ${why}, resolved_at = NOW()
+                WHERE id = ${call.id} AND status = 'pending'
+              `;
+                unresolvable++;
+              } catch (e) {
+                console.error(
+                  `[resolve-calls] could not mark call ${call.id} unresolvable (migration not applied?) — ` +
+                    `left pending, still NOT scored: ${e instanceof Error ? e.message : String(e)}`,
+                );
+                stillWaiting++;
+              }
+              continue;
+            }
+            count = blockedDays;
+            outcome = 0;
+          }
         } else {
           // An unknown kind must NEVER fall into another kind's resolver — that
           // is how a wrong criterion resolves a call silently. Before this
@@ -181,7 +281,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(
       `[resolve-calls] due ${due.length} — ${hits} hit, ${misses} miss, ` +
-        `${unresolvable} unresolvable (left pending), ${errored} errored`,
+        `${unresolvable} unresolvable (settled, never scored), ` +
+        `${stillWaiting} awaiting late evidence (still pending), ${errored} errored`,
     );
     return res.status(200).json({
       ok: true,
@@ -189,7 +290,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       resolved: hits + misses,
       hits,
       misses,
+      /** Settled: past the grace window with too little evidence. Never scored. */
       unresolvable,
+      /** Still pending: matured but inside the grace window, or awaiting retry. */
+      still_waiting: stillWaiting,
       errored,
     });
   } catch (err) {

@@ -73,6 +73,92 @@ export type CallKind = 'censorship_event' | 'fx_devaluation' | 'seismicity_windo
  */
 export const CALIBRATION_KINDS: ReadonlySet<string> = new Set(['seismicity_window']);
 
+/**
+ * The ONLY statuses that carry an outcome and may be scored.
+ *
+ * This is an ALLOW-list on purpose, and the direction is the point. Every
+ * scoring surface used to select `WHERE status <> 'pending'` and then map
+ * `status === 'hit' ? 1 : 0` — under which every non-hit row scores as a MISS.
+ * So `void`, a status that exists precisely because a call could NOT be
+ * honestly resolved, was already being counted as a wrong forecast. Adding
+ * `unresolvable` under that mapping would have silently manufactured exactly
+ * the false miss it was introduced to prevent.
+ *
+ * As an allow-list, a NEW status is excluded from scoring by default and has
+ * to prove itself in scope. As a deny-list of things to skip, a new status
+ * would be scored by omission the day someone adds one — which is the failure
+ * this repo has legislated against more than once.
+ */
+export const SCORED_STATUSES: ReadonlySet<string> = new Set(['hit', 'miss']);
+
+/** True when a row carries a real outcome and belongs in a Brier computation. */
+export function isScored(status: string): boolean {
+  return SCORED_STATUSES.has(status);
+}
+
+/**
+ * How much evidence the resolver must have seen before a call may be scored.
+ *
+ * Absence of evidence is not evidence of absence, and the previous gate did not
+ * say so: it tested `measurements === 0`, which meant ONE row anywhere in a
+ * fourteen-day window certified a country as observed. A call with no block
+ * seen was then written as an irreversible public miss. On the live 2026-09-05
+ * cohort, SD and SS each had exactly one covered day.
+ *
+ * Two dimensions, because either alone is defeatable. Days alone: Cuba had 15
+ * of 15 days on 479 measurements against Russia's 95,531. Volume alone: a
+ * single busy day would certify a fortnight nobody watched.
+ *
+ * BOTH DERIVED FROM THE WINDOW, so a kind with a different horizon is in scope
+ * by construction rather than because somebody remembered to extend a list.
+ *
+ * The per-day floor is a judgement and is stated as one: below roughly fifty
+ * measurements a country-day is one or two probes, and one volunteer's network
+ * conditions should not decide a public verdict. It is NOT tuned to a
+ * publishing count — sizing it against the cohort is reported alongside, so the
+ * choice stays auditable rather than fitted.
+ */
+export const MIN_MEASUREMENTS_PER_REQUIRED_DAY = 50;
+
+export interface CoverageRequirement {
+  minDays: number;
+  minMeasurements: number;
+}
+
+/**
+ * How long a matured call waits for late evidence before it is declared
+ * unresolvable.
+ *
+ * Marking on the resolution day itself is wrong and an independent review
+ * caught it: `resolve-calls` only ever selects `status = 'pending'`, so a
+ * terminal write removes the call from the retry set permanently. OONI's
+ * ingest lags roughly 24 hours and `source-ooni.ts` fetches only
+ * `since = yesterday`, so a run that misses leaves a hole that a later
+ * backfill or a collector fix could still fill — and a call marked terminal on
+ * day one can never benefit from either.
+ *
+ * So: below the grace period a thin call stays pending, exactly as before.
+ * Past it, the evidence is not coming and the row is settled with its reason.
+ * Either way it is never scored as a miss, which is the property that matters.
+ */
+export const UNRESOLVABLE_GRACE_DAYS = 7;
+
+/** Whole days elapsed since a call matured. Both inputs are ISO dates (UTC). */
+export function daysSinceResolution(resolvesOn: string, now: Date = new Date()): number {
+  const due = Date.parse(`${resolvesOn}T00:00:00Z`);
+  if (!Number.isFinite(due)) return 0;
+  return Math.floor((now.getTime() - due) / 86_400_000);
+}
+
+export function coverageRequirement(horizonDays: number): CoverageRequirement {
+  // Half the declared window, rounded up, floored at one day so a degenerate
+  // horizon can never produce a zero requirement — which would restore the
+  // exact boolean gate this replaces.
+  const h = Number.isFinite(horizonDays) && horizonDays > 0 ? horizonDays : 1;
+  const minDays = Math.max(1, Math.ceil(h / 2));
+  return { minDays, minMeasurements: minDays * MIN_MEASUREMENTS_PER_REQUIRED_DAY };
+}
+
 export interface Call {
   id?: number;
   /** ISO date the call was made. */
@@ -88,7 +174,12 @@ export interface Call {
   claim: string;
   /** The named external source that decides it. */
   resolver: string;
-  status: 'pending' | 'hit' | 'miss';
+  /**
+   * `void` — our criterion was unsound; we withdrew it.
+   * `unresolvable` — the resolver did not observe enough evidence to score it.
+   * Neither carries an outcome; see SCORED_STATUSES.
+   */
+  status: 'pending' | 'hit' | 'miss' | 'void' | 'unresolvable';
   /** Count of qualifying external events found at resolution time. */
   evidenceCount?: number;
 }

@@ -7,6 +7,7 @@ import {
   independentUnits,
   resolutionBatches,
   MIN_RESOLUTION_BATCHES,
+  isScored,
   type ScoredCall,
 } from './_lib/calls.js';
 import { shell, esc, pct } from './_lib/ssr-shell.js';
@@ -43,6 +44,7 @@ interface CallRow {
   base_rate: number | null;
   resolves_on: string;
   status: string;
+  void_reason?: string | null;
 }
 
 const KIND_LABEL: Record<string, string> = {
@@ -88,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // this — see `scoredRows`.
     const resolved = (await sql`
       SELECT id, kind, country_code, claim, probability::float AS probability,
-             base_rate::float AS base_rate, resolves_on::text AS resolves_on, status
+             base_rate::float AS base_rate, resolves_on::text AS resolves_on, status, void_reason
       FROM calls WHERE status <> 'pending'
       ORDER BY resolved_at DESC LIMIT 40
     `) as unknown as CallRow[];
@@ -100,7 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const scoredRows = (await sql`
       SELECT kind, country_code, probability::float AS probability, base_rate::float AS base_rate,
              status, resolved_at::text AS resolved_at
-      FROM calls WHERE status <> 'pending' AND kind <> 'seismicity_window'
+      FROM calls WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
     `) as unknown as Array<{
       kind: string;
       country_code: string;
@@ -113,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const totals = (await sql`
       SELECT
         COUNT(*) FILTER (WHERE status = 'pending' AND kind <> 'seismicity_window')::int AS open,
-        COUNT(*) FILTER (WHERE status <> 'pending' AND kind <> 'seismicity_window')::int AS resolved,
+        COUNT(*) FILTER (WHERE status IN ('hit','miss') AND kind <> 'seismicity_window')::int AS resolved,
         COUNT(*) FILTER (WHERE status = 'hit' AND kind <> 'seismicity_window')::int AS hits,
         MIN(resolves_on) FILTER (WHERE status = 'pending')::text AS next_resolves,
         MIN(made_on)::text AS first_call
@@ -273,9 +275,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     }
 
-    if (resolved.length > 0) {
+    // Scored and unscored are rendered SEPARATELY. Previously this list
+    // printed `status === 'hit' ? 'HIT' : 'MISS'` over everything that was not
+    // pending, so a void call — and now an unresolvable one — displayed to the
+    // public as a MISS. A row we could not score must never be shown as a
+    // forecast we got wrong.
+    const scoredDisplay = resolved.filter((c) => isScored(c.status));
+    const unscoredDisplay = resolved.filter((c) => !isScored(c.status));
+
+    if (scoredDisplay.length > 0) {
       parts.push('<div class="rule"></div><div class="kicker">Resolved</div><h2>Including where we were wrong</h2>');
-      const ordered = [...resolved].sort(
+      // Worst-first, unconditionally. There is no ordering in which this list
+      // opens with our best result.
+      const ordered = [...scoredDisplay].sort(
         (a, b) =>
           Math.abs((b.status === 'hit' ? 1 : 0) - b.probability) -
           Math.abs((a.status === 'hit' ? 1 : 0) - a.probability),
@@ -285,6 +297,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `<a class="row ${c.status === 'hit' ? 'hit' : 'miss'}" href="/call/${c.id}"><span class="lead">${esc(c.country_code)}</span>` +
             `<span class="det">${esc(c.claim)} — said ${pct(c.probability)}</span>` +
             `<span class="trail">${c.status === 'hit' ? 'HIT' : 'MISS'}</span></a>`,
+        );
+      }
+    }
+
+    // Shown, with the reason, and excluded from every number above. Silently
+    // dropping a call the resolver could not score is the goalpost-move this
+    // system exists to prevent — and from outside it is indistinguishable from
+    // dropping one we expected to lose.
+    if (unscoredDisplay.length > 0) {
+      parts.push(
+        '<div class="rule"></div><div class="kicker">Not scored</div>' +
+          '<h2>Calls we could not honestly resolve</h2>' +
+          '<p class="lede">These carry no outcome and are excluded from every number above. ' +
+          'A call is <strong>void</strong> when our own criterion was unsound, and ' +
+          '<strong>unresolvable</strong> when the resolver did not observe the country densely ' +
+          'enough to score it either way. Neither is a forecast we got wrong, and neither is ' +
+          'ever deleted.</p>',
+      );
+      for (const c of unscoredDisplay) {
+        const reason = c.void_reason ? ` — ${c.void_reason}` : '';
+        parts.push(
+          `<a class="row pending" href="/call/${c.id}"><span class="lead">${esc(c.country_code)}</span>` +
+            `<span class="det">${esc(c.claim)} — said ${pct(c.probability)}${esc(reason)}</span>` +
+            `<span class="trail">${esc(c.status.toUpperCase())}</span></a>`,
         );
       }
     }
