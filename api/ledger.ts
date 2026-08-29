@@ -7,6 +7,7 @@ import {
   resolutionBatches,
   MIN_RESOLUTION_BATCHES,
   publishableSkill,
+  coverageRequirement,
   isScored,
   type ScoredCall,
 } from './_lib/calls.js';
@@ -160,6 +161,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'does not, and that is a valid result we expect to publish. It is also why we withhold any skill number ' +
         'until three independent resolution batches exist: one fortnight cannot separate a forecasting method ' +
         'from the weather it happened to land in.</p>',
+    );
+
+    // THE UNRESOLVABLE PROJECTION, COMPUTED AT RENDER TIME.
+    //
+    // Deliberately not a literal. The window for the next cohort is still
+    // filling, so any number written into this file today is wrong tomorrow —
+    // the delayed-fuse bug this project already has a rule about. Recomputing
+    // per request keeps the published figure true as evidence arrives, and it
+    // falls silently back to no claim if the query fails rather than printing
+    // a stale one.
+    let dueProjection: { total: number; held: number; on: string } | null = null;
+    try {
+      if (t.next_resolves) {
+        const due = (await sql`
+          SELECT c.country_code, c.horizon_days,
+                 COUNT(DISTINCT o.measurement_date)::int AS days,
+                 COALESCE(SUM(o.total_measurements), 0)::int AS meas,
+                 COUNT(DISTINCT o.measurement_date) FILTER (WHERE o.confirmed_blocked > 0)::int AS blocked_days
+          FROM calls c
+          LEFT JOIN ooni_measurements o
+            ON o.country_code = c.country_code
+           AND o.measurement_date >= c.made_on
+           AND o.measurement_date <= c.resolves_on
+          WHERE c.kind = 'censorship_event' AND c.status = 'pending'
+            AND c.resolves_on = ${t.next_resolves}::date
+          GROUP BY c.country_code, c.horizon_days
+        `) as unknown as Array<{ horizon_days: number; days: number; meas: number; blocked_days: number }>;
+        if (due.length > 0) {
+          const held = due.filter((r) => {
+            // A block we DID observe resolves as a hit regardless of density —
+            // the gate governs only the would-be miss.
+            if (r.blocked_days >= 1) return false;
+            const req = coverageRequirement(r.horizon_days);
+            return r.days < req.minDays || r.meas < req.minMeasurements;
+          }).length;
+          dueProjection = { total: due.length, held, on: t.next_resolves };
+        }
+      }
+    } catch {
+      // No claim rather than a stale one.
+    }
+
+    parts.push(
+      '<div class="rule"></div><div class="kicker">When we cannot score a call</div>' +
+        '<h2>Some calls come due against evidence we never got</h2>' +
+        '<p class="lede">OONI is a volunteer network, and its coverage is thinnest in precisely the ' +
+        'places where running a measurement tool is most dangerous — so the countries we most want to ' +
+        'be right about are the ones we have least evidence for.</p>' +
+        '<p class="lede">Before a call is scored, we ask whether we looked hard enough to be entitled ' +
+        'to an answer. A censorship call is scored only if OONI observed that country on at least half ' +
+        'the days in the call’s window, across enough measurements that one volunteer’s network ' +
+        'conditions cannot decide a public verdict. Below that line the call is marked ' +
+        '<strong>unresolvable</strong>: it stays on the book, it carries the reason, and it is excluded ' +
+        'from every number on this page.</p>' +
+        '<p class="lede">The rule cuts one way only. <strong>A confirmed block we did observe resolves ' +
+        'the call as a hit no matter how thin the coverage</strong> — seeing something happen is ' +
+        'evidence that it happened. It is the <em>absence</em> of a block that needs a well-observed ' +
+        'window to mean anything.</p>' +
+        '<p class="lede">Unresolvable is not the same as void. A call is <strong>void</strong> when our ' +
+        'own criterion was unsound — our mistake, withdrawn by us. It is <strong>unresolvable</strong> ' +
+        'when the world did not supply enough evidence to judge either way. Neither is ever scored, and ' +
+        'neither is ever deleted.</p>' +
+        (dueProjection
+          ? `<p class="lede">On current data we expect ${dueProjection.held} of the ` +
+            `${dueProjection.total} calls resolving on ${esc(dueProjection.on)} to be unresolvable on ` +
+            'these grounds. That window is still filling, so the figure will move — it is recomputed ' +
+            'every time this page loads, and the exact count and country list are published with the ' +
+            'result.</p>'
+          : '') +
+        '<p class="lede">We are stating this before the first calls resolve, because a rule published ' +
+        'afterwards is not a rule — it is an explanation.</p>',
     );
 
     // The honest hero. With nothing resolved, report the open book rather than
