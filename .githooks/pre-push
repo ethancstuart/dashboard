@@ -28,4 +28,58 @@ fi
 # plant-tested, and the typecheck half was assumed. `npm run typecheck` runs
 # tsc against tsconfig.json AND tsconfig.api.json.
 npm run typecheck || { echo "push blocked: typecheck (src and/or api)"; exit 1; }
-echo "pre-push: clean"
+
+# The test suite, then EVERY guard the project defines — derived from
+# package.json, not listed here.
+#
+# Added 2026-08-28 after an audit found this hook ran ONLY prettier and
+# typecheck, while `npm run validate` ran five more checks that nothing on the
+# push path executed. Pushing to main DEPLOYS and GitHub Actions reports
+# afterwards, so on the one path that ships, "every fix ships with a guard" was
+# enforced by habit rather than by anything.
+#
+# THE LIST IS DERIVED, and that correction came from an independent review of
+# the first version of this hook. That version named the four `check:*` scripts
+# one by one — so the FIFTH guard, whenever someone wrote it, would have passed
+# this hook by omission until a person remembered to edit this file. That is
+# precisely the enumerate-don't-derive failure this repo has legislated against,
+# committed in a change whose own message was about deriving.
+#
+# Now the hook asks package.json which guards exist. A new `check:*` script is
+# enforced the moment it is defined, with no edit here — it fails by default
+# rather than passing by omission.
+#
+# WHY THE `check:` PREFIX AND NOT `npm run validate`, which is the project's own
+# declaration of everything that must pass: measured 2026-08-29, `validate`
+# FAILS in a clean worktree. Its `format:check` runs over the whole tree and
+# trips on untracked scratch another process leaves behind
+# (docs/figma-mirror.snapshot.json, scripts/check-figma-mirror.mjs). Deriving
+# from it would block every push on files the pusher never touched — the exact
+# thing the delta-scoped prettier above exists to avoid. The prefix is the
+# property that actually generalises here.
+#
+# Measured: the whole suite is ~460 tests in 1.8s and the guards total ~6s. The
+# "a slow hook gets skipped" argument does not apply at this cost, and each
+# guard exists because a real defect reached production past its absence.
+#
+# Deliberately NOT scoped to changed files, unlike prettier above: these are
+# repo-wide properties. A change to file A can break a guard about file B —
+# that is the entire reason they are derived rather than local.
+npm run test || { echo "push blocked: tests"; exit 1; }
+
+# `set -e` would abort here on a node failure BEFORE the explicit message below
+# ever printed, and `2>/dev/null` would have hidden the reason — a silent
+# refusal with no diagnosis. An independent review caught that. The push still
+# failed closed, which is the right direction, but "blocked for reasons unknown"
+# is how people learn to reach for the escape hatch.
+CHECKS=$(node -e "const s=require('./package.json').scripts||{}; console.log(Object.keys(s).filter(function(k){return k.indexOf('check:')===0}).join(' '))" 2>&1) || {
+  echo "push blocked: could not read package.json scripts — $CHECKS"; exit 1; }
+if [ -z "$CHECKS" ]; then
+  # A hook that silently runs no guards is the false-proof failure this repo
+  # already paid for once. If the list is empty, refuse rather than report clean.
+  echo "push blocked: derived an EMPTY guard list from package.json"; exit 1
+fi
+for c in $CHECKS; do
+  npm run "$c" || { echo "push blocked: $c"; exit 1; }
+done
+echo "pre-push: clean ($CHECKS)"
