@@ -2,10 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import {
   brierScore,
-  brierSkillScore,
   independentUnits,
   resolutionBatches,
   MIN_RESOLUTION_BATCHES,
+  publishableSkill,
   baseRate,
   calibrationBins,
   murphyDecomposition,
@@ -181,8 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       byKind[kind].brier = s.length > 0 ? num(brierScore(s)) : null;
       // Skill is withheld until the kind has resolved in enough independent
       // batches for the number to separate skill from one fortnight's weather.
-      byKind[kind].skill_vs_base_rate =
-        s.length > 0 && byKind[kind].batches >= MIN_RESOLUTION_BATCHES ? num(brierSkillScore(s)) : null;
+      byKind[kind].skill_vs_base_rate = num(publishableSkill({ calls: s, batches: byKind[kind].batches }));
     }
 
     return res.status(200).json({

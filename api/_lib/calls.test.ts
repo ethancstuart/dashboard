@@ -13,8 +13,8 @@ import {
   blendRates,
   fxThreshold,
   fxDepreciationPct,
-  formatLedgerLine,
   formatLedgerSummary,
+  type LedgerSummaryRow,
   type ScoredCall,
   type Call,
   independentUnits,
@@ -234,42 +234,14 @@ describe('clampProbability', () => {
   });
 });
 
-describe('formatLedgerLine', () => {
-  const call = (status: Call['status']): Call => ({
-    madeOn: '2026-08-01',
-    kind: 'censorship_event',
-    countryCode: 'RU',
-    probability: 0.7,
-    horizonDays: 14,
-    resolvesOn: '2026-08-15',
-    claim: 'x',
-    resolver: 'OONI',
-    status,
-  });
-
-  it('says so plainly when nothing resolved', () => {
-    expect(formatLedgerLine([], [])).toBe('No calls resolved today.');
-  });
-
-  it('reports count, hits, Brier and skill', () => {
-    const line = formatLedgerLine([call('hit'), call('miss')], [c(0.9, 1), c(0.1, 0)]);
-    expect(line).toContain('2 calls resolved');
-    expect(line).toContain('1 hit');
-    expect(line).toContain('Brier');
-  });
-
-  it('reports a negative skill score rather than hiding it', () => {
-    const line = formatLedgerLine([call('miss'), call('hit')], [cb(0.9, 0, 0.5), cb(0.1, 1, 0.5)]);
-    expect(line).toContain('-');
-    expect(line).toContain('vs base rate');
-  });
-
-  it('omits skill entirely when the calls carry no base rate', () => {
-    const line = formatLedgerLine([call('miss'), call('hit')], [c(0.9, 0), c(0.1, 1)]);
-    expect(line).not.toContain('vs base rate');
-    expect(line).not.toContain('NaN');
-  });
-});
+/*
+ * `formatLedgerLine` and its four tests were DELETED, not updated.
+ *
+ * It computed a pooled brierSkillScore with no batch gate and printed it beside
+ * a raw hit count — the same defect as formatLedgerSummary's. It had no
+ * production caller, which was luck, not design. Gating it would have left a
+ * second path to the number the ledger withholds; deleting it leaves one.
+ */
 
 describe('blendRates', () => {
   it('leans on the recent rate by default', () => {
@@ -305,60 +277,121 @@ describe('formatLedgerSummary — the standing line at the top of the brief', ()
     status,
   });
 
+  const row = (
+    kind: string,
+    probability: number,
+    outcome: 0 | 1,
+    baseRate: number | undefined,
+    resolvedOn: string,
+  ): LedgerSummaryRow => ({ kind, probability, outcome, baseRate, resolvedOn });
+
   it('is honest on day one instead of inventing a record', () => {
-    expect(formatLedgerSummary({ resolvedToday: [], allScored: [], openCount: 0 })).toBe('No calls on the book yet.');
+    expect(formatLedgerSummary({ resolvedToday: [], scored: [], openCount: 0 })).toBe('No calls on the book yet.');
   });
 
   it('reports the open book before anything has resolved', () => {
     const line = formatLedgerSummary({
       resolvedToday: [],
-      allScored: [],
+      scored: [],
       openCount: 39,
       nextResolvesOn: '2026-09-05',
     });
     expect(line).toBe('39 open, next resolves 2026-09-05');
   });
 
-  it('leads with what resolved once there is a record', () => {
-    const line = formatLedgerSummary({
-      resolvedToday: [mk('hit'), mk('miss')],
-      allScored: [c(0.84, 1), c(0.2, 0)],
-      openCount: 37,
-      nextResolvesOn: '2026-09-06',
-    });
-    expect(line).toContain('2 calls resolved · 1 hit');
-    expect(line).toContain('Brier');
-    expect(line).toContain('37 open');
-  });
-
-  it('prints a negative skill score rather than omitting it', () => {
+  /**
+   * THE 5 SEPTEMBER CASE, and the reason this function was rewritten.
+   *
+   * A test previously named `it('prints a negative skill score rather than
+   * omitting it')` asserted the OPPOSITE of this, and it passed. That is how
+   * the defect survived: the brief pooled every kind, applied no batch gate,
+   * and printed a skill figure that /ledger and /api/calls/ledger both
+   * correctly withheld. On 2026-09-05 that would have published, to
+   * subscribers, a cross-kind number from a SINGLE resolution batch.
+   *
+   * Publishing a negative number IS right — when it means something. One batch
+   * cannot separate a forecasting method from the fortnight it landed in, so
+   * the honest output is the refusal and its reason.
+   */
+  it('withholds skill from a single resolution batch, and says why', () => {
     const line = formatLedgerSummary({
       resolvedToday: [mk('miss')],
-      allScored: [cb(0.9, 0, 0.5), cb(0.1, 1, 0.5)],
+      scored: [row('censorship_event', 0.9, 0, 0.5, '2026-09-05'), row('censorship_event', 0.1, 1, 0.5, '2026-09-05')],
       openCount: 1,
     });
-    expect(line).toContain('-');
+    expect(line).toContain('skill withheld (1 of 3 batches)');
+    expect(line).not.toContain('vs base rate');
+    expect(line).toContain('Brier');
+  });
+
+  it('publishes skill — negative included — once enough batches exist', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [mk('miss')],
+      scored: [
+        row('censorship_event', 0.9, 0, 0.5, '2026-09-05'),
+        row('censorship_event', 0.1, 1, 0.5, '2026-09-19'),
+        row('censorship_event', 0.9, 0, 0.5, '2026-10-03'),
+      ],
+      openCount: 1,
+    });
     expect(line).toContain('vs base rate');
+    expect(line).toContain('-');
+  });
+
+  it('never pools across kinds', () => {
+    const line = formatLedgerSummary({
+      resolvedToday: [],
+      scored: [row('censorship_event', 0.9, 0, 0.5, '2026-09-05'), row('fx_devaluation', 0.2, 1, 0.25, '2026-09-06')],
+      openCount: 0,
+    });
+    // Two kinds, two separate readings, and no third combined figure.
+    expect(line).toContain('OONI Brier');
+    expect(line).toContain('FX Brier');
+    expect(line.match(/Brier/g)?.length).toBe(2);
+  });
+
+  it('refuses to call a climatology cohort a forecast', () => {
+    // Every row stated AT its base rate: skill is 0.000 by algebra. Printing a
+    // hard zero would read as a measurement. This is the live state of every
+    // censorship call issued from 2026-08-23 on.
+    const line = formatLedgerSummary({
+      resolvedToday: [],
+      scored: [
+        row('censorship_event', 0.1, 0, 0.1, '2026-09-05'),
+        row('censorship_event', 0.9, 1, 0.9, '2026-09-19'),
+        row('censorship_event', 0.1, 0, 0.1, '2026-10-03'),
+      ],
+      openCount: 0,
+    });
+    expect(line).toContain('stated at climatology — not a forecast');
+    expect(line).not.toContain('vs base rate');
+    expect(line).not.toContain('0%');
   });
 
   it('says nothing about skill when base rates are missing', () => {
     const line = formatLedgerSummary({
       resolvedToday: [mk('miss')],
-      allScored: [c(0.9, 0), c(0.1, 1)],
+      scored: [
+        row('censorship_event', 0.9, 0, undefined, '2026-09-05'),
+        row('censorship_event', 0.1, 1, undefined, '2026-09-19'),
+        row('censorship_event', 0.9, 0, undefined, '2026-10-03'),
+      ],
       openCount: 1,
     });
     expect(line).not.toContain('vs base rate');
     expect(line).not.toContain('NaN');
   });
 
-  it('omits skill rather than printing NaN when every outcome is identical', () => {
+  it("reports today's resolutions as a count, never as an accuracy rate", () => {
     const line = formatLedgerSummary({
-      resolvedToday: [mk('hit')],
-      allScored: [c(0.8, 1), c(0.7, 1)],
-      openCount: 0,
+      resolvedToday: [mk('hit'), mk('miss')],
+      scored: [],
+      openCount: 37,
+      nextResolvesOn: '2026-09-06',
     });
-    expect(line).not.toContain('NaN');
-    expect(line).toContain('Brier');
+    expect(line).toContain('2 resolved today, 1 hit');
+    expect(line).not.toContain('%');
+    expect(line).toContain('37 open');
   });
 });
 

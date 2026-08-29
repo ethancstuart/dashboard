@@ -241,6 +241,20 @@ export function baseRate(calls: ScoredCall[]): number {
  *
  * Positive means we beat that unit's own climatology. Zero or negative means we
  * did not, and that number publishes exactly as it comes out.
+ *
+ * DO NOT CALL THIS TO PUBLISH A NUMBER. Use `publishableSkill`, which carries
+ * the batch and climatology gates. This stays exported because it is a real
+ * statistical primitive with real tests — `calls.test.ts` and
+ * `resolution-rehearsal.test.ts` both exercise its NaN behaviour directly, and
+ * hiding it would delete that coverage rather than improve it.
+ *
+ * An independent review argued the export itself is the hole, since a new
+ * caller could reach it. The counter, recorded so the trade-off is visible
+ * rather than assumed: `skill-gate.test.ts` fails on any call OR import of
+ * this function outside this module, and that suite now runs in
+ * `.githooks/pre-push` — which is the gate that matters here, because pushing
+ * to main DEPLOYS and CI reports afterwards. A new ungated caller cannot reach
+ * production without the push being refused first.
  */
 export function brierSkillScore(calls: ScoredCall[]): number {
   if (calls.length === 0) return NaN;
@@ -248,6 +262,47 @@ export function brierSkillScore(calls: ScoredCall[]): number {
   const reference = calls.reduce((acc, c) => acc + ((c.baseRate as number) - c.outcome) ** 2, 0) / calls.length;
   if (reference === 0) return NaN; // reference was perfect — skill undefined
   return 1 - brierScore(calls) / reference;
+}
+
+/**
+ * THE ONLY SKILL NUMBER THAT MAY BE PUBLISHED.
+ *
+ * `brierSkillScore` above is the raw arithmetic and carries no gate, which is
+ * how the daily brief came to print a pooled cross-kind skill figure that
+ * `/ledger` and `/api/calls/ledger` both correctly withheld. Two callers had
+ * their own copy of the gate, and two had none — and one of the ungated ones
+ * had no production caller only by luck.
+ *
+ * A shared HELPER would not have fixed that: a fifth caller could still reach
+ * the raw function. So the gate is STRUCTURAL. `brierSkillScore` is now called
+ * nowhere outside this module, `skill-gate.test.ts` fails if that stops being
+ * true, and every publication path goes through here — where the gate cannot
+ * be forgotten because it is not a separate step.
+ *
+ * Returns NaN, deliberately, when a number should not be published:
+ *   - fewer than MIN_RESOLUTION_BATCHES independent resolution batches. One
+ *     fortnight cannot separate a forecasting method from the weather it
+ *     happened to land in.
+ *   - a cohort whose every row was stated AT its base rate. Its skill is
+ *     0.000 by algebra rather than by measurement, and a hard zero printed as
+ *     a result reads as a finding. It is not one.
+ *
+ * NaN is a real answer here — "not enough resolved calls to say" — and callers
+ * must render it as an absence with its reason, never as a 0.
+ */
+export function publishableSkill(opts: { calls: ScoredCall[]; batches: number }): number {
+  const { calls, batches } = opts;
+  if (calls.length === 0) return NaN;
+  if (batches < MIN_RESOLUTION_BATCHES) return NaN;
+  // Every row priced at its own baseline: numerator and denominator are the
+  // same sum, so the result is an identity, not a measurement.
+  if (calls.every((c) => c.baseRate !== undefined && c.probability === c.baseRate)) return NaN;
+  return brierSkillScore(calls);
+}
+
+/** How many of a cohort's rows could contribute skill at all. */
+export function informativeRows(calls: ScoredCall[]): number {
+  return calls.filter((c) => c.baseRate === undefined || c.probability !== c.baseRate).length;
 }
 
 /**
@@ -519,26 +574,64 @@ export function blendRates(recent: number, longRun: number, recentWeight = 0.6):
  * Honest on day one: with nothing resolved yet it reports the open book rather
  * than inventing a record, and says so.
  */
+export interface LedgerSummaryRow {
+  kind: string;
+  probability: number;
+  baseRate?: number;
+  outcome: 0 | 1;
+  /** YYYY-MM-DD. Distinct dates are the batch count. */
+  resolvedOn: string;
+}
+
 export function formatLedgerSummary(opts: {
   resolvedToday: Call[];
-  allScored: ScoredCall[];
+  scored: LedgerSummaryRow[];
   openCount: number;
   nextResolvesOn?: string | null;
 }): string {
-  const { resolvedToday, allScored, openCount, nextResolvesOn } = opts;
+  const { resolvedToday, scored, openCount, nextResolvesOn } = opts;
   const parts: string[] = [];
 
   if (resolvedToday.length > 0) {
     const hits = resolvedToday.filter((c) => c.status === 'hit').length;
-    parts.push(`${resolvedToday.length} call${resolvedToday.length === 1 ? '' : 's'} resolved · ${hits} hit`);
+    // A count of today's resolutions, not an accuracy claim. Deliberately a
+    // raw fraction: "23%" invites comparison against a target nobody set, and
+    // a hit rate beside a negative skill score is the spurious-excellence trap
+    // — the near-certain calls resolve YES and flatter a book that added no
+    // skill at all.
+    parts.push(`${resolvedToday.length} resolved today, ${hits} hit`);
   }
 
-  if (allScored.length > 0) {
-    const bs = brierScore(allScored);
-    const skill = brierSkillScore(allScored);
-    parts.push(`Brier ${bs.toFixed(3)} over ${allScored.length}`);
-    if (!Number.isNaN(skill)) {
-      parts.push(`${skill >= 0 ? '+' : ''}${(skill * 100).toFixed(0)}% vs base rate`);
+  // PER KIND, NEVER POOLED. Censorship and FX have different resolvers,
+  // different base-rate estimators and different dependence structures, so a
+  // row-weighted average across them reports whichever kind wrote more rows.
+  const kinds = [...new Set(scored.map((r) => r.kind))].sort();
+  for (const kind of kinds) {
+    const rows = scored.filter((r) => r.kind === kind);
+    const calls: ScoredCall[] = rows.map((r) => ({
+      probability: r.probability,
+      outcome: r.outcome,
+      baseRate: r.baseRate,
+    }));
+    const batches = resolutionBatches(rows.map((r) => r.resolvedOn));
+    const skill = publishableSkill({ calls, batches });
+    const label = KIND_SHORT_LABEL[kind] ?? kind;
+    const bs = brierScore(calls);
+
+    if (Number.isFinite(skill)) {
+      parts.push(
+        `${label} Brier ${bs.toFixed(3)} over ${calls.length}, ` +
+          `${skill >= 0 ? '+' : ''}${(skill * 100).toFixed(0)}% vs base rate`,
+      );
+    } else if (informativeRows(calls) === 0) {
+      // Stated AT the base rate on every row: skill is 0.000 by algebra. A hard
+      // zero printed as a result would read as a measurement.
+      parts.push(`${label} Brier ${bs.toFixed(3)} over ${calls.length}, stated at climatology — not a forecast`);
+    } else {
+      parts.push(
+        `${label} Brier ${bs.toFixed(3)} over ${calls.length}, ` +
+          `skill withheld (${batches} of ${MIN_RESOLUTION_BATCHES} batches)`,
+      );
     }
   }
 
@@ -549,14 +642,20 @@ export function formatLedgerSummary(opts: {
   return parts.length > 0 ? parts.join(' · ') : 'No calls on the book yet.';
 }
 
-/** A one-line summary for the brief's ledger section. */
-export function formatLedgerLine(resolved: Call[], calls: ScoredCall[]): string {
-  if (resolved.length === 0) return 'No calls resolved today.';
-  const hits = resolved.filter((c) => c.status === 'hit').length;
-  const bs = brierScore(calls);
-  const skill = brierSkillScore(calls);
-  const skillText = Number.isNaN(skill)
-    ? 'skill n/a'
-    : `${skill >= 0 ? '+' : ''}${(skill * 100).toFixed(0)}% vs base rate`;
-  return `${resolved.length} call${resolved.length === 1 ? '' : 's'} resolved · ${hits} hit · Brier ${bs.toFixed(3)} · ${skillText}`;
-}
+const KIND_SHORT_LABEL: Record<string, string> = {
+  censorship_event: 'OONI',
+  fx_devaluation: 'FX',
+  seismicity_window: 'seismicity harness',
+};
+
+/*
+ * `formatLedgerLine` was DELETED here, not gated.
+ *
+ * It computed a pooled `brierSkillScore` with no batch gate and printed it
+ * alongside a raw hit count — the same defect as formatLedgerSummary's. It had
+ * no production caller, which is luck rather than design: it was one import
+ * away from publishing the number the ledger withholds.
+ *
+ * Gating it would have left a second path to the same claim. Deleting it means
+ * there is one, and skill-gate.test.ts keeps it that way.
+ */

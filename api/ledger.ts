@@ -2,11 +2,11 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import {
   brierScore,
-  brierSkillScore,
   baseRate,
   independentUnits,
   resolutionBatches,
   MIN_RESOLUTION_BATCHES,
+  publishableSkill,
   isScored,
   type ScoredCall,
 } from './_lib/calls.js';
@@ -227,7 +227,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const kBatches = resolutionBatches(rows.map((r) => (r.resolved_at ?? '').slice(0, 10)));
         const kHits = rows.filter((r) => r.status === 'hit').length;
         const kBrier = brierScore(ks);
-        const kSkill = kBatches >= MIN_RESOLUTION_BATCHES ? brierSkillScore(ks) : NaN;
+        const kSkill = publishableSkill({ calls: ks, batches: kBatches });
         const trail = Number.isFinite(kSkill)
           ? `skill ${kSkill >= 0 ? '+' : ''}${Math.round(kSkill * 100)}%`
           : 'skill withheld';
