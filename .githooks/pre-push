@@ -29,19 +29,42 @@ fi
 # tsc against tsconfig.json AND tsconfig.api.json.
 npm run typecheck || { echo "push blocked: typecheck (src and/or api)"; exit 1; }
 
-# The test suite and the four derived guards. Added 2026-08-28 after an audit
-# found this hook ran ONLY prettier and typecheck, while `npm run validate`
-# ran five more checks that nothing on the push path executed. Pushing to main
-# DEPLOYS and GitHub Actions reports afterwards, so on the one path that ships,
-# "every fix ships with a guard" was enforced by habit rather than by anything.
+# The test suite, then EVERY guard the project defines — derived from
+# package.json, not listed here.
 #
-# Measured before wiring: the whole suite is 454 tests in 1.81s and the four
-# guards total ~6s. The "a slow hook gets skipped" argument does not apply at
-# this cost — and each of these guards exists because a real defect reached
-# production past its absence.
+# Added 2026-08-28 after an audit found this hook ran ONLY prettier and
+# typecheck, while `npm run validate` ran five more checks that nothing on the
+# push path executed. Pushing to main DEPLOYS and GitHub Actions reports
+# afterwards, so on the one path that ships, "every fix ships with a guard" was
+# enforced by habit rather than by anything.
+#
+# THE LIST IS DERIVED, and that correction came from an independent review of
+# the first version of this hook. That version named the four `check:*` scripts
+# one by one — so the FIFTH guard, whenever someone wrote it, would have passed
+# this hook by omission until a person remembered to edit this file. That is
+# precisely the enumerate-don't-derive failure this repo has legislated against,
+# committed in a change whose own message was about deriving.
+#
+# Now the hook asks package.json which guards exist. A new `check:*` script is
+# enforced the moment it is defined, with no edit here — it fails by default
+# rather than passing by omission.
+#
+# Measured: the whole suite is ~460 tests in 1.8s and the guards total ~6s. The
+# "a slow hook gets skipped" argument does not apply at this cost, and each
+# guard exists because a real defect reached production past its absence.
+#
+# Deliberately NOT scoped to changed files, unlike prettier above: these are
+# repo-wide properties. A change to file A can break a guard about file B —
+# that is the entire reason they are derived rather than local.
 npm run test || { echo "push blocked: tests"; exit 1; }
-npm run check:llm-spend  || { echo "push blocked: check:llm-spend"; exit 1; }
-npm run check:collectors || { echo "push blocked: check:collectors"; exit 1; }
-npm run check:cron-auth  || { echo "push blocked: check:cron-auth"; exit 1; }
-npm run check:style-attr || { echo "push blocked: check:style-attr"; exit 1; }
-echo "pre-push: clean"
+
+CHECKS=$(node -e "const s=require('./package.json').scripts||{}; console.log(Object.keys(s).filter(function(k){return k.indexOf('check:')===0}).join(' '))" 2>/dev/null)
+if [ -z "$CHECKS" ]; then
+  # A hook that silently runs no guards is the false-proof failure this repo
+  # already paid for once. If the list cannot be derived, refuse the push.
+  echo "push blocked: could not derive check:* scripts from package.json"; exit 1
+fi
+for c in $CHECKS; do
+  npm run "$c" || { echo "push blocked: $c"; exit 1; }
+done
+echo "pre-push: clean ($CHECKS)"
