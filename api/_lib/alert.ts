@@ -167,13 +167,18 @@ async function claimNotification(
 
     // Claim. One statement decides AND records, so a concurrent run cannot
     // also decide yes.
+    // `prior` is captured EXPLICITLY from a pre-update snapshot rather than by
+    // a sub-SELECT inside RETURNING. The sub-SELECT form happens to read the
+    // statement-start snapshot under MVCC and so returns the old value, but
+    // relying on that is fragile and non-obvious — and this value is what a
+    // failed delivery restores.
     const claimed = (await sql`
-      UPDATE alert_state
-      SET last_sent = NOW(), send_count = send_count + 1
-      WHERE fingerprint = ${key}
-        AND (last_sent IS NULL OR NOW() - last_sent >= (${ALERT_REMINDER_HOURS} || ' hours')::interval)
-      RETURNING first_seen,
-                (SELECT last_sent FROM alert_state WHERE fingerprint = ${key}) AS prior
+      UPDATE alert_state a
+      SET last_sent = NOW(), send_count = a.send_count + 1
+      FROM (SELECT fingerprint, last_sent AS prior FROM alert_state WHERE fingerprint = ${key}) old
+      WHERE a.fingerprint = old.fingerprint
+        AND (a.last_sent IS NULL OR NOW() - a.last_sent >= (${ALERT_REMINDER_HOURS} || ' hours')::interval)
+      RETURNING a.first_seen, old.prior
     `) as unknown as Array<{ first_seen: string; prior: string | null }>;
 
     if (claimed.length === 0) return { send: false, ongoingHours: 0, previousSent: null };
@@ -292,7 +297,18 @@ async function deliver(a: AlertInput): Promise<AlertResult> {
  *
  * Returns the keys it stood down, so a caller can report honestly.
  */
-export async function clearStaleAlerts(prefix: string, activeKeys: string[], notSeenSince?: Date): Promise<string[]> {
+export async function clearStaleAlerts(
+  prefix: string,
+  activeKeys: string[],
+  /**
+   * REQUIRED, and required on purpose. When this defaulted to `new Date()` the
+   * cutoff was taken AFTER active conditions had refreshed their last_seen, so
+   * every row looked stale and a live condition missing from `activeKeys` would
+   * be stood down. A caller must capture this before raising any alert, which
+   * makes the safe usage the only usage the type system allows.
+   */
+  notSeenSince: Date,
+): Promise<string[]> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return [];
   try {
@@ -304,7 +320,7 @@ export async function clearStaleAlerts(prefix: string, activeKeys: string[], not
     // every active condition refreshes it at the top of raiseAlert, so a row
     // untouched since this run began was genuinely not observed. Derived from
     // the data rather than from the caller being complete.
-    const cutoff = (notSeenSince ?? new Date()).toISOString();
+    const cutoff = notSeenSince.toISOString();
     const rows = (await sql`
       SELECT fingerprint FROM alert_state
       WHERE fingerprint LIKE ${prefix + '%'}
@@ -313,8 +329,11 @@ export async function clearStaleAlerts(prefix: string, activeKeys: string[], not
     `) as unknown as Array<{ fingerprint: string }>;
     const cleared: string[] = [];
     for (const r of rows) {
-      await clearAlert(r.fingerprint);
-      cleared.push(r.fingerprint);
+      const result = await clearAlert(r.fingerprint);
+      // Only report what actually stood down. clearAlert keeps the row when
+      // delivery fails so it can retry, and reporting it as cleared anyway
+      // would tell the operator a condition was resolved when nobody was told.
+      if (result.delivered || result.detail === 'nothing_to_clear') cleared.push(r.fingerprint);
     }
     return cleared;
   } catch {
