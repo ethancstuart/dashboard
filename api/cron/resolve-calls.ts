@@ -161,18 +161,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // it measures, because volunteers are thinnest where running a
           // measurement tool is most dangerous. The countries we most want to
           // be right about are the ones we have least evidence for.
-          const coverage = (await sql`
-          SELECT COUNT(DISTINCT measurement_date)::int AS covered_days,
-                 COALESCE(SUM(total_measurements), 0)::int AS measurements
-          FROM ooni_measurements
-          WHERE country_code = ${call.country_code}
-            AND measurement_date >= ${call.made_on}::date
-            AND measurement_date <= ${call.resolves_on}::date
-        `) as unknown as Array<{ covered_days: number; measurements: number }>;
-
-          const coveredDays = coverage[0]?.covered_days ?? 0;
-          const observed = coverage[0]?.measurements ?? 0;
-          const req = coverageRequirement(call.horizon_days);
 
           // EVIDENCE FIRST, AND THE ASYMMETRY IS THE WHOLE POINT.
           //
@@ -203,48 +191,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const blockedDays = evidence[0]?.n ?? 0;
           const wouldBeHit = resolveOutcome(blockedDays, call.threshold) === 1;
 
-          if (!wouldBeHit && (coveredDays < req.minDays || observed < req.minMeasurements)) {
-            const why =
-              `resolver coverage ${coveredDays}/${req.minDays} days, ` +
-              `${observed}/${req.minMeasurements} measurements in [${call.made_on}, ${call.resolves_on}]`;
-            console.error(`[resolve-calls] call ${call.id} (${call.country_code}) unresolvable — ${why}`);
+          // Coverage is queried ONLY here, inside the would-be-miss branch.
+          // It cannot gate a hit even by failing, and we do not pay for a query
+          // whose result the hit path ignores.
+          if (wouldBeHit) {
+            count = blockedDays;
+            outcome = 1;
+          } else {
+            const coverage = (await sql`
+          SELECT COUNT(DISTINCT measurement_date)::int AS covered_days,
+                 COALESCE(SUM(total_measurements), 0)::int AS measurements
+          FROM ooni_measurements
+          WHERE country_code = ${call.country_code}
+            AND measurement_date >= ${call.made_on}::date
+            AND measurement_date <= ${call.resolves_on}::date
+        `) as unknown as Array<{ covered_days: number; measurements: number }>;
 
-            // GRACE FIRST. Marking terminally on the resolution day removes the
-            // call from the retry set forever, because this job only ever
-            // selects status='pending'. OONI's ingest lags ~24h and
-            // source-ooni.ts fetches only `since = yesterday`, so late evidence
-            // and manual backfills are both real.
-            const overdueBy = daysSinceResolution(call.resolves_on);
-            if (overdueBy < UNRESOLVABLE_GRACE_DAYS) {
-              stillWaiting++;
-              continue;
-            }
+            const coveredDays = coverage[0]?.covered_days ?? 0;
+            const observed = coverage[0]?.measurements ?? 0;
+            const req = coverageRequirement(call.horizon_days);
 
-            // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
-            // docs/migrations/2026-08-28-calls-unresolvable-status.sql, applied
-            // by hand, while pushing to main deploys. If the write is rejected
-            // we fall back to leaving it pending — still not scored as a miss,
-            // which is the property that matters. A missing migration must
-            // never become a false public verdict.
-            try {
-              await sql`
+            if (coveredDays < req.minDays || observed < req.minMeasurements) {
+              const why =
+                `resolver coverage ${coveredDays}/${req.minDays} days, ` +
+                `${observed}/${req.minMeasurements} measurements in [${call.made_on}, ${call.resolves_on}]`;
+              console.error(`[resolve-calls] call ${call.id} (${call.country_code}) unresolvable — ${why}`);
+
+              // GRACE FIRST. Marking terminally on the resolution day removes the
+              // call from the retry set forever, because this job only ever
+              // selects status='pending'. OONI's ingest lags ~24h and
+              // source-ooni.ts fetches only `since = yesterday`, so late evidence
+              // and manual backfills are both real.
+              const overdueBy = daysSinceResolution(call.resolves_on);
+              if (overdueBy < UNRESOLVABLE_GRACE_DAYS) {
+                stillWaiting++;
+                continue;
+              }
+
+              // DEPLOY-ORDER SAFE. `unresolvable` needs the CHECK constraint from
+              // docs/migrations/2026-08-28-calls-unresolvable-status.sql, applied
+              // by hand, while pushing to main deploys. If the write is rejected
+              // we fall back to leaving it pending — still not scored as a miss,
+              // which is the property that matters. A missing migration must
+              // never become a false public verdict.
+              try {
+                await sql`
                 UPDATE calls
                 SET status = 'unresolvable', void_reason = ${why}, resolved_at = NOW()
                 WHERE id = ${call.id} AND status = 'pending'
               `;
-              unresolvable++;
-            } catch (e) {
-              console.error(
-                `[resolve-calls] could not mark call ${call.id} unresolvable (migration not applied?) — ` +
-                  `left pending, still NOT scored: ${e instanceof Error ? e.message : String(e)}`,
-              );
-              stillWaiting++;
+                unresolvable++;
+              } catch (e) {
+                console.error(
+                  `[resolve-calls] could not mark call ${call.id} unresolvable (migration not applied?) — ` +
+                    `left pending, still NOT scored: ${e instanceof Error ? e.message : String(e)}`,
+                );
+                stillWaiting++;
+              }
+              continue;
             }
-            continue;
+            count = blockedDays;
+            outcome = 0;
           }
-
-          count = blockedDays;
-          outcome = wouldBeHit ? 1 : 0;
         } else {
           // An unknown kind must NEVER fall into another kind's resolver — that
           // is how a wrong criterion resolves a call silently. Before this
