@@ -130,41 +130,80 @@ export function ongoingHoursSince(firstSeen: Date | null, now: Date = new Date()
  * the failure this whole module exists to end. The deduplicator must never
  * become a new way to hear nothing.
  */
-async function shouldNotify(key: string, a: AlertInput): Promise<{ send: boolean; ongoingHours: number }> {
+/**
+ * Atomically CLAIM the right to notify for this condition.
+ *
+ * The first version read `last_sent`, decided in TypeScript, and wrote it back
+ * after delivering. An independent review pointed out the obvious race: two
+ * overlapping cron invocations both read "not sent", and both send — which
+ * defeats the entire guarantee this change exists to provide. Vercel crons can
+ * overlap and can be retried, so this is not theoretical.
+ *
+ * So the decision and the write are ONE statement. The UPDATE only matches when
+ * the reminder interval has elapsed, and `RETURNING` tells us whether we were
+ * the one that matched. Exactly one concurrent caller can win.
+ *
+ * FAILS OPEN: if the state table is unreachable we send. A duplicate email is
+ * an annoyance; a swallowed alert is the failure this module exists to end.
+ */
+async function claimNotification(
+  key: string,
+  a: AlertInput,
+): Promise<{ send: boolean; ongoingHours: number; previousSent: string | null }> {
   const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) return { send: true, ongoingHours: 0 };
+  if (!dbUrl) return { send: true, ongoingHours: 0, previousSent: null };
   try {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(dbUrl);
-    const rows = (await sql`
+
+    // Observe the condition. This also refreshes last_seen, which is what
+    // clearStaleAlerts uses to tell a live condition from an abandoned row.
+    await sql`
       INSERT INTO alert_state (fingerprint, title, severity, first_seen, last_seen)
       VALUES (${key}, ${a.title}, ${a.severity ?? 'warning'}, NOW(), NOW())
       ON CONFLICT (fingerprint) DO UPDATE
         SET last_seen = NOW(), title = EXCLUDED.title, severity = EXCLUDED.severity
-      RETURNING last_sent, first_seen
-    `) as unknown as Array<{ last_sent: string | null; first_seen: string }>;
-    const row = rows[0];
-    const lastSent = row?.last_sent ? new Date(row.last_sent) : null;
-    const firstSeen = row?.first_seen ? new Date(row.first_seen) : null;
-    return { send: isNotificationDue(lastSent), ongoingHours: ongoingHoursSince(firstSeen) };
+    `;
+
+    // Claim. One statement decides AND records, so a concurrent run cannot
+    // also decide yes.
+    const claimed = (await sql`
+      UPDATE alert_state
+      SET last_sent = NOW(), send_count = send_count + 1
+      WHERE fingerprint = ${key}
+        AND (last_sent IS NULL OR NOW() - last_sent >= (${ALERT_REMINDER_HOURS} || ' hours')::interval)
+      RETURNING first_seen,
+                (SELECT last_sent FROM alert_state WHERE fingerprint = ${key}) AS prior
+    `) as unknown as Array<{ first_seen: string; prior: string | null }>;
+
+    if (claimed.length === 0) return { send: false, ongoingHours: 0, previousSent: null };
+    return {
+      send: true,
+      ongoingHours: ongoingHoursSince(claimed[0]?.first_seen ? new Date(claimed[0].first_seen) : null),
+      previousSent: claimed[0]?.prior ?? null,
+    };
   } catch {
-    return { send: true, ongoingHours: 0 };
+    return { send: true, ongoingHours: 0, previousSent: null };
   }
 }
 
-async function markSent(key: string): Promise<void> {
+/**
+ * Give the claim back when delivery failed, so the next tick retries instead of
+ * waiting out the whole reminder interval on an alert nobody received.
+ */
+async function releaseClaim(key: string, previousSent: string | null): Promise<void> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return;
   try {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(dbUrl);
     await sql`
-      UPDATE alert_state SET last_sent = NOW(), send_count = send_count + 1
+      UPDATE alert_state
+      SET last_sent = ${previousSent}, send_count = GREATEST(0, send_count - 1)
       WHERE fingerprint = ${key}
     `;
   } catch {
-    // Best effort. Failing to record a send costs a duplicate next tick, which
-    // is the safe direction.
+    // Best effort; the cost is one delayed reminder, not a lost alert.
   }
 }
 
@@ -183,19 +222,30 @@ export async function clearAlert(key: string, note?: string): Promise<AlertResul
   try {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(dbUrl);
+    // READ FIRST, DELETE LAST. The first version deleted the row and then
+    // tried to deliver, so a failed send lost the all-clear permanently — the
+    // next call would find nothing to stand down. Now the row survives until a
+    // human has actually been told, and a failed send simply retries.
     const rows = (await sql`
-      DELETE FROM alert_state WHERE fingerprint = ${key}
-      RETURNING title, last_sent, EXTRACT(EPOCH FROM (NOW() - first_seen)) / 3600 AS ongoing_hours
+      SELECT title, last_sent, EXTRACT(EPOCH FROM (NOW() - first_seen)) / 3600 AS ongoing_hours
+      FROM alert_state WHERE fingerprint = ${key}
     `) as unknown as Array<{ title: string; last_sent: string | null; ongoing_hours: number }>;
     const row = rows[0];
-    // Nothing was ever sent, so there is nothing to stand down.
-    if (!row || !row.last_sent) return { delivered: false, channel: 'suppressed', detail: 'nothing_to_clear' };
+    if (!row) return { delivered: false, channel: 'suppressed', detail: 'nothing_to_clear' };
+    // Detected but never announced: drop it silently, there is nothing to
+    // stand down from.
+    if (!row.last_sent) {
+      await sql`DELETE FROM alert_state WHERE fingerprint = ${key}`;
+      return { delivered: false, channel: 'suppressed', detail: 'nothing_to_clear' };
+    }
     const hours = Math.floor(Number(row.ongoing_hours ?? 0));
-    return await deliver({
+    const result = await deliver({
       title: `RESOLVED — ${row.title}`,
       body: `${note ? `${note}\n\n` : ''}This condition is no longer detected. It lasted about ${hours}h.`,
       severity: 'warning',
     });
+    if (result.delivered) await sql`DELETE FROM alert_state WHERE fingerprint = ${key}`;
+    return result;
   } catch (err) {
     return { delivered: false, channel: 'none', detail: err instanceof Error ? err.message : String(err) };
   }
@@ -242,16 +292,24 @@ async function deliver(a: AlertInput): Promise<AlertResult> {
  *
  * Returns the keys it stood down, so a caller can report honestly.
  */
-export async function clearStaleAlerts(prefix: string, activeKeys: string[]): Promise<string[]> {
+export async function clearStaleAlerts(prefix: string, activeKeys: string[], notSeenSince?: Date): Promise<string[]> {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return [];
   try {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(dbUrl);
+    // TWO conditions, and the second is the one that matters. `activeKeys` is
+    // what the caller observed this run — useful, but a caller bug that omits a
+    // live key would stand down a real alert. `last_seen` is stored state:
+    // every active condition refreshes it at the top of raiseAlert, so a row
+    // untouched since this run began was genuinely not observed. Derived from
+    // the data rather than from the caller being complete.
+    const cutoff = (notSeenSince ?? new Date()).toISOString();
     const rows = (await sql`
       SELECT fingerprint FROM alert_state
       WHERE fingerprint LIKE ${prefix + '%'}
         AND NOT (fingerprint = ANY(${activeKeys}))
+        AND last_seen < ${cutoff}
     `) as unknown as Array<{ fingerprint: string }>;
     const cleared: string[] = [];
     for (const r of rows) {
@@ -275,7 +333,7 @@ export async function clearStaleAlerts(prefix: string, activeKeys: string[]): Pr
 export async function raiseAlert(a: AlertInput): Promise<AlertResult> {
   if (!a.key) return await deliver(a);
 
-  const { send, ongoingHours } = await shouldNotify(a.key, a);
+  const { send, ongoingHours, previousSent } = await claimNotification(a.key, a);
   if (!send) {
     // Visible in the runtime log, so a suppressed alert is never invisible —
     // it is just not in someone's inbox for the ninth time.
@@ -285,6 +343,8 @@ export async function raiseAlert(a: AlertInput): Promise<AlertResult> {
 
   const body = ongoingHours > 0 ? `${a.body}\n\nOngoing for about ${ongoingHours}h — still not resolved.` : a.body;
   const result = await deliver({ ...a, body });
-  if (result.delivered) await markSent(a.key);
+  // Delivery failed after we claimed the slot — give it back, or the next tick
+  // stays silent for the whole reminder interval on an alert nobody received.
+  if (!result.delivered) await releaseClaim(a.key, previousSent);
   return result;
 }

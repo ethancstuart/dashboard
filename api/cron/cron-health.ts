@@ -49,6 +49,12 @@ async function postDiscord(webhook: string, content: string, embeds: unknown[]):
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Captured before ANY alert is raised, including the ledger check below.
+  // Every active condition refreshes its last_seen after this instant, so a row
+  // older than it was genuinely not observed on this run — which is what lets
+  // clearStaleAlerts derive staleness from stored state instead of trusting a
+  // caller to pass a complete active set.
+  const runStartedAt = new Date();
   // Vercel cron auth
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.authorization;
@@ -93,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `) as unknown as Array<{ overdue: number; oldest: string | null }>;
       if ((rows[0]?.overdue ?? 0) === 0) {
         // No call is overdue: stand down any ledger condition we raised.
-        await clearStaleAlerts('ledger:', []);
+        await clearStaleAlerts('ledger:', [], runStartedAt);
       }
       if ((rows[0]?.overdue ?? 0) > 0) {
         ledgerIssue = rows[0];
@@ -125,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // operator has to infer recovery from an absence. On 2026-08-28 the
     // /api/cii alerts simply stopped when the perf fix deployed and nothing
     // announced it.
-    const cleared = await clearStaleAlerts('endpoints:', []);
+    const cleared = await clearStaleAlerts('endpoints:', [], runStartedAt);
     return res.status(200).json({
       ok: true,
       allHealthy: true,
@@ -159,7 +165,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       severity: downEndpoints.length > 0 ? 'critical' : 'warning',
     });
     // Any endpoint condition that is no longer present gets an all-clear.
-    await clearStaleAlerts('endpoints:', [key]);
+    await clearStaleAlerts('endpoints:', [key], runStartedAt);
     return res.status(200).json({
       ok: true,
       issuesDetected: issuesCount,
