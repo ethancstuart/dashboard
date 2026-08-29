@@ -147,7 +147,22 @@ describe('5 September rehearsal — the real cohort through the real scoring sta
     expect(Number.isFinite(brierSkillScore(calls))).toBe(true);
   });
 
-  it('SCENARIO: the three zero-coverage calls stay pending — 36 publish, not 39', () => {
+  /**
+   * SUPERSEDED 2026-08-29 by the coverage-DENSITY gate. This scenario tested
+   * the old boolean rule, under which a single measurement row in a fourteen-
+   * day window certified a country as observed. Kept because the arithmetic it
+   * asserts is still correct FOR THAT RULE, and because the difference between
+   * the two publishing sets is the point:
+   *
+   *   old zero-coverage gate:  36 of 39 publish (CF, ML, TD held)
+   *   density gate as shipped: 31 of 39 publish (CU, NE, SD, SO, SS also held)
+   *
+   * The five it adds would each have published a MISS on evidence too thin to
+   * carry one — Sudan on 1 covered day and 59 measurements, Cuba on a full week
+   * of days but 163 measurements, roughly 23 a day for an entire country.
+   * The current fixture lives in scored-statuses.test.ts.
+   */
+  it('SCENARIO (superseded rule): the three zero-coverage calls stay pending — 36 publish, not 39', () => {
     const calls = score((cc) => (ALREADY_HIT.has(cc) ? 1 : 0), NO_COVERAGE);
     expect(calls).toHaveLength(36);
     assertPublishable(calls);

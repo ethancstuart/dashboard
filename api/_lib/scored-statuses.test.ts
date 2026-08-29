@@ -120,18 +120,27 @@ describe('coverageRequirement', () => {
   });
 
   it('would have held the calls that were about to resolve as false misses', () => {
-    // Live figures, 2026-08-28, for the 2026-09-05 cohort (horizon 14).
+    // Live figures for the 2026-09-05 cohort, re-measured 2026-08-29 over the
+    // real window [2026-08-22, 2026-09-05] with data through that date. The
+    // density gate holds EIGHT countries, not the three the old zero-coverage
+    // gate caught — and every one of the five it adds would otherwise have
+    // published a MISS on evidence too thin to carry one.
     const req = coverageRequirement(14);
     const observed = [
-      { cc: 'SD', days: 1, measurements: 204 },
-      { cc: 'SS', days: 1, measurements: 137 },
-      { cc: 'CF', days: 2, measurements: 13 },
+      { cc: 'CF', days: 0, measurements: 0 },
       { cc: 'ML', days: 0, measurements: 0 },
       { cc: 'TD', days: 0, measurements: 0 },
+      { cc: 'SD', days: 1, measurements: 59 },
+      { cc: 'SS', days: 2, measurements: 162 },
+      { cc: 'NE', days: 4, measurements: 315 },
+      { cc: 'SO', days: 4, measurements: 302 },
+      // The one the DAY count alone would have waved through: a full week of
+      // coverage on 163 measurements, ~23 a day for an entire country.
+      { cc: 'CU', days: 7, measurements: 163 },
     ];
     for (const o of observed) {
       const passes = o.days >= req.minDays && o.measurements >= req.minMeasurements;
-      expect(passes, `${o.cc} must not be scorable on ${o.days} day(s)`).toBe(false);
+      expect(passes, `${o.cc} must not be scorable on ${o.days}d/${o.measurements} measurements`).toBe(false);
     }
     // And a densely-observed country must still resolve, or the gate is just
     // a way of never being wrong.
