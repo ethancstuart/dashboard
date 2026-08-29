@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { raiseAlert } from '../_lib/alert.js';
+import { raiseAlert, clearStaleAlerts } from '../_lib/alert.js';
 import { neon } from '@neondatabase/serverless';
 
 export const config = { runtime: 'nodejs', maxDuration: 30 };
@@ -49,6 +49,12 @@ async function postDiscord(webhook: string, content: string, embeds: unknown[]):
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Captured before ANY alert is raised, including the ledger check below.
+  // Every active condition refreshes its last_seen after this instant, so a row
+  // older than it was genuinely not observed on this run — which is what lets
+  // clearStaleAlerts derive staleness from stored state instead of trusting a
+  // caller to pass a complete active set.
+  const runStartedAt = new Date();
   // Vercel cron auth
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.authorization;
@@ -91,9 +97,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM calls
         WHERE status = 'pending' AND resolves_on < CURRENT_DATE - 1
       `) as unknown as Array<{ overdue: number; oldest: string | null }>;
+      if ((rows[0]?.overdue ?? 0) === 0) {
+        // No call is overdue: stand down any ledger condition we raised.
+        await clearStaleAlerts('ledger:', [], runStartedAt);
+      }
       if ((rows[0]?.overdue ?? 0) > 0) {
         ledgerIssue = rows[0];
         await raiseAlert({
+          // Keyed on the COUNT, not the message: the body names the oldest due
+          // date, which changes daily and would defeat deduplication.
+          key: `ledger:overdue:${rows[0].overdue}`,
           title: `${rows[0].overdue} call(s) overdue for resolution`,
           body:
             `${rows[0].overdue} call(s) are still pending past their resolution date; the oldest was due ` +
@@ -113,7 +126,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const issuesCount = downEndpoints.length + degradedEndpoints.length;
 
   if (issuesCount === 0) {
-    return res.status(200).json({ ok: true, allHealthy: true, ledgerIssue, generatedAt: status.generatedAt });
+    // EVERYTHING RECOVERED — say so. Without this, silence after an alert is
+    // ambiguous between "fixed" and "the monitor itself died", and the
+    // operator has to infer recovery from an absence. On 2026-08-28 the
+    // /api/cii alerts simply stopped when the perf fix deployed and nothing
+    // announced it.
+    const cleared = await clearStaleAlerts('endpoints:', [], runStartedAt);
+    return res.status(200).json({
+      ok: true,
+      allHealthy: true,
+      ledgerIssue,
+      clearedAlerts: cleared,
+      generatedAt: status.generatedAt,
+    });
   }
 
   // ALERT ON WHATEVER CHANNEL EXISTS. This used to return `alertingDisabled`
@@ -128,11 +153,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ),
       ...degradedEndpoints.map((e) => `SLOW  ${e.path} — ${e.latencyMs}ms`),
     ].join('\n');
+    // Keyed on WHICH endpoints are affected, not on the message. Latencies
+    // change every run ("3934ms"), so keying on the body would have deduped
+    // nothing and sent the flood anyway.
+    const affected = [...downEndpoints, ...degradedEndpoints].map((e) => e.path).sort();
+    const key = `endpoints:${affected.join(',')}`;
     const alert = await raiseAlert({
+      key,
       title: `${issuesCount} endpoint issue(s) on nexuswatch.dev`,
       body: `${summary}\n\nChecked ${status.endpoints.length} endpoints at ${status.generatedAt}.`,
       severity: downEndpoints.length > 0 ? 'critical' : 'warning',
     });
+    // Any endpoint condition that is no longer present gets an all-clear.
+    await clearStaleAlerts('endpoints:', [key], runStartedAt);
     return res.status(200).json({
       ok: true,
       issuesDetected: issuesCount,
