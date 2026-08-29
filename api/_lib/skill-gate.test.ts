@@ -49,7 +49,10 @@ describe('the skill gate is structural, not remembered', () => {
       // Strip comments so prose ABOUT the function does not trip the guard —
       // this file's own history is full of it.
       const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-      if (/\bbrierSkillScore\s*\(/.test(code)) offenders.push(rel);
+      // Calls AND imports. An import without a call is harmless today and is
+      // one edit away from not being, so it fails here too.
+      if (/\bbrierSkillScore\s*\(/.test(code)) offenders.push(`${rel} (calls it)`);
+      else if (/\bbrierSkillScore\b/.test(code)) offenders.push(`${rel} (imports it)`);
     }
 
     // A scan that silently matches nothing is a green result with no mechanism

@@ -241,6 +241,20 @@ export function baseRate(calls: ScoredCall[]): number {
  *
  * Positive means we beat that unit's own climatology. Zero or negative means we
  * did not, and that number publishes exactly as it comes out.
+ *
+ * DO NOT CALL THIS TO PUBLISH A NUMBER. Use `publishableSkill`, which carries
+ * the batch and climatology gates. This stays exported because it is a real
+ * statistical primitive with real tests — `calls.test.ts` and
+ * `resolution-rehearsal.test.ts` both exercise its NaN behaviour directly, and
+ * hiding it would delete that coverage rather than improve it.
+ *
+ * An independent review argued the export itself is the hole, since a new
+ * caller could reach it. The counter, recorded so the trade-off is visible
+ * rather than assumed: `skill-gate.test.ts` fails on any call OR import of
+ * this function outside this module, and that suite now runs in
+ * `.githooks/pre-push` — which is the gate that matters here, because pushing
+ * to main DEPLOYS and CI reports afterwards. A new ungated caller cannot reach
+ * production without the push being refused first.
  */
 export function brierSkillScore(calls: ScoredCall[]): number {
   if (calls.length === 0) return NaN;
