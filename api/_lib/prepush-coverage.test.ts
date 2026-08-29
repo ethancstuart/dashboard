@@ -34,9 +34,18 @@ const COVERED_DIFFERENTLY: Record<string, string> = {
   // untracked scratch from parallel sessions must not block a push it is not
   // part of. This is the specific reason `validate` cannot be run wholesale.
   'format:check': 'hook runs prettier --check on the pushed delta only',
-  // eslint over the whole repo is slow enough to make people skip the hook,
-  // and it is enforced in CI where latency does not change behaviour.
-  lint: 'enforced in CI; too slow for a pre-push gate',
+  // MEASURED 2026-08-29: eslint over the repo takes 15s, which would take the
+  // hook from ~12s to ~27s. It is excused because it does not protect the thing
+  // the hook uniquely protects — a direct push to main DEPLOYS, and type safety
+  // there is already covered by typecheck; eslint findings are style and
+  // correctness-lint, which CI catches before any merge.
+  //
+  // The cost of this exception is real and showed up immediately: a
+  // `no-useless-escape` error in THIS FILE reached CI on 2026-08-29 precisely
+  // because lint is excused here. That is the register working as designed —
+  // caught before merge, nothing deployed — but it is the argument for keeping
+  // the list at two and never adding a third casually.
+  lint: 'measured 15s; CI catches it before merge and it does not guard the deploy path',
 };
 
 function scriptsIn(validateLine: string): string[] {
@@ -68,7 +77,7 @@ describe('pre-push hook covers npm run validate', () => {
       // EXACT match, not substring. `hook.includes('npm run test')` is also
       // satisfied by `npm run test:smoke`, which would let a future edit swap
       // the real suite for a fast subset while this assertion stayed green.
-      const exact = new RegExp(String.raw`npm run "?${step.replace(/[:\-]/g, '\\$&')}"?(?![\w:-])`);
+      const exact = new RegExp(String.raw`npm run "?${step.replace(/[:-]/g, '\\$&')}"?(?![\w:-])`);
       const namedInHook = exact.test(hook);
       const derivedByLoop = step.startsWith('check:') && hook.includes("indexOf('check:')");
       if (!namedInHook && !derivedByLoop) uncovered.push(step);
