@@ -20,10 +20,17 @@
  *   detail, so there is never a reason to derive one from a page.
  *
  *   SCORES come from fetched rows, because a Brier score needs each row's
- *   probability and base rate. That fetch may be truncated — so the result
- *   reports how many rows it used and whether that was all of them, rather
- *   than printing a score beside a count and letting a reader assume they
- *   share a denominator.
+ *   probability and base rate rather than a tally. The caller is expected to
+ *   pass EVERY scored row, not a display page — `api/calls/ledger.ts` runs a
+ *   dedicated unlimited query for exactly this.
+ *
+ * This module cannot verify that from the inside, so it does not take the
+ * caller's word for it: `scoring_complete` is computed by comparing the rows
+ * it was given against the count it was told, and **a score computed on an
+ * incomplete set is withheld rather than published with a caveat**. That is
+ * the same posture as `publishableSkill` — this ledger withholds numbers it
+ * cannot stand behind instead of footnoting them, because a footnote does not
+ * survive being quoted.
  */
 import { brierScore, independentUnits, resolutionBatches, publishableSkill, type ScoredCall } from './calls.js';
 
@@ -119,12 +126,25 @@ export function assembleByKind(counts: KindCountRow[], scoredRows: ScoredRow[]):
     }));
     out[kind].units = independentUnits(rows.map((r) => r.countryCode));
     out[kind].batches = resolutionBatches(rows.map((r) => r.resolvedOn));
+    out[kind].scored_rows_used = rows.length;
+    out[kind].scoring_complete = rows.length >= out[kind].resolved;
+
+    // WITHHOLD ON AN INCOMPLETE SET. A Brier over a truncated page is a real
+    // number about a subset, and it will be read as a number about the book —
+    // it sits on the same line as a whole-table count. An independent review
+    // was right that labelling that is weaker than refusing it.
+    //
+    // Today the caller passes the whole set, so this branch does not fire.
+    // That is the reason to write it rather than the reason to skip it: the
+    // condition that would make it fire is someone repointing this at a paged
+    // query, which is precisely how the defect this module exists to fix was
+    // introduced in the first place.
+    if (!out[kind].scoring_complete) continue;
+
     out[kind].brier = calls.length > 0 ? num(brierScore(calls)) : null;
     // Withheld until the kind has resolved in enough independent batches for
     // the number to separate skill from one fortnight's weather.
     out[kind].skill_vs_base_rate = num(publishableSkill({ calls, batches: out[kind].batches }));
-    out[kind].scored_rows_used = rows.length;
-    out[kind].scoring_complete = rows.length >= out[kind].resolved;
   }
 
   return out;

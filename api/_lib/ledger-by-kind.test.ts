@@ -68,7 +68,11 @@ describe('by_kind counts come from the table, never from the page', () => {
     // than printing a Brier beside a count that does not share its denominator.
     expect(out.censorship_event.scored_rows_used).toBe(4);
     expect(out.censorship_event.scoring_complete).toBe(false);
-    expect(out.censorship_event.brier).toBeCloseTo(0.0256, 4);
+    // ...and the score is WITHHELD, not published with a caveat. A Brier on 4
+    // of 31 rows sits on the same line as a whole-table count of 31 and will
+    // be read as describing it.
+    expect(out.censorship_event.brier).toBeNull();
+    expect(out.censorship_event.skill_vs_base_rate).toBeNull();
   });
 
   it('reports scoring_complete when the page held every scored row', () => {

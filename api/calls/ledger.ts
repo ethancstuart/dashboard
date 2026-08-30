@@ -97,11 +97,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // exists to prevent, and it was already happening to `void`.
     const claimResolved = resolved.filter((c) => !CALIBRATION_KINDS.has(c.kind) && isScored(c.status));
     const claimOpen = open.filter((c) => !CALIBRATION_KINDS.has(c.kind));
-    const scored: ScoredCall[] = claimResolved.map((c) => ({
-      probability: c.probability,
-      outcome: c.status === 'hit' ? 1 : 0,
-      baseRate: c.base_rate ?? undefined,
-    }));
+    // `scored` is defined after the unlimited scoring query below — a page
+    // must never feed a published statistic.
 
     // The whole book, from the table — the source of every published count.
     const totalsRows = (await sql`
@@ -181,6 +178,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       resolved_at: string | null;
     }>;
 
+    // The SAME fix, applied to the top-level statistics. An independent review
+    // found that `scoring.base_rate`, `calibration`, `murphy`,
+    // `independent_units` and `resolution_batches` were still computed from
+    // `claimResolved` — a filter over the PAGED `resolved` query — fifty lines
+    // below a comment saying counts never come from a page. That is the
+    // half-landed fix this branch already blamed for the by_kind defect,
+    // reproduced in the same commit that fixed it.
+    //
+    // Calibration kinds are excluded here and only here: their stated
+    // probability IS the climatology, so folding the seismicity harness into a
+    // pooled base rate or calibration curve would count earthquake windows as
+    // geopolitical claims. by_kind keeps them, which is where they belong.
+    const claimScored = scoringRows.filter((c) => !CALIBRATION_KINDS.has(c.kind));
+    const scored: ScoredCall[] = claimScored.map((c) => ({
+      probability: c.probability,
+      outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
+      baseRate: c.base_rate ?? undefined,
+    }));
+
     // NaN is a real answer here — "not enough resolved calls to say" — and it
     // must reach the page as null rather than becoming a confident-looking 0.
     const num = (v: number) => (Number.isFinite(v) ? v : null);
@@ -235,8 +251,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // resolution batches. A rho-discounted row count used to sit here; it
       // turned 273 correlated rows into "6.5 effective observations", a
       // number with a decimal point and no defence.
-      independent_units: independentUnits(claimResolved.map((c) => `${c.kind}:${c.country_code}`)),
-      resolution_batches: resolutionBatches(claimResolved.map((c) => (c.resolved_at ?? '').slice(0, 10))),
+      independent_units: independentUnits(claimScored.map((c) => `${c.kind}:${c.country_code}`)),
+      resolution_batches: resolutionBatches(claimScored.map((c) => (c.resolved_at ?? '').slice(0, 10))),
       min_batches_for_skill: MIN_RESOLUTION_BATCHES,
       // No mixed-kind aggregate is published. `by_kind` carries the scores;
       // this block carries only what is defensible across the whole book plus
