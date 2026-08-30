@@ -1,18 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import {
-  brierScore,
   independentUnits,
   resolutionBatches,
   MIN_RESOLUTION_BATCHES,
-  publishableSkill,
   baseRate,
   calibrationBins,
   murphyDecomposition,
   CALIBRATION_KINDS,
   isScored,
+  SCORED_STATUSES,
   type ScoredCall,
 } from '../_lib/calls.js';
+import { assembleByKind } from '../_lib/ledger-by-kind.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 20 };
 
@@ -125,6 +125,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }>;
     const tot = totalsRows[0];
 
+    // PER-KIND COUNTS COME FROM THE TABLE TOO. This is the same lesson as the
+    // block below, applied thirty lines later than it should have been: until
+    // 2026-08-30 `by_kind` was built by iterating the PAGED arrays, so the
+    // deployed API published `censorship_event.open: 3` against 312 real
+    // pending censorship calls — six days before 39 of them resolved — and
+    // `fx_devaluation.open: 197` against 523. The per-kind numbers summed to
+    // exactly 200, the page size, and `seismicity_window` was absent
+    // altogether because none of its 14 rows reached the first page.
+    //
+    // The open page is ordered by DIVERGENCE, so the truncation was not even
+    // a random sample of the book: it was the most divergent rows, which is
+    // the worst possible bias for a count a reader treats as the book.
+    //
+    // The scored-status filter is DERIVED from SCORED_STATUSES rather than
+    // spelled out here, so a new status is excluded by default and has to
+    // prove itself in scope — the same allow-list direction as isScored().
+    const scoredStatuses = [...SCORED_STATUSES];
+    const kindRows = (await sql`
+      SELECT kind,
+        COUNT(*) FILTER (WHERE status = 'pending')::int AS open,
+        COUNT(*) FILTER (WHERE status = ANY(${scoredStatuses}))::int AS resolved,
+        COUNT(*) FILTER (WHERE status = 'hit')::int AS hits,
+        COUNT(*) FILTER (WHERE status <> 'pending' AND status <> ALL(${scoredStatuses}))::int AS unscored
+      FROM calls
+      GROUP BY kind
+    `) as unknown as Array<{ kind: string; open: number; resolved: number; hits: number; unscored: number }>;
+
     // NaN is a real answer here — "not enough resolved calls to say" — and it
     // must reach the page as null rather than becoming a confident-looking 0.
     const num = (v: number) => (Number.isFinite(v) ? v : null);
@@ -134,55 +161,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // different base-rate estimators, different dependence structures and
     // different counts, so a row-weighted average across them is dominated by
     // whichever kind happened to write more rows — not a track record.
-    const byKind: Record<
-      string,
-      {
-        open: number;
-        resolved: number;
-        hits: number;
-        brier: number | null;
-        skill_vs_base_rate: number | null;
-        units: number;
-        batches: number;
-        /** Carried no outcome: void (our defect) or unresolvable (too little evidence). */
-        unscored: number;
-      }
-    > = {};
-    for (const c of [...open, ...resolved]) {
-      byKind[c.kind] ??= {
-        open: 0,
-        resolved: 0,
-        hits: 0,
-        brier: null,
-        skill_vs_base_rate: null,
-        units: 0,
-        batches: 0,
-        unscored: 0,
-      };
-      if (c.status === 'pending') byKind[c.kind].open++;
-      else if (isScored(c.status)) {
-        byKind[c.kind].resolved++;
-        if (c.status === 'hit') byKind[c.kind].hits++;
-      } else {
-        // Counted and published, never scored and never hidden. A ledger that
-        // drops its inconvenient rows is what this table exists to replace.
-        byKind[c.kind].unscored++;
-      }
-    }
-    for (const kind of Object.keys(byKind)) {
-      const rows = resolved.filter((c) => c.kind === kind && isScored(c.status));
-      const s: ScoredCall[] = rows.map((c) => ({
-        probability: c.probability,
-        outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
-        baseRate: c.base_rate ?? undefined,
-      }));
-      byKind[kind].units = independentUnits(rows.map((c) => c.country_code));
-      byKind[kind].batches = resolutionBatches(rows.map((c) => (c.resolved_at ?? '').slice(0, 10)));
-      byKind[kind].brier = s.length > 0 ? num(brierScore(s)) : null;
-      // Skill is withheld until the kind has resolved in enough independent
-      // batches for the number to separate skill from one fortnight's weather.
-      byKind[kind].skill_vs_base_rate = num(publishableSkill({ calls: s, batches: byKind[kind].batches }));
-    }
+    // Assembled in api/_lib/ledger-by-kind.ts, where the counts/scores
+    // distinction is stated and unit-tested. PER-KIND scoring only: an
+    // independent review (2026-08-28) refuted the single mixed aggregate —
+    // censorship and FX have different resolvers, base-rate estimators and
+    // dependence structures, so a row-weighted average across them is
+    // dominated by whichever kind wrote more rows, not a track record.
+    const byKind = assembleByKind(
+      kindRows,
+      resolved
+        .filter((c) => isScored(c.status))
+        .map((c) => ({
+          kind: c.kind,
+          countryCode: c.country_code,
+          probability: c.probability,
+          baseRate: c.base_rate ?? undefined,
+          outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
+          resolvedOn: (c.resolved_at ?? '').slice(0, 10),
+        })),
+    );
 
     return res.status(200).json({
       generated_at: new Date().toISOString(),
