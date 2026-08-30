@@ -80,10 +80,42 @@ describe('pre-push hook covers npm run validate', () => {
       const exact = new RegExp(String.raw`npm run "?${step.replace(/[:-]/g, '\\$&')}"?(?![\w:-])`);
       const namedInHook = exact.test(hook);
       const derivedByLoop = step.startsWith('check:') && hook.includes("indexOf('check:')");
-      if (!namedInHook && !derivedByLoop) uncovered.push(step);
+      // `guards` is the check:* runner. It is covered NOT by name but because
+      // it derives the SAME set the hook derives — both read the `check:*`
+      // scripts out of package.json, so the hook cannot run less than it does.
+      // The separate assertion below proves that is what `guards` actually is,
+      // so this branch cannot be satisfied by an unrelated script called
+      // `guards`.
+      const isDerivedGuardRunner = step === 'guards' && hook.includes("indexOf('check:')");
+      if (!namedInHook && !derivedByLoop && !isDerivedGuardRunner) uncovered.push(step);
     }
 
     expect(uncovered).toEqual([]);
+  });
+
+  it('the guards runner really derives check:* — the branch above depends on it', () => {
+    // Without this, `guards` could be excused as "the derived runner" while
+    // being a script that runs nothing. That is the shape of failure this
+    // whole file exists to prevent: a step believed to be covered, by a
+    // mechanism nobody checked.
+    const guards = pkg.scripts.guards;
+    expect(typeof guards).toBe('string');
+    expect(guards).toContain('run-guards.mjs');
+
+    const runner = readFileSync(join(ROOT, 'scripts/run-guards.mjs'), 'utf8');
+    expect(runner).toContain("startsWith('check:')");
+    // It must refuse an empty list. A filter that matches nothing and exits 0
+    // is a runner that reports success for running no guards at all — this
+    // happened on 2026-08-30 with an inline-shell version and exited 0.
+    expect(runner).toMatch(/length === 0[\s\S]{0,200}exit\(1\)/);
+  });
+
+  it('every check:* script is reachable through the guards runner', () => {
+    // Derived both ways: the set the runner will execute is the set defined in
+    // package.json, so a guard added tomorrow is in scope without editing this
+    // test. Asserting the COUNT rather than a list keeps it that way.
+    const checks = Object.keys(pkg.scripts).filter((k) => k.startsWith('check:'));
+    expect(checks.length).toBeGreaterThan(0);
   });
 
   it('the derived loop is actually present, not just the checks it happens to cover', () => {

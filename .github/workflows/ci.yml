@@ -34,11 +34,18 @@ jobs:
       - name: Secret scan
         run: bash scripts/scan-secrets.sh --all
 
-      - name: LLM spend recording
-        run: npm run check:llm-spend
-
-      - name: Collector health (structural)
-        run: npm run check:collectors
+      # DERIVED, not enumerated. This step used to name check:llm-spend and
+      # check:collectors, and that list went stale without anyone noticing:
+      # check:cron-auth and check:style-attr were written, committed and
+      # believed to be enforced while running in NO CI job at all. The
+      # pre-push hook derived its list and so kept catching them, which is
+      # exactly why the gap stayed invisible.
+      #
+      # `npm run guards` reads the check:* scripts out of package.json, so a
+      # guard added tomorrow runs here the moment it is defined. It refuses to
+      # report success if the list comes back empty.
+      - name: Guards (all check:* derived from package.json)
+        run: npm run guards
 
       - name: Build
         run: npm run build
