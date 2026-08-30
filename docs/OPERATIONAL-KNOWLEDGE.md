@@ -9,7 +9,7 @@ below states how it was verified. When an entry turns out to be wrong it is
 **retracted in place**, not deleted — a quietly disappeared belief teaches
 nobody, and the retraction is usually more useful than the original claim.
 
-Last updated 2026-08-29.
+Last updated 2026-08-30.
 
 ---
 
@@ -222,6 +222,19 @@ mechanism verified.
   tree-wide and trips on untracked scratch another process leaves behind
   (`docs/figma-mirror.snapshot.json`, `scripts/check-figma-mirror.mjs`). This is
   why the pre-push hook cannot simply run `validate`.
+
+  **AMENDED 2026-08-30 — the two named files are no longer scratch.** They are
+  committed on this branch, so once it merges they are tracked, formatted, and
+  cannot trip `format:check` again. Measured after committing them:
+  `npm run validate` exits **0** on a clean tree.
+
+  Amended rather than deleted, because the *general* claim survives and is the
+  useful half: `format:check` runs tree-wide, so ANY untracked file a parallel
+  process leaves behind can fail `validate` on work that did not create it.
+  That is still why the hook scopes prettier to the pushed delta instead of
+  running `validate` wholesale. What is retracted is only the specific reading
+  that this is a standing, unfixable condition — it was two uncommitted files,
+  and the fix was to commit them rather than to work around them.
 - **`lint` is excused from the pre-push hook** (measured 15 s; CI catches it
   before merge). It has already let one error through to CI. The exception
   register is capped at two entries so a third requires a deliberate change.
