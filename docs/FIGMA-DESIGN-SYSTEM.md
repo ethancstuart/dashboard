@@ -7,11 +7,16 @@ https://www.figma.com/design/thtVyfiahjKyrJjPyZyfli
 
 The Figma file **mirrors shipped code**. Sources of truth:
 `src/styles/tokens.ts` (canonical palette — verified by executing the module)
-and `src/styles/tokens.css` (scales, shadows, CSS-only tokens). Never hand-edit
-values in Figma — change the code, then re-run the mirror pass from a Claude
-session with the Figma MCP plugin connected. Last mirrored + verified:
-**2026-08-23**. **The file is a snapshot** — nothing syncs it when tokens
-change.
+and `src/styles/tokens.css` (scales, shadows, CSS-only tokens). Last agreed
+state: **2026-08-23**, recorded in `docs/figma-mirror.snapshot.json`.
+
+Designing in Figma with the tokens conflicts with nothing. Editing a token
+VALUE in Figma is a **proposal, not a fork** — a reconcile pass (any Claude
+session with the Figma bridge) diffs Figma against the snapshot and presents
+the edit as a proposed code change; nothing is silently overwritten either
+way. Code-side guard: `node scripts/check-figma-mirror.mjs` (139 values,
+plant-tested) goes RED when code moves ahead of the mirror → re-mirror,
+refresh the snapshot.
 
 ## What's in the file
 

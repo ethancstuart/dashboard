@@ -1,0 +1,127 @@
+{
+  "color": {
+    "bg": { "terminal": ["#000000", 1], "dossier": ["#FAF8F3", 1] },
+    "bg-page": { "terminal": ["#000000", 1], "dossier": ["#FAF8F3", 1] },
+    "bg-2": { "terminal": ["#0A0A0A", 1], "dossier": ["#F2EFE6", 1] },
+    "surface": { "terminal": ["#0A0A0A", 1], "dossier": ["#FFFFFF", 1] },
+    "surface-elevated": { "terminal": ["#111111", 1], "dossier": ["#FFFFFF", 1] },
+    "surface-sunken": { "terminal": ["#000000", 1], "dossier": ["#F2EFE6", 1] },
+    "surface-muted": { "terminal": ["#0D0D0D", 1], "dossier": ["#F2EFE6", 1] },
+    "border": { "terminal": ["#1A1A1A", 1], "dossier": ["#E5E0D4", 1] },
+    "border-2": { "terminal": ["#262626", 1], "dossier": ["#C9C3B4", 1] },
+    "border-subtle": { "terminal": ["#141414", 1], "dossier": ["#E5E0D4", 1] },
+    "border-strong": { "terminal": ["#262626", 1], "dossier": ["#C9C3B4", 1] },
+    "text": { "terminal": ["#CCCCCC", 1], "dossier": ["#12161C", 1] },
+    "text-2": { "terminal": ["#888888", 1], "dossier": ["#6B7280", 1] },
+    "text-primary": { "terminal": ["#FFFFFF", 1], "dossier": ["#12161C", 1] },
+    "text-secondary": { "terminal": ["#CCCCCC", 1], "dossier": ["#3B4252", 1] },
+    "text-tertiary": { "terminal": ["#888888", 1], "dossier": ["#6B7280", 1] },
+    "text-muted": { "terminal": ["#666666", 1], "dossier": ["#6B7280", 1] },
+    "text-inverse": { "terminal": ["#000000", 1], "dossier": ["#FAF8F3", 1] },
+    "accent": { "terminal": ["#FF6600", 1], "dossier": ["#9A1B1B", 1] },
+    "accent-hover": { "terminal": ["#FF7722", 1], "dossier": ["#C7453F", 1] },
+    "accent-soft": { "terminal": ["#FF8533", 1], "dossier": ["#C7453F", 1] },
+    "accent-dim": { "terminal": ["#FF6600", 0.15], "dossier": ["#9A1B1B", 0.15] },
+    "accent-border": { "terminal": ["#FF6600", 0.3], "dossier": ["#9A1B1B", 0.35] },
+    "accent-bg-soft": { "terminal": ["#FF6600", 0.08], "dossier": ["#F6E4E2", 1] },
+    "positive": { "terminal": ["#00FF00", 1], "dossier": ["#1F7A4C", 1] },
+    "negative": { "terminal": ["#FF3333", 1], "dossier": ["#B8341C", 1] },
+    "up": { "terminal": ["#00FF00", 1], "dossier": ["#1F7A4C", 1] },
+    "down": { "terminal": ["#FF3333", 1], "dossier": ["#B8341C", 1] },
+    "flat": { "terminal": ["#888888", 1], "dossier": ["#6B7280", 1] },
+    "divider": { "terminal": ["#1A1A1A", 1], "dossier": ["#C9A86B", 1] },
+    "divider-soft": { "terminal": ["#141414", 1], "dossier": ["#E5D8B6", 1] },
+    "signal/critical": { "terminal": ["#DC2626", 1], "dossier": ["#DC2626", 1] },
+    "signal/warning": { "terminal": ["#E5A913", 1], "dossier": ["#E5A913", 1] },
+    "signal/ok": { "terminal": ["#22C55E", 1], "dossier": ["#22C55E", 1] },
+    "signal/info": { "terminal": ["#6B8AFF", 1], "dossier": ["#6B8AFF", 1] },
+    "tension/low": { "terminal": ["#00D4AA", 1], "dossier": ["#00D4AA", 1] },
+    "tension/med": { "terminal": ["#E5A913", 1], "dossier": ["#E5A913", 1] },
+    "tension/high": { "terminal": ["#FF6600", 1], "dossier": ["#FF6600", 1] },
+    "tension/critical": { "terminal": ["#DC2626", 1], "dossier": ["#DC2626", 1] }
+  },
+  "type": {
+    "size/xs": 11,
+    "size/sm": 12,
+    "size/base": 14,
+    "size/md": 15,
+    "size/lg": 18,
+    "size/xl": 24,
+    "size/2xl": 36,
+    "size/3xl": 48,
+    "size/display": 64,
+    "leading/tight": 1.15,
+    "leading/snug": 1.3,
+    "leading/base": 1.5,
+    "leading/loose": 1.6,
+    "leading/marquee": 0.95,
+    "tracking/tight": -0.02,
+    "tracking/base": 0,
+    "tracking/wide": 0.05,
+    "tracking/mono-meta": 0.08,
+    "tracking/eyebrow": 0.16,
+    "tracking/marquee": -0.03
+  },
+  "spacing": {
+    "space-0": 0,
+    "space-1": 4,
+    "space-2": 8,
+    "space-3": 12,
+    "space-4": 16,
+    "space-5": 20,
+    "space-6": 24,
+    "space-8": 32,
+    "space-10": 40,
+    "space-12": 48,
+    "space-16": 64,
+    "space-20": 80,
+    "space-24": 96,
+    "space-32": 128,
+    "space-section-tight": { "alias": "space-12" },
+    "space-section": { "alias": "space-20" },
+    "space-section-loose": { "alias": "space-32" }
+  },
+  "radius": { "none": 0, "sm": 2, "md": 4, "lg": 8, "xl": 12, "2xl": 16, "full": 9999 },
+  "fonts": {
+    "sans": { "terminal": "Inter", "dossier": "Inter" },
+    "mono": { "terminal": "JetBrains Mono", "dossier": "JetBrains Mono" },
+    "body": { "terminal": "JetBrains Mono", "dossier": "Inter" },
+    "serif": { "terminal": "Georgia", "dossier": "Tiempos Headline" }
+  },
+  "effectStyles": [
+    { "name": "shadow-sm", "effects": [[0, 1, 2, 0, 0, 0, 0.4]] },
+    { "name": "shadow-md", "effects": [[0, 4, 12, 0, 0, 0, 0.5]] },
+    { "name": "shadow-lg", "effects": [[0, 12, 32, 0, 0, 0, 0.6]] },
+    {
+      "name": "glow-cyan",
+      "effects": [
+        [0, 0, 12, 0, 212, 170, 0.35],
+        [0, 0, 24, 0, 212, 170, 0.15]
+      ]
+    },
+    {
+      "name": "glow-amber",
+      "effects": [
+        [0, 0, 12, 229, 169, 19, 0.35],
+        [0, 0, 24, 229, 169, 19, 0.15]
+      ]
+    },
+    {
+      "name": "glow-accent",
+      "effects": [
+        [0, 0, 12, 255, 102, 0, 0.4],
+        [0, 0, 24, 255, 102, 0, 0.18]
+      ]
+    },
+    {
+      "name": "glow-critical",
+      "effects": [
+        [0, 0, 12, 220, 38, 38, 0.45],
+        [0, 0, 32, 220, 38, 38, 0.2]
+      ]
+    }
+  ],
+  "textStyles": [
+    { "name": "eyebrow", "family": "JetBrains Mono", "style": "Bold", "fontSize": 11, "lsPct": 16, "textCase": "UPPER" }
+  ]
+}
