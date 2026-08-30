@@ -46,18 +46,69 @@ const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 const API = join(ROOT, 'api');
 
-/** Every static import/export specifier, plus dynamic import(). */
-const SPEC_RE =
-  /(?:^|\n)\s*(?:import|export)\b[^'"\n]*?from\s*['"]([^'"]+)['"]|(?:^|\n)\s*import\s*['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+/**
+ * Strip comments before looking for imports.
+ *
+ * Two reasons, and the second is the one that bites. A commented-out import is
+ * not an import. And THIS repo documents its own markers — a guard's docstring
+ * that says `import { neon } from '@neondatabase/serverless'` as an EXAMPLE
+ * would otherwise be read as the thing it warns about. The governance file
+ * already carries a scar from a regex matching prose that mentioned the tag it
+ * was matching.
+ */
+export function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+}
 
-function specifiers(file: string): string[] {
-  const src = readFileSync(file, 'utf8');
+/**
+ * Every module specifier a bundler would follow, and the type-only ones it
+ * would not.
+ *
+ * THE FIRST VERSION OF THIS WAS BROKEN AND REPORTED GREEN. It matched the
+ * import clause with `[^'"\n]*?`, which cannot cross a newline, so a
+ * prettier-wrapped multiline import — the normal formatting for more than one
+ * named specifier in this repo — was invisible. An independent review named
+ * it; a plant then confirmed it, and the guard printed
+ * "OK — no src/ module imports from api/" while a multiline import reached a
+ * module that imported `@neondatabase/serverless`. All three of the original
+ * plant tests happened to use single-line imports, which is precisely how a
+ * blind spot survives its own test suite.
+ *
+ * So the anchor is now the `from` keyword, which every static import and
+ * re-export must have regardless of how the clause is wrapped.
+ *
+ * `import type { X } from 'pkg'` is REPORTED SEPARATELY and not treated as a
+ * dependency: it is erased at compile time and never reaches the bundle.
+ * Rejecting it would make the guard fire on code that is genuinely safe, and a
+ * guard that cries wolf gets bypassed. Inline `{ type A }` is deliberately NOT
+ * treated as type-only — that statement still emits a runtime import.
+ */
+export function specifiersIn(src: string): string[] {
   const out: string[] = [];
-  for (const m of src.matchAll(SPEC_RE)) {
-    const s = m[1] ?? m[2] ?? m[3];
-    if (s) out.push(s);
+
+  // Static `import ... from 'x'` / `export ... from 'x'`, newline-tolerant.
+  // The clause is bounded so a runaway match cannot swallow the file: it may
+  // not contain a `;`, or another import/export keyword.
+  const STATIC = /\b(import|export)\b((?:(?!\b(?:import|export)\b|;)[\s\S])*?)\bfrom\s*['"]([^'"]+)['"]/g;
+  for (const m of src.matchAll(STATIC)) {
+    const clause = (m[2] ?? '').trim();
+    // Statement-level `import type` / `export type` is erased by the compiler.
+    if (/^type\b/.test(clause)) continue;
+    out.push(m[3]);
   }
+
+  // Side-effect import: `import 'x';` with no clause at all.
+  for (const m of src.matchAll(/(?:^|[;\n])\s*import\s*['"]([^'"]+)['"]/g)) out.push(m[1]);
+
+  // Dynamic import.
+  for (const m of src.matchAll(/\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) out.push(m[1]);
+
   return out;
+}
+
+/** Read a file and return the specifiers a bundler would follow. */
+function specifiers(file: string): string[] {
+  return specifiersIn(stripComments(readFileSync(file, 'utf8')));
 }
 
 function walk(dir: string, acc: string[] = []): string[] {
@@ -95,6 +146,31 @@ function resolveRelative(fromFile: string, spec: string): string | null {
 }
 
 const isRelative = (s: string) => s.startsWith('./') || s.startsWith('../');
+
+// 0. ALIASES: this guard resolves RELATIVE specifiers only. If the project
+// ever gains a path alias, a `@api/calls` import would be skipped silently and
+// the guard would report green on an unexamined edge — pass by omission, the
+// exact failure it exists to prevent. So it refuses to vouch rather than
+// guessing. Derived from the config files, not from a memory of what they say.
+const aliasSources: Array<[string, RegExp]> = [
+  ['vite.config.ts', /\bresolve\s*:\s*{[\s\S]{0,400}?\balias\b/],
+  ['tsconfig.json', /"paths"\s*:/],
+  ['tsconfig.api.json', /"paths"\s*:/],
+];
+const aliasFound = aliasSources.filter(([f, re]) => {
+  const p = join(ROOT, f);
+  return existsSync(p) && re.test(readFileSync(p, 'utf8'));
+});
+if (aliasFound.length > 0) {
+  console.error(
+    '[check-client-safe-imports] path aliases configured in ' +
+      aliasFound.map(([f]) => f).join(', ') +
+      '\nThis guard resolves relative specifiers only, so it cannot follow an aliased' +
+      '\nimport into api/ and will not report a boundary it did not examine.' +
+      '\nTeach it the alias map before re-enabling.',
+  );
+  process.exit(1);
+}
 
 // 1. ENTRY POINTS: every import in src/ that resolves under api/.
 const entries = new Map<string, string>(); // api file -> the src file that reaches it

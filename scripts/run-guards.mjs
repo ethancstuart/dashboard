@@ -23,8 +23,18 @@
  */
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const scripts = JSON.parse(readFileSync('package.json', 'utf8')).scripts ?? {};
+// Resolve the repo from THIS FILE, not from process.cwd(). An independent
+// review caught the CWD version: `node /path/to/scripts/run-guards.mjs` from
+// anywhere else would read a different package.json — running the wrong
+// project's guards, or none, while reporting on this one. `npm run` happens to
+// set CWD to the package root, so it worked and would have kept working right
+// up until the first direct invocation.
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+const scripts = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).scripts ?? {};
 const guards = Object.keys(scripts).filter((k) => k.startsWith('check:'));
 
 if (guards.length === 0) {
@@ -37,7 +47,9 @@ console.log(`[guards] running ${guards.length} derived from package.json: ${guar
 const failed = [];
 for (const g of guards) {
   console.log(`--- ${g} ---`);
-  const r = spawnSync('npm', ['run', '--silent', g], { stdio: 'inherit', shell: false });
+  // cwd: ROOT for the same reason — a guard must run against the repo this
+  // script belongs to, whatever directory the caller happened to be in.
+  const r = spawnSync('npm', ['run', '--silent', g], { stdio: 'inherit', shell: false, cwd: ROOT });
   if (r.status !== 0) failed.push(g);
   console.log('');
 }

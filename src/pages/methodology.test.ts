@@ -55,6 +55,23 @@ describe('methodology publishes the coverage rule the resolver actually runs', (
     expect(text).toMatch(/no matter how thin the coverage/i);
   });
 
+  it('describes insufficiency, not absence — the two rules are different', () => {
+    // An independent review caught a real contradiction here: the rewritten
+    // section stated a THRESHOLD rule at the top while a paragraph inherited
+    // from the boolean era still said a miss "requires the absence of"
+    // coverage. Under a density gate, coverage can be present and still too
+    // thin, so the old sentence described a rule the resolver no longer runs.
+    expect(text).not.toMatch(/requires the absence of/i);
+    expect(text).not.toMatch(/fires on the resolver.s silence/i);
+  });
+
+  it('states the asymmetry outright: the gate can only remove misses', () => {
+    // The gate governs the would-be miss only, so it can withhold a miss and
+    // never a hit. That is defensible and it is still an asymmetry; a page
+    // that implied neutrality would be hiding it.
+    expect(text).toMatch(/can never remove a hit/i);
+  });
+
   it('does not hardcode a count of unresolvable calls, which decays', () => {
     // "Three of the calls resolving on 5 September" was true when typed and
     // wrong within two days. The live count belongs on the Ledger.

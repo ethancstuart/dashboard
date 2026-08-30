@@ -108,9 +108,19 @@ export function renderMethodology(root: HTMLElement): void {
       <p><strong>Unresolvable is not the same as void.</strong> A call is <em>void</em> when our own
       criterion was unsound &mdash; our mistake, withdrawn by us. It is <em>unresolvable</em> when the
       world did not supply enough evidence to judge either way. Neither is ever scored.</p>
-      <p>The distinction that matters: this rule fires on the <em>resolver&rsquo;s</em> silence, never
-      on an unwelcome outcome. It cannot be used to withdraw a call heading for a miss, because a miss
-      requires coverage and coverage is exactly what this rule requires the absence of.</p>
+      <p>The distinction that matters: this rule fires on how much the
+      <em>resolver</em> saw, never on whether we liked the answer. Coverage is counted from OONI&rsquo;s
+      own measurement volume, which we neither produce nor influence, and the window was fixed when
+      the call was made. A call heading for a miss in a <em>well-observed</em> country cannot be
+      withheld by it &mdash; that call is scored as a miss.</p>
+      <p><strong>But we should state the asymmetry rather than let you find it.</strong> Because the
+      gate governs only the would-be miss, it can remove misses from the record and can never remove a
+      hit. That is deliberate &mdash; a block we observed is evidence regardless of how thin the
+      window was, while the absence of a block means nothing unless we looked &mdash; and it is still
+      an asymmetry. So the unresolvable calls stay on the Ledger, in their own column, with the days
+      and measurement counts that put them there, and the count is published beside every result. A
+      rule that quietly deleted its own inconvenient cases would be indistinguishable from this one
+      if we did not show you the cases.</p>
       <p><strong>And the uncomfortable part, which belongs here permanently.</strong> OONI is a
       volunteer network, and its coverage is thinnest in precisely the places where running a
       measurement tool is most dangerous &mdash; the Sahel and the Horn. Our coverage is
