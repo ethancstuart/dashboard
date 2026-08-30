@@ -13,11 +13,37 @@ export const config = { runtime: 'nodejs', maxDuration: 10 };
  *
  * Falls back to a static list (no briefs) if the DB is unreachable —
  * a minimal sitemap beats a 500 from a search engine's perspective.
+ *
+ * THE COST OF THAT SOFT-FAIL, PAID IN FULL. Measured 2026-08-30: the live
+ * sitemap carried 950 URLs and NOT ONE of them was a brief, while 140 briefs
+ * existed and /brief/2026-08-27 returned 200. The entire archive had been
+ * invisible to search engines for months and nothing reported it, because the
+ * section that failed was the only one that failed and it failed quietly.
+ *
+ * The cause was two bugs in three lines, both from a missing `::text`:
+ * `@neondatabase/serverless` returns `date` and `timestamptz` columns as JS
+ * Date objects, so `generated_at.slice(0, 10)` threw a TypeError straight into
+ * the catch — and had it not thrown, `/brief/${brief_date}` would have
+ * rendered `/brief/Sun Aug 30 2026 00:00:00 GMT-0700 ...`. The calls query ten
+ * lines below had the cast all along, which is what kept the other 950 URLs
+ * working and the failure looking like a design choice.
+ *
+ * Do not "fix" a Date here with toISOString().slice(0, 10) — that reads the
+ * UTC date, which rolls forward a day west of Greenwich. Cast in SQL.
  */
 
+/**
+ * Rows as the DRIVER actually hands them over, not as we wish it would.
+ *
+ * `string | Date` is deliberate and is the guard: it makes the compiler refuse
+ * `.slice()` on these values, so the next person cannot reintroduce the
+ * TypeError that emptied this sitemap. The SQL casts to text and the builder
+ * below normalises anyway — belt and braces, because the failure mode here is
+ * silent and lasts months.
+ */
 interface BriefRow {
-  brief_date: string;
-  generated_at: string | null;
+  brief_date: string | Date;
+  generated_at: string | Date | null;
 }
 
 function escapeXml(s: string): string {
@@ -64,6 +90,38 @@ const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string 
   { path: 'rss/cii', changefreq: 'daily', priority: '0.3' },
 ];
 
+/**
+ * Normalise whatever the driver returned into an ISO date.
+ *
+ * A Date reaching here means a cast was dropped upstream. It is handled rather
+ * than thrown on — an unadvertised archive is a worse outcome than a slightly
+ * defensive helper — but it is normalised in UTC-free terms via the local
+ * Y/M/D parts, never toISOString(), which reads the UTC date and rolls forward
+ * a day for anyone west of Greenwich.
+ */
+export function isoDate(v: string | Date | null | undefined): string | null {
+  if (v == null) return '';
+  if (typeof v === 'string') return v.slice(0, 10);
+  const y = v.getFullYear();
+  const m = String(v.getMonth() + 1).padStart(2, '0');
+  const d = String(v.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Exported so the archive's visibility is testable without a database. */
+export function buildBriefEntries(rows: BriefRow[], base: string): string[] {
+  return rows
+    .map((r) => {
+      const date = isoDate(r.brief_date);
+      // A row we cannot turn into a clean date must not become a URL. A
+      // malformed <loc> is worse than a missing one.
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+      const lastmod = isoDate(r.generated_at) || date;
+      return urlEntry(`${base}/brief/${date}`, lastmod, 'yearly', '0.7');
+    })
+    .filter((e): e is string => e !== null);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
@@ -83,16 +141,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const sql = neon(dbUrl);
       const rows = (await sql`
-        SELECT brief_date, generated_at
+        SELECT brief_date::text AS brief_date, generated_at::text AS generated_at
         FROM daily_briefs
         ORDER BY brief_date DESC
         LIMIT 365
       `) as unknown as BriefRow[];
 
-      briefEntries = rows.map((r) => {
-        const lastmod = r.generated_at ? r.generated_at.slice(0, 10) : r.brief_date;
-        return urlEntry(`${base}/brief/${r.brief_date}`, lastmod, 'yearly', '0.7');
-      });
+      briefEntries = buildBriefEntries(rows, base);
+      if (briefEntries.length === 0) {
+        // A section that returns nothing while the database is plainly
+        // reachable is the exact shape that hid this for months. Say so.
+        console.error('[sitemap] daily_briefs returned no rows — the brief archive is not being advertised');
+      }
     } catch (err) {
       console.error('[sitemap] DB query failed:', err instanceof Error ? err.message : err);
       // Soft-fail to static-only sitemap.

@@ -37,6 +37,10 @@
       "destination": "/api/feed"
     },
     {
+      "source": "/rss",
+      "destination": "/api/feed"
+    },
+    {
       "source": "/atom.xml",
       "destination": "/api/atom"
     },
