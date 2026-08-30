@@ -152,6 +152,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       GROUP BY kind
     `) as unknown as Array<{ kind: string; open: number; resolved: number; hits: number; unscored: number }>;
 
+    // EVERY SCORED ROW, FOR SCORING — not the display page.
+    //
+    // The counts above are table-wide. If the SCORES beside them were computed
+    // from the paged `resolved` query (default LIMIT 500, ordered by
+    // resolved_at DESC) then a single by_kind row would mix a whole-book count
+    // with a page-derived Brier, and an independent review was right that such
+    // a row does not describe one coherent book. Labelling the mismatch was the
+    // first attempt and it is weaker than removing it.
+    //
+    // The SSR /ledger page already does exactly this and says why: the headline
+    // used to be computed from 40 display rows while captioned with the
+    // unlimited count, and because record-calls writes FX after censorship
+    // those 40 were almost entirely one leg presented as the whole book.
+    //
+    // Unlike the SSR query this one does NOT exclude calibration kinds: by_kind
+    // is where the seismicity harness's ~0 skill is supposed to be visible.
+    const scoringRows = (await sql`
+      SELECT kind, country_code, probability::float AS probability,
+             base_rate::float AS base_rate, status, resolved_at::text AS resolved_at
+      FROM calls WHERE status = ANY(${scoredStatuses})
+    `) as unknown as Array<{
+      kind: string;
+      country_code: string;
+      probability: number;
+      base_rate: number | null;
+      status: string;
+      resolved_at: string | null;
+    }>;
+
     // NaN is a real answer here — "not enough resolved calls to say" — and it
     // must reach the page as null rather than becoming a confident-looking 0.
     const num = (v: number) => (Number.isFinite(v) ? v : null);
@@ -169,16 +198,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // dominated by whichever kind wrote more rows, not a track record.
     const byKind = assembleByKind(
       kindRows,
-      resolved
-        .filter((c) => isScored(c.status))
-        .map((c) => ({
-          kind: c.kind,
-          countryCode: c.country_code,
-          probability: c.probability,
-          baseRate: c.base_rate ?? undefined,
-          outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
-          resolvedOn: (c.resolved_at ?? '').slice(0, 10),
-        })),
+      scoringRows.map((c) => ({
+        kind: c.kind,
+        countryCode: c.country_code,
+        probability: c.probability,
+        baseRate: c.base_rate ?? undefined,
+        outcome: (c.status === 'hit' ? 1 : 0) as 0 | 1,
+        resolvedOn: (c.resolved_at ?? '').slice(0, 10),
+      })),
     );
 
     return res.status(200).json({

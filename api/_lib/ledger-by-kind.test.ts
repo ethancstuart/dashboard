@@ -113,3 +113,58 @@ describe('by_kind counts come from the table, never from the page', () => {
     expect(out.censorship_event.brier).not.toBeNull();
   });
 });
+
+describe('an orphan scored row is refused, never silently dropped', () => {
+  const counts: KindCountRow[] = [{ kind: 'censorship_event', open: 0, resolved: 1, hits: 1, unscored: 0 }];
+
+  it('throws when a scored row names a kind the counts do not carry', () => {
+    // Reachable the moment a caller passes a FILTERED count set beside
+    // unfiltered scored rows — e.g. counts excluding calibration kinds. The
+    // old code iterated Object.keys(seeded-from-counts), so those rows
+    // vanished and the published Brier was quietly computed on fewer rows
+    // than the count beside it claimed.
+    const rows: ScoredRow[] = [
+      {
+        kind: 'censorship_event',
+        countryCode: 'TR',
+        probability: 0.8,
+        baseRate: 0.9,
+        outcome: 1,
+        resolvedOn: '2026-09-05',
+      },
+      {
+        kind: 'seismicity_window',
+        countryCode: 'JP',
+        probability: 0.5,
+        baseRate: 0.5,
+        outcome: 1,
+        resolvedOn: '2026-09-07',
+      },
+    ];
+    expect(() => assembleByKind(counts, rows)).toThrow(/seismicity_window/);
+    expect(() => assembleByKind(counts, rows)).toThrow(/absent from the counts/);
+  });
+
+  it('does not throw when every scored kind is present', () => {
+    const rows: ScoredRow[] = [
+      {
+        kind: 'censorship_event',
+        countryCode: 'TR',
+        probability: 0.8,
+        baseRate: 0.9,
+        outcome: 1,
+        resolvedOn: '2026-09-05',
+      },
+    ];
+    expect(() => assembleByKind(counts, rows)).not.toThrow();
+  });
+
+  it('does not throw for a counted kind with no scored rows', () => {
+    // The common case on 5 September: kinds exist and nothing has resolved.
+    const c: KindCountRow[] = [
+      { kind: 'censorship_event', open: 312, resolved: 0, hits: 0, unscored: 0 },
+      { kind: 'seismicity_window', open: 14, resolved: 0, hits: 0, unscored: 0 },
+    ];
+    expect(() => assembleByKind(c, [])).not.toThrow();
+  });
+});

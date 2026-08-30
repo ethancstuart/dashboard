@@ -82,6 +82,34 @@ export function assembleByKind(counts: KindCountRow[], scoredRows: ScoredRow[]):
     };
   }
 
+  // AN ORPHAN SCORED ROW IS AN INCONSISTENCY, NOT A ROUNDING ERROR.
+  //
+  // Both inputs are reads of the same table in the same request, so a scored
+  // row whose kind is missing from the counts cannot happen — which is exactly
+  // why it must not be handled by silently dropping the row. An independent
+  // review caught the original: scoring iterated `Object.keys(out)`, seeded
+  // only from `counts`, so any such row vanished without a trace.
+  //
+  // It becomes reachable the moment a caller passes a FILTERED count set — for
+  // instance counts excluding calibration kinds beside unfiltered scored rows,
+  // which is a plausible next change to this endpoint. At that point the
+  // published Brier scores would quietly be computed on fewer rows than the
+  // counts beside them claim, and nothing would say so.
+  //
+  // So it throws. The caller wraps this in a try/catch that returns 500, and
+  // the SSR /ledger page does not go through here — so the cost of the loud
+  // version is a JSON endpoint that fails visibly, against a silent version
+  // that publishes a number nobody can stand behind.
+  const known = new Set(Object.keys(out));
+  const orphans = [...new Set(scoredRows.map((r) => r.kind))].filter((k) => !known.has(k));
+  if (orphans.length > 0) {
+    throw new Error(
+      `assembleByKind: scored rows for kind(s) absent from the counts: ${orphans.join(', ')}. ` +
+        'The two inputs disagree about the same table — refusing to publish per-kind figures ' +
+        'that would silently exclude them.',
+    );
+  }
+
   for (const kind of Object.keys(out)) {
     const rows = scoredRows.filter((r) => r.kind === kind);
     const calls: ScoredCall[] = rows.map((r) => ({
