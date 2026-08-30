@@ -41,6 +41,7 @@
  */
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
@@ -118,7 +119,10 @@ function walk(dir: string, acc: string[] = []): string[] {
     if (name === 'node_modules' || name === '.git' || name === 'worktrees') continue;
     const p = join(dir, name);
     if (statSync(p).isDirectory()) walk(p, acc);
-    else if (/\.(ts|tsx)$/.test(p)) acc.push(p);
+    // Every extension a bundler will follow. Restricting this to .ts/.tsx
+    // would let a src/ .js or .mjs file import api/ unexamined — pass by
+    // omission through the scanner rather than through the resolver.
+    else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(p)) acc.push(p);
   }
   return acc;
 }
@@ -131,13 +135,17 @@ function walk(dir: string, acc: string[] = []): string[] {
  */
 function resolveRelative(fromFile: string, spec: string): string | null {
   const base = resolve(dirname(fromFile), spec);
+  const exts = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
   const candidates = [
     base,
-    base.replace(/\.js$/, '.ts'),
-    base.replace(/\.js$/, '.tsx'),
-    `${base}.ts`,
-    `${base}.tsx`,
-    join(base, 'index.ts'),
+    // `./x.js` under bundler resolution may name x.ts / x.tsx / x.jsx.
+    ...exts.map((e) => base.replace(/\.(js|mjs|cjs)$/, e)),
+    // Extensionless `./x`.
+    ...exts.map((e) => `${base}${e}`),
+    // Directory index. `index.tsx` was missing here and an independent review
+    // named it: a resolver that enumerates candidates is itself a list, and a
+    // real module behind a candidate it forgot would pass by omission.
+    ...exts.map((e) => join(base, `index${e}`)),
   ];
   for (const c of candidates) {
     if (existsSync(c) && statSync(c).isFile()) return c;
@@ -147,110 +155,143 @@ function resolveRelative(fromFile: string, spec: string): string | null {
 
 const isRelative = (s: string) => s.startsWith('./') || s.startsWith('../');
 
-// 0. ALIASES: this guard resolves RELATIVE specifiers only. If the project
-// ever gains a path alias, a `@api/calls` import would be skipped silently and
-// the guard would report green on an unexamined edge — pass by omission, the
-// exact failure it exists to prevent. So it refuses to vouch rather than
-// guessing. Derived from the config files, not from a memory of what they say.
-const aliasSources: Array<[string, RegExp]> = [
-  ['vite.config.ts', /\bresolve\s*:\s*{[\s\S]{0,400}?\balias\b/],
-  ['tsconfig.json', /"paths"\s*:/],
-  ['tsconfig.api.json', /"paths"\s*:/],
-];
-const aliasFound = aliasSources.filter(([f, re]) => {
-  const p = join(ROOT, f);
-  return existsSync(p) && re.test(readFileSync(p, 'utf8'));
-});
-if (aliasFound.length > 0) {
-  console.error(
-    '[check-client-safe-imports] path aliases configured in ' +
-      aliasFound.map(([f]) => f).join(', ') +
-      '\nThis guard resolves relative specifiers only, so it cannot follow an aliased' +
-      '\nimport into api/ and will not report a boundary it did not examine.' +
-      '\nTeach it the alias map before re-enabling.',
+/**
+ * The executable half. Kept behind a direct-invocation check because this
+ * module also EXPORTS its extractor for unit tests, and an independent review
+ * caught the consequence: importing it ran the whole guard as a side effect,
+ * `process.exit` included. A failing boundary would have killed the vitest
+ * process during collection instead of failing a test.
+ */
+function main(): void {
+  // 0. ALIASES: this guard resolves RELATIVE specifiers only. If the project
+  // ever gains a path alias, a `@api/calls` import would be skipped silently and
+  // the guard would report green on an unexamined edge — pass by omission, the
+  // exact failure it exists to prevent. So it refuses to vouch rather than
+  // guessing. Derived from the config files, not from a memory of what they say.
+  const aliasSources: Array<[string, RegExp]> = [
+    ['vite.config.ts', /\bresolve\s*:\s*{[\s\S]{0,400}?\balias\b/],
+    ['tsconfig.json', /"paths"\s*:/],
+    ['tsconfig.api.json', /"paths"\s*:/],
+  ];
+  const aliasFound = aliasSources.filter(([f, re]) => {
+    const p = join(ROOT, f);
+    return existsSync(p) && re.test(readFileSync(p, 'utf8'));
+  });
+  if (aliasFound.length > 0) {
+    console.error(
+      '[check-client-safe-imports] path aliases configured in ' +
+        aliasFound.map(([f]) => f).join(', ') +
+        '\nThis guard resolves relative specifiers only, so it cannot follow an aliased' +
+        '\nimport into api/ and will not report a boundary it did not examine.' +
+        '\nTeach it the alias map before re-enabling.',
+    );
+    process.exit(1);
+  }
+
+  // 1. ENTRY POINTS: every import in src/ that resolves under api/.
+  const entries = new Map<string, string>(); // api file -> the src file that reaches it
+  /** src -> api edges whose target could not be resolved on disk. Never silent. */
+  const entryUnresolved: string[] = [];
+  for (const file of walk(SRC)) {
+    for (const spec of specifiers(file)) {
+      if (!isRelative(spec)) continue;
+      const target = resolveRelative(file, spec);
+      if (!target) {
+        // AN UNRESOLVED EDGE THAT NAMES api/ IS A HOLE, NOT A NON-EVENT.
+        // This used to `continue` silently: a src -> api import the resolver
+        // could not follow simply vanished, and the guard reported on a graph
+        // it had not fully walked. An independent review named it. The intent
+        // is read from the specifier TEXT, so a path we cannot resolve on disk
+        // still fails rather than disappearing.
+        if (/(^|\/)api\//.test(spec)) entryUnresolved.push(`${relative(ROOT, file)} -> ${spec}`);
+        continue;
+      }
+      if (!target.startsWith(API + '/')) continue;
+      // Prefer a NON-TEST entry when reporting. A plant run blamed
+      // `methodology.test.ts` for a violation the shipped page also causes,
+      // which reads as "only a test does this" — the one message that would
+      // get the finding waved through.
+      const existing = entries.get(target);
+      if (existing === undefined || (/\.test\.tsx?$/.test(existing) && !/\.test\.tsx?$/.test(file))) {
+        entries.set(target, file);
+      }
+    }
+  }
+
+  if (entryUnresolved.length > 0) {
+    console.error('[check-client-safe-imports] src/ imports naming api/ that could not be resolved:');
+    for (const u of entryUnresolved) console.error(`  ${u}`);
+    console.error('\nThe guard will not vouch for an edge it could not follow.');
+    process.exit(1);
+  }
+
+  if (entries.size === 0) {
+    console.log('[check-client-safe-imports] OK — no src/ module imports from api/.');
+    return;
+  }
+
+  // 2. TRANSITIVE CLOSURE, and every bare specifier found inside it is a failure.
+  interface Violation {
+    file: string;
+    spec: string;
+    via: string[];
+  }
+  const violations: Violation[] = [];
+  const seen = new Set<string>();
+  const unresolved: string[] = [];
+
+  const visit = (file: string, path: string[]) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    for (const spec of specifiers(file)) {
+      if (!isRelative(spec)) {
+        violations.push({ file: relative(ROOT, file), spec, via: path.map((p) => relative(ROOT, p)) });
+        continue;
+      }
+      const target = resolveRelative(file, spec);
+      if (!target) {
+        // Never pass silently on something we could not follow — an unresolved
+        // edge is an unexamined subtree, which is how a guard reports green on
+        // code it never read.
+        unresolved.push(`${relative(ROOT, file)} -> ${spec}`);
+        continue;
+      }
+      visit(target, [...path, file]);
+    }
+  };
+
+  for (const [apiFile, srcFile] of entries) visit(apiFile, [srcFile]);
+
+  console.log(
+    `[check-client-safe-imports] ${entries.size} api module(s) reachable from src/, ` +
+      `${seen.size} in the transitive closure.`,
   );
-  process.exit(1);
-}
 
-// 1. ENTRY POINTS: every import in src/ that resolves under api/.
-const entries = new Map<string, string>(); // api file -> the src file that reaches it
-for (const file of walk(SRC)) {
-  for (const spec of specifiers(file)) {
-    if (!isRelative(spec)) continue;
-    const target = resolveRelative(file, spec);
-    if (!target || !target.startsWith(API + '/')) continue;
-    // Prefer a NON-TEST entry when reporting. A plant run blamed
-    // `methodology.test.ts` for a violation the shipped page also causes,
-    // which reads as "only a test does this" — the one message that would
-    // get the finding waved through.
-    const existing = entries.get(target);
-    if (existing === undefined || (/\.test\.tsx?$/.test(existing) && !/\.test\.tsx?$/.test(file))) {
-      entries.set(target, file);
-    }
+  if (unresolved.length > 0) {
+    console.error('\nCould not resolve these imports, so the guard cannot vouch for them:');
+    for (const u of unresolved) console.error(`  ${u}`);
   }
-}
 
-if (entries.size === 0) {
-  console.log('[check-client-safe-imports] OK — no src/ module imports from api/.');
-  process.exit(0);
-}
-
-// 2. TRANSITIVE CLOSURE, and every bare specifier found inside it is a failure.
-interface Violation {
-  file: string;
-  spec: string;
-  via: string[];
-}
-const violations: Violation[] = [];
-const seen = new Set<string>();
-const unresolved: string[] = [];
-
-const visit = (file: string, path: string[]) => {
-  if (seen.has(file)) return;
-  seen.add(file);
-  for (const spec of specifiers(file)) {
-    if (!isRelative(spec)) {
-      violations.push({ file: relative(ROOT, file), spec, via: path.map((p) => relative(ROOT, p)) });
-      continue;
+  if (violations.length > 0) {
+    console.error('\nFAIL — a client-reachable api/ module depends on a package:\n');
+    for (const v of violations) {
+      console.error(`  ${v.file}`);
+      console.error(`    imports  ${v.spec}`);
+      console.error(`    reached via  ${v.via.join(' -> ')}`);
     }
-    const target = resolveRelative(file, spec);
-    if (!target) {
-      // Never pass silently on something we could not follow — an unresolved
-      // edge is an unexamined subtree, which is how a guard reports green on
-      // code it never read.
-      unresolved.push(`${relative(ROOT, file)} -> ${spec}`);
-      continue;
-    }
-    visit(target, [...path, file]);
+    console.error(
+      '\nThe client bundle would carry it. Either keep the api module dependency-free,\n' +
+        'or stop importing it from src/ and publish the value another way.\n',
+    );
+    process.exit(1);
   }
-};
 
-for (const [apiFile, srcFile] of entries) visit(apiFile, [srcFile]);
+  if (unresolved.length > 0) process.exit(1);
 
-console.log(
-  `[check-client-safe-imports] ${entries.size} api module(s) reachable from src/, ` +
-    `${seen.size} in the transitive closure.`,
-);
-
-if (unresolved.length > 0) {
-  console.error('\nCould not resolve these imports, so the guard cannot vouch for them:');
-  for (const u of unresolved) console.error(`  ${u}`);
+  console.log('OK — every client-reachable api/ module is dependency-free.');
 }
 
-if (violations.length > 0) {
-  console.error('\nFAIL — a client-reachable api/ module depends on a package:\n');
-  for (const v of violations) {
-    console.error(`  ${v.file}`);
-    console.error(`    imports  ${v.spec}`);
-    console.error(`    reached via  ${v.via.join(' -> ')}`);
-  }
-  console.error(
-    '\nThe client bundle would carry it. Either keep the api module dependency-free,\n' +
-      'or stop importing it from src/ and publish the value another way.\n',
-  );
-  process.exit(1);
-}
-
-if (unresolved.length > 0) process.exit(1);
-
-console.log('OK — every client-reachable api/ module is dependency-free.');
+// Run only when invoked directly, never on import.
+const invokedDirectly =
+  process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+if (invokedDirectly) main();
