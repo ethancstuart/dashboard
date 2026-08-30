@@ -1,6 +1,11 @@
 import '../styles/briefs.css'; // Reuse briefs page styling
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+// The published thresholds are READ FROM THE RESOLVER'S OWN MODULE, never retyped.
+// api/_lib/calls.ts has no imports of its own, so it bundles into the client
+// cleanly - and this page cannot drift from the rule that governs live
+// resolutions the way its previous wording did.
+import { MIN_MEASUREMENTS_PER_REQUIRED_DAY, coverageRequirement } from '../../api/_lib/calls.ts';
 
 /**
  * CII Methodology page — explains the Country Instability Index algorithm.
@@ -10,6 +15,9 @@ export function renderMethodology(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.methodology);
   root.textContent = '';
 
+  // The worked example is the censorship horizon; both figures are DERIVED,
+  // so changing the rule changes this page without anyone editing it.
+  const cov14 = coverageRequirement(14);
   const page = createElement('div', { className: 'briefs-page' });
   page.innerHTML = `
     <nav class="briefs-nav">
@@ -59,26 +67,59 @@ export function renderMethodology(root: HTMLElement): void {
       own choice of window. That work is dated and will be described here when it ships.</p>
 
       <h2 class="brief-section-header">When a call cannot be resolved</h2>
-      <p><em>Published 2026-08-28, before this rule is applied to any call.</em></p>
+      <p><em>Published 2026-08-28, before this rule was applied to any call. Amended 2026-08-30,
+      before the first resolution, to state the threshold the resolver actually uses.</em></p>
       <p>A call is resolved by counting qualifying events at an external source inside a window fixed
-      before the outcome was known. Sometimes that source has no coverage of that country in that
-      window at all — not zero events, but zero measurements. Three of the calls resolving on
-      5 September are in exactly that position.</p>
+      before the outcome was known. Sometimes we did not look hard enough at that country, in that
+      window, to be entitled to an answer either way.</p>
       <p><strong>Absence of evidence is not evidence of absence, and we will not score it as a miss.</strong>
-      The rule, applied mechanically:</p>
+      Before a censorship call can be scored as a miss, the window has to clear two bars — days and
+      volume, because either alone can be passed by a window nobody really watched:</p>
       <ul class="method-list">
-        <li>If the resolver produced <strong>no coverage</strong> for that country and window, the call
-        stays <code>pending</code> rather than being scored.</li>
-        <li>If coverage has still not appeared <strong>7 days after the resolution date</strong>, the
-        call is marked <code>void</code> with the reason recorded in the row, and it is
-        <strong>excluded from scoring</strong>.</li>
-        <li>Voided calls stay visible on the Ledger with their reason, counted in an
-        <strong>unresolvable</strong> column beside hits and misses. A withdrawn call that vanishes is
-        indistinguishable from a moved goalpost, so nothing is ever deleted.</li>
+        <li><strong>Days.</strong> OONI must have observed the country on at least <strong>half the
+        days</strong> in the call&rsquo;s window, rounded up. For a fourteen-day call that is
+        <strong>${cov14.minDays} days</strong>. A single busy day cannot certify a fortnight.</li>
+        <li><strong>Volume.</strong> At least <strong>${MIN_MEASUREMENTS_PER_REQUIRED_DAY}
+        measurements per required day</strong> &mdash; <strong>${cov14.minMeasurements} measurements</strong>
+        across a fourteen-day call. This number is a judgement and we state it as one: below roughly
+        fifty measurements a country-day is one or two probes, and one volunteer&rsquo;s network
+        conditions should not decide a public verdict. It is not tuned to a publishing count.</li>
       </ul>
-      <p>The distinction that matters: this rule fires on the <em>resolver's</em> silence, never on an
-      unwelcome outcome. It cannot be used to withdraw a call that is heading for a miss, because a
-      miss requires coverage and coverage is exactly what voiding requires the absence of.</p>
+      <p>Both bars are <em>derived from the window the call declared</em>, not held in a list, so a
+      future call with a different horizon is governed by construction rather than because somebody
+      remembered to extend a table. The figures above are read from the same module the resolver
+      runs on; this page cannot state a threshold the resolver is not using.</p>
+      <p><strong>The rule cuts one way only.</strong> A confirmed block we <em>did</em> observe
+      resolves the call as a <strong>hit</strong> no matter how thin the coverage &mdash; seeing
+      something happen is evidence that it happened. It is the <em>absence</em> of a block that needs
+      a well-observed window to mean anything. Coverage is queried only on the way to a miss.</p>
+      <p>Below the line, the call is not scored:</p>
+      <ul class="method-list">
+        <li>It stays <code>pending</code> while late evidence could still arrive. OONI&rsquo;s ingest
+        lags roughly a day and our collector fetches only the previous day, so a backfill or a
+        collector fix is a real possibility, not a formality.</li>
+        <li>If the coverage has still not appeared <strong>7 days after the resolution date</strong>,
+        the call is marked <code>unresolvable</code> with the reason recorded in the row, and it is
+        <strong>excluded from every number we publish</strong>.</li>
+        <li>Unresolvable calls stay visible on the Ledger with their reason, counted in their own
+        column beside hits and misses. A withdrawn call that vanishes is indistinguishable from a
+        moved goalpost, so nothing is ever deleted.</li>
+      </ul>
+      <p><strong>Unresolvable is not the same as void.</strong> A call is <em>void</em> when our own
+      criterion was unsound &mdash; our mistake, withdrawn by us. It is <em>unresolvable</em> when the
+      world did not supply enough evidence to judge either way. Neither is ever scored.</p>
+      <p>The distinction that matters: this rule fires on the <em>resolver&rsquo;s</em> silence, never
+      on an unwelcome outcome. It cannot be used to withdraw a call heading for a miss, because a miss
+      requires coverage and coverage is exactly what this rule requires the absence of.</p>
+      <p><strong>And the uncomfortable part, which belongs here permanently.</strong> OONI is a
+      volunteer network, and its coverage is thinnest in precisely the places where running a
+      measurement tool is most dangerous &mdash; the Sahel and the Horn. Our coverage is
+      <em>anti-correlated</em> with the thing we are trying to measure: the countries we most want to
+      be right about are the ones we have least evidence for. That is a property of the instrument,
+      not a gap we can close by tuning a threshold, and no number on this site should be read without
+      it. The count of calls currently expected to be unresolvable, and the countries, are recomputed
+      live on <a href="#/ledger">the Ledger</a> rather than stated here, because a number written into
+      a page is only true on the day it is typed.</p>
 
       <h2 class="brief-section-header">What is CII?</h2>
       <p>As of <strong>2026-08-23</strong> the Country Instability Index is <strong>two numbers, never one sum</strong>:</p>
