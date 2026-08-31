@@ -228,9 +228,20 @@ router
   })
   // /accuracy and /ledger both render The Ledger. The old accuracy page scored
   // `assessments` — predictions of our own index, against our own index — and
-  // heroed that as a track record at -37.3% skill against a naive baseline.
+  // heroed that as a track record.
+  //
+  // Two measurements of how bad, kept side by side rather than overwritten:
+  //   2026-08-22, 10,215 rows:  -37.3% skill (MAE 1.263 vs 0.920)
+  //   2026-08-31, 10,895 rows:  -17.0% skill (MAE 2.2108 vs naive 1.8889)
+  // Different windows and the second used the model's own recorded error
+  // against a no-change baseline on the same rows. The magnitude moved; the
+  // sign did not. The loop is worse than assuming nothing changes.
+  //
   // The route is kept so existing links and the sitemap keep working; what it
-  // serves is now resolved against sources outside NexusWatch.
+  // serves is now resolved against sources outside NexusWatch. As of
+  // 2026-08-31 the page module and /api/accuracy/stats are DELETED, so the
+  // 90.3% "accuracy_rate" that endpoint published is no longer served
+  // anywhere.
   .on('/ledger', () => {
     import('./pages/ledger.ts')
       .then(async (m) => {
