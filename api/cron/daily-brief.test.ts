@@ -257,6 +257,8 @@ describe('formatResolvedCallLines', () => {
         row({ country_code: 'UZ', probability: 0.52, base_rate: 0.7, status: 'miss', evidence_count: 0 }), // div .18 — first
       ],
       0,
+      undefined,
+      { total: 3, hits: 2 },
     );
     expect(lines[0]).toContain('3 calls settled');
     expect(lines[0]).toContain('2 hit, 1 miss');
@@ -264,13 +266,34 @@ describe('formatResolvedCallLines', () => {
     expect(lines[1]).toContain('MISS');
   });
 
-  it('caps the list and says so — a 105-resolution morning must not flood the prompt', () => {
-    const many = Array.from({ length: 105 }, (_, i) =>
-      row({ country_code: `C${i}`, probability: 0.5, base_rate: 0.4 }),
-    );
-    const lines = formatResolvedCallLines(many, 0);
+  it('the aggregate comes from totals, NEVER from the page of rows', () => {
+    // rows is a divergence-ordered PAGE. A 105-resolution morning fetches 40
+    // rows; publishing rows.length as the count is the by_kind page-size
+    // defect (2026-08-30) reborn. Caught by the rule-2 review.
+    const page = Array.from({ length: 40 }, (_, i) => row({ country_code: `C${i}`, probability: 0.5, base_rate: 0.4 }));
+    const lines = formatResolvedCallLines(page, 0, undefined, { total: 105, hits: 18 });
+    expect(lines[0]).toContain('105 calls settled');
+    expect(lines[0]).toContain('18 hit, 87 miss');
+    expect(lines.at(-1)).toContain('and 93 more'); // 105 - 12 shown
+  });
+
+  it('caps the detail list and says so', () => {
+    const many = Array.from({ length: 30 }, (_, i) => row({ country_code: `C${i}`, probability: 0.5, base_rate: 0.4 }));
+    const lines = formatResolvedCallLines(many, 0, undefined, { total: 30, hits: 30 });
     expect(lines.length).toBe(1 + 12 + 1);
-    expect(lines.at(-1)).toContain('and 93 more');
+    expect(lines.at(-1)).toContain('and 18 more');
+  });
+
+  it('an unknown kind is NEVER described as a censorship event', () => {
+    // The first version's else-branch phrased any non-FX kind as "a confirmed
+    // censorship event" — a false public claim for a future kind, by
+    // omission. Unknown kinds get wording true of every call by construction.
+    const lines = formatResolvedCallLines([row({ kind: 'sanctions_designation', country_code: 'RU' })], 0, undefined, {
+      total: 1,
+      hits: 1,
+    });
+    expect(lines[1]).not.toContain('censorship');
+    expect(lines[1]).toContain('declared external source');
   });
 
   it('speaks when calls are due but NONE resolved — the silent-resolver case', () => {
@@ -291,6 +314,8 @@ describe('formatResolvedCallLines', () => {
         row({ country_code: 'IN', probability: 0.84, base_rate: 0.9, evidence_count: 14 }),
       ],
       0,
+      undefined,
+      { total: 2, hits: 1 },
     );
     const fx = lines.find((l) => l.includes('SE'))!;
     const oo = lines.find((l) => l.includes('IN'))!;

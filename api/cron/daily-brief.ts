@@ -354,7 +354,9 @@ most informative resolution — the one listed first — with our stated
 probability and its base rate beside the outcome. A model that publishes
 dated, falsifiable calls and then buries the day they settle is doing public
 relations, not forecasting; the settled record ALWAYS outranks a new call.
-Then, in one further sentence, give the top open call from OUR OPEN CALLS.
+Then, IF the OUR OPEN CALLS section lists anything, one further sentence
+with the top open call; if it lists nothing, end the section after the
+record — never invent an open call to fill the slot.
 
 If RESOLVED CALLS is empty: the one call we are making today, from the OUR
 OPEN CALLS section of the context — pick the call listed FIRST (they arrive
@@ -917,6 +919,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // has asked "which calls resolved this week and how" since 08-23 —
           // an instruction that was unsatisfiable until this query existed.
           const resolvedWindowDays = isSunday ? 7 : 1;
+          // COUNTS FROM COUNT(*), DETAIL FROM THE PAGE — the same law the
+          // ledger endpoint had to learn twice (by_kind published a page size
+          // on 2026-08-30). The aggregate line quotes these totals; the paged
+          // fetch below only supplies which INDIVIDUAL calls get a sentence.
+          const resolvedTotals = (await sql`
+            SELECT COUNT(*)::int AS total,
+                   COUNT(*) FILTER (WHERE status = 'hit')::int AS hits
+            FROM calls
+            WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
+              AND resolved_at > NOW() - make_interval(days => ${resolvedWindowDays})
+          `) as unknown as Array<{ total: number; hits: number }>;
           const resolvedRows = (await sql`
             SELECT kind, country_code, probability::float AS probability,
                    base_rate::float AS base_rate, status,
@@ -924,8 +937,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             FROM calls
             WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
               AND resolved_at > NOW() - make_interval(days => ${resolvedWindowDays})
-            ORDER BY resolved_at DESC
-            LIMIT 200
+            ORDER BY ABS(probability - COALESCE(base_rate, probability)) DESC
+            LIMIT 40
           `) as unknown as ResolvedCallRow[];
           // Due-but-unresolved: matured rows still pending. Includes the
           // coverage-grace holds (expected, and the formatter says so) — and,
@@ -943,7 +956,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 'resolve-calls may not have run; the brief will say so rather than go quiet',
             );
           }
-          briefData.resolvedCallLines = formatResolvedCallLines(resolvedRows, duePending, nameOf);
+          briefData.resolvedCallLines = formatResolvedCallLines(
+            resolvedRows,
+            duePending,
+            nameOf,
+            resolvedTotals[0] ?? { total: resolvedRows.length, hits: 0 },
+          );
 
           // Designation deltas — real adds/removes/updates from the rebuilt
           // sanctions collector (a diff against the stored snapshot, not a
@@ -1298,10 +1316,17 @@ ${(() => {
               'no request was sent.',
           );
         }
-        // Extract Good Morning line for subtitle
+        // Extract Good Morning line for subtitle. The ledger line is spliced
+        // into the FIRST section (see spliceLedgerLine), which on Sundays is
+        // Good Morning — strip it here or the subtitle becomes the stat line
+        // instead of the greeting. Caught by the rule-2 review of the splice
+        // change; the greeting, not the record, is the subtitle's job.
         const subtitleMatch = briefText.match(/## ☕ Good Morning\n+([\s\S]*?)(?=\n##|\n\n##)/);
         const subtitle = subtitleMatch
-          ? subtitleMatch[1].trim().slice(0, 200)
+          ? subtitleMatch[1]
+              .replace(/^\*\*The Ledger\*\*.*$/m, '')
+              .trim()
+              .slice(0, 200)
           : `Your daily geopolitical intelligence scan — ${today}`;
 
         const beehiivRes = await fetch(`https://api.beehiiv.com/v2/publications/${beehiivPubId}/posts`, {
@@ -1378,7 +1403,9 @@ ${(() => {
       try {
         // Build post content from brief
         const gmMatch = briefText.match(/## ☕ Good Morning\n+([\s\S]*?)(?=\n##)/);
-        const goodMorning = gmMatch ? gmMatch[1].trim() : '';
+        // Strip the spliced ledger line — bold markdown shipped raw to X once
+        // is once too many, and the social copy's job is the greeting.
+        const goodMorning = gmMatch ? gmMatch[1].replace(/^\*\*The Ledger\*\*.*$/m, '').trim() : '';
 
         const storiesMatch = briefText.match(/## 📍 Today's Top Stories\n+([\s\S]*?)(?=\n##)/);
         const topStory = storiesMatch
@@ -2635,28 +2662,46 @@ export function spliceLedgerLine(briefText: string, ledger: string): string {
   return lines.join('\n');
 }
 
+/**
+ * The claim wording, BY KIND, with no default that lies. An independent
+ * review caught the first version's `fx ? … : censorship` else-branch: a new
+ * call kind would have been described to the public as "a confirmed
+ * censorship event" — a false claim manufactured by omission. Unknown kinds
+ * now get wording that is true of every call by construction (each names its
+ * external resolver at creation), and the resolver itself refuses to score
+ * kinds it does not know, so this is defence in depth, not the only wall.
+ */
+function claimWording(kind: string, resolvesOn: string): string {
+  if (kind === 'fx_devaluation') return `currency depreciation by ${resolvesOn}`;
+  if (kind === 'censorship_event') return `a confirmed censorship event by ${resolvesOn}`;
+  return `the outcome it named against its declared external source by ${resolvesOn}`;
+}
+
 export function formatResolvedCallLines(
   rows: ResolvedCallRow[],
   stillDuePending: number,
   nameOf?: Map<string, string>,
+  totals?: { total: number; hits: number },
   cap = 12,
 ): string[] {
-  if (rows.length === 0 && stillDuePending === 0) return [];
-  const hits = rows.filter((r) => r.status === 'hit').length;
+  // The aggregate comes from COUNT(*) via `totals`, never from rows.length —
+  // rows is a PAGE (the most divergent N), and a published count that equals
+  // a page size is the defect the ledger endpoint shipped on 2026-08-30.
+  const total = totals?.total ?? rows.length;
+  const hits = totals?.hits ?? rows.filter((r) => r.status === 'hit').length;
+  if (total === 0 && stillDuePending === 0) return [];
   const lines: string[] = [];
   const graceNote =
     stillDuePending > 0
       ? ` ${stillDuePending} due call${stillDuePending === 1 ? '' : 's'} remain${stillDuePending === 1 ? 's' : ''} pending under the coverage-grace rule (thin evidence, never scored as a miss).`
       : '';
-  if (rows.length === 0) {
+  if (total === 0) {
     // Due calls exist and NONE resolved — either everything is grace-held, or
     // the resolver did not run. Say which is knowable, and never go quiet.
     lines.push(`${stillDuePending} calls came due and none has resolved yet.${graceNote}`);
     return lines;
   }
-  lines.push(
-    `${rows.length} calls settled against external ground truth: ${hits} hit, ${rows.length - hits} miss.${graceNote}`,
-  );
+  lines.push(`${total} calls settled against external ground truth: ${hits} hit, ${total - hits} miss.${graceNote}`);
   const byInfo = [...rows].sort(
     (a, b) =>
       Math.abs((b.probability ?? 0) - (b.base_rate ?? b.probability ?? 0)) -
@@ -2666,19 +2711,16 @@ export function formatResolvedCallLines(
     const name = nameOf?.get(r.country_code) ?? r.country_code;
     const outcome = r.status === 'hit' ? 'HIT' : 'MISS';
     const base = r.base_rate !== null ? ` (base rate ${(r.base_rate * 100).toFixed(0)}%)` : '';
-    const claim =
-      r.kind === 'fx_devaluation'
-        ? `currency depreciation by ${r.resolves_on}`
-        : `a confirmed censorship event by ${r.resolves_on}`;
     const evidence =
       r.kind === 'censorship_event' && r.evidence_count !== null && r.status === 'hit'
         ? ` — OONI confirmed blocking on ${r.evidence_count} day${r.evidence_count === 1 ? '' : 's'} in the window`
         : '';
     lines.push(
-      `${name} (${r.country_code}): ${outcome} — we said ${(r.probability * 100).toFixed(0)}%${base} for ${claim}${evidence}`,
+      `${name} (${r.country_code}): ${outcome} — we said ${(r.probability * 100).toFixed(0)}%${base} for ${claimWording(r.kind, r.resolves_on)}${evidence}`,
     );
   }
-  if (byInfo.length > cap) lines.push(`…and ${byInfo.length - cap} more, listed in full on the ledger.`);
+  const shown = Math.min(byInfo.length, cap);
+  if (total > shown) lines.push(`…and ${total - shown} more, listed in full on the ledger.`);
   return lines;
 }
 
