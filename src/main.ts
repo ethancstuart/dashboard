@@ -319,22 +319,6 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/admin/social-queue', () => {
-    import('./pages/socialQueue.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderSocialQueue(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/admin/marketing', () => {
-    import('./pages/adminMarketing.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderAdminMarketing(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
   .on('/brief/:date', (params) => {
     import('./pages/briefs.ts')
       .then(async (m) => {
