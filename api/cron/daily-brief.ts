@@ -10,7 +10,7 @@ import {
   parseDeclaredSubject,
   chooseSubject,
 } from '../_lib/brief-structure.js';
-import { formatLedgerSummary, type Call, type LedgerSummaryRow } from '../_lib/calls.js';
+import { formatLedgerSummary, CALIBRATION_KINDS, type Call, type LedgerSummaryRow } from '../_lib/calls.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
@@ -880,7 +880,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             -- Calibration-harness calls (seismicity) are excluded EXPLICITLY,
             -- not by trusting their zero divergence to sort them out of the
             -- top 8 — and the per-kind phrasing below doesn't speak seismic.
-            WHERE status = 'pending' AND base_rate IS NOT NULL AND kind <> 'seismicity_window'
+            WHERE status = 'pending' AND base_rate IS NOT NULL AND NOT (kind = ANY(${[...CALIBRATION_KINDS]}))
             ORDER BY ABS(probability - base_rate) DESC, probability DESC
             LIMIT 8
           `) as unknown as Array<{
@@ -901,10 +901,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // described as "a confirmed censorship event" — including the FX
             // calls, which would have handed the model a false claim to
             // faithfully repeat.
+            // No else-branch that lies: an unknown kind gets wording true of
+            // every call by construction, same rule as claimWording below.
             const claim =
               c.kind === 'fx_devaluation'
                 ? `${(c.p * 100).toFixed(0)}% chance the currency depreciates ${c.threshold_pct !== null ? `≥${c.threshold_pct}% ` : ''}peak-vs-issue by ${c.resolves_on}`
-                : `${(c.p * 100).toFixed(0)}% chance of a confirmed censorship event by ${c.resolves_on}`;
+                : c.kind === 'censorship_event'
+                  ? `${(c.p * 100).toFixed(0)}% chance of a confirmed censorship event by ${c.resolves_on}`
+                  : `${(c.p * 100).toFixed(0)}% chance of the outcome it names, against its declared external source, by ${c.resolves_on}`;
             return `${nameOf.get(c.country_code) ?? c.country_code} (${c.country_code}): ${claim} — ${vs}`;
           });
           briefData.openCallLines = openCallLines;
@@ -918,7 +922,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Window: today on weekdays; the last 7 days on Sunday, whose prompt
           // has asked "which calls resolved this week and how" since 08-23 —
           // an instruction that was unsatisfiable until this query existed.
-          const resolvedWindowDays = isSunday ? 7 : 1;
+          // Calendar-day semantics, not a rolling 24h: "today" must mean
+          // resolved_at::date = CURRENT_DATE, or a late manual resolution
+          // yesterday afternoon gets published as today's. Sunday looks back
+          // 7 calendar days for "the week on the record".
+          //
+          // The exclusion DERIVES from CALIBRATION_KINDS — the canonical
+          // "not a public claim" property in api/_lib/calls.ts — rather than
+          // naming seismicity_window here. A future calibration kind is
+          // excluded the day it is added to the set, not the day someone
+          // remembers this file exists.
+          const calibrationKinds = [...CALIBRATION_KINDS];
           // COUNTS FROM COUNT(*), DETAIL FROM THE PAGE — the same law the
           // ledger endpoint had to learn twice (by_kind published a page size
           // on 2026-08-30). The aggregate line quotes these totals; the paged
@@ -927,16 +941,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             SELECT COUNT(*)::int AS total,
                    COUNT(*) FILTER (WHERE status = 'hit')::int AS hits
             FROM calls
-            WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
-              AND resolved_at > NOW() - make_interval(days => ${resolvedWindowDays})
+            WHERE status IN ('hit','miss') AND NOT (kind = ANY(${calibrationKinds}))
+              AND resolved_at::date > CURRENT_DATE - ${isSunday ? 7 : 1}::int
           `) as unknown as Array<{ total: number; hits: number }>;
           const resolvedRows = (await sql`
             SELECT kind, country_code, probability::float AS probability,
                    base_rate::float AS base_rate, status,
                    resolves_on::text AS resolves_on, evidence_count
             FROM calls
-            WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
-              AND resolved_at > NOW() - make_interval(days => ${resolvedWindowDays})
+            WHERE status IN ('hit','miss') AND NOT (kind = ANY(${calibrationKinds}))
+              AND resolved_at::date > CURRENT_DATE - ${isSunday ? 7 : 1}::int
             ORDER BY ABS(probability - COALESCE(base_rate, probability)) DESC
             LIMIT 40
           `) as unknown as ResolvedCallRow[];
@@ -947,7 +961,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const dueStillPending = (await sql`
             SELECT COUNT(*)::int AS n FROM calls
             WHERE status = 'pending' AND resolves_on <= CURRENT_DATE
-              AND kind <> 'seismicity_window'
+              AND NOT (kind = ANY(${calibrationKinds}))
           `) as unknown as Array<{ n: number }>;
           const duePending = dueStillPending[0]?.n ?? 0;
           if (resolvedRows.length === 0 && duePending > 0) {
