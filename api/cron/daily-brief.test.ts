@@ -181,7 +181,7 @@ describe('rendered brief — no style attribute is truncated by an embedded quot
 });
 
 /**
- * The two other renderers (api/send-alert-email.ts, api/subscribe.ts — the
+ * The other renderer (api/subscribe.ts — the
  * WELCOME email) are request handlers and cannot be rendered without a live
  * request, DB and Resend key. They are covered structurally instead: all three
  * files now build their attributes through the one shared helper, so asserting

@@ -223,14 +223,6 @@
       "schedule": "0 5 * * *"
     },
     {
-      "path": "/api/cron/source-eia-commodities",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/source-fred-yields",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/api/cron/source-wikipedia-pageviews",
       "schedule": "0 8 * * *"
     },
@@ -239,20 +231,8 @@
       "schedule": "0 */6 * * *"
     },
     {
-      "path": "/api/cron/source-promed",
-      "schedule": "0 */6 * * *"
-    },
-    {
       "path": "/api/cron/source-unhcr",
       "schedule": "0 3 15 * *"
-    },
-    {
-      "path": "/api/cron/source-reliefweb",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/alert-x",
-      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/dark-vessels",
@@ -269,14 +249,6 @@
     {
       "path": "/api/cron/social-send",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/competitive-scan",
-      "schedule": "0 9 * * 1"
-    },
-    {
-      "path": "/api/cron/weekly-recap",
-      "schedule": "0 15 * * 0"
     },
     {
       "path": "/api/cron/marketing-x",
@@ -323,20 +295,8 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/record-assessments",
-      "schedule": "30 10 * * *"
-    },
-    {
-      "path": "/api/cron/score-assessments",
-      "schedule": "0 11 * * *"
-    },
-    {
       "path": "/api/cron/source-ofac",
       "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/source-noaa-storms",
-      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/source-copernicus",
@@ -345,10 +305,6 @@
     {
       "path": "/api/cron/source-vdem",
       "schedule": "0 3 1 * *"
-    },
-    {
-      "path": "/api/cron/scheduled-emails",
-      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/cron-health",
@@ -365,14 +321,6 @@
     {
       "path": "/api/cron/export-parquet",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/forecast-record",
-      "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/cron/forecast-backtest",
-      "schedule": "0 6 * * 0"
     },
     {
       "path": "/api/cron/audio-brief",
