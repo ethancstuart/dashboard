@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
 import { personalizeUnsubscribe, unsubscribeUrl } from '../_lib/unsubscribe-token.js';
+import { renderDossierEmail } from './daily-brief.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
@@ -62,26 +63,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // What a subscriber actually receives. `summary` is beehiivHtml — inner
-  // modules with no masthead and NO UNSUBSCRIBE LINK, because beehiiv
-  // supplies that chrome and Resend does not. Sending it directly was the
-  // compliance hole; `email_html` is the full document with the footer. The
-  // fallback to `summary` exists for rows written before the columns did —
-  // a compatibility path for history, not an acceptable steady state.
-  const storedEmailHtml = (briefs[0] as { email_html?: unknown }).email_html;
-  const usingFullDocument = typeof storedEmailHtml === 'string' && storedEmailHtml.length > 0;
-  const briefHtml = usingFullDocument ? (storedEmailHtml as string) : (briefs[0].summary as string);
-  const storedPlainText = (briefs[0] as { plain_text?: unknown }).plain_text;
-  const briefPlain = typeof storedPlainText === 'string' && storedPlainText.length > 0 ? storedPlainText : null;
+  // What a subscriber actually receives is ALWAYS the full document —
+  // masthead, footer, unsubscribe. `summary` is beehiivHtml, an embeddable
+  // fragment with none of that chrome; sending it directly was the
+  // compliance hole this file carried for months.
+  //
+  // Preference order, and why the fragment is NOT in it:
+  //   1. stored email_html (written by daily-brief since the migration) —
+  //      cheap, byte-identical to what generation produced;
+  //   2. rendered NOW from the archived briefText via renderDossierEmail —
+  //      the same renderer generation uses, so a missing column or failed
+  //      storage write costs a re-render, never a non-compliant send;
+  //   3. skip with an explicit reason. The rule-2 review caught the first
+  //      version falling back to `summary`: an email without a way out does
+  //      not go, full stop — a skipped hour retries, a sent fragment is
+  //      unrecallable.
+  const row = briefs[0] as { email_html?: unknown; plain_text?: unknown; summary: string; content: unknown };
+  const storedEmailHtml = typeof row.email_html === 'string' && row.email_html.length > 0 ? row.email_html : null;
+  const storedPlainText = typeof row.plain_text === 'string' && row.plain_text.length > 0 ? row.plain_text : null;
 
-  // Guard: skip if brief generation hasn't completed yet
-  if (!briefHtml || briefHtml === 'generating...') {
+  let briefHtml: string | null = storedEmailHtml;
+  let briefPlain: string | null = storedPlainText;
+  if (!briefHtml) {
+    const content = (typeof row.content === 'object' && row.content !== null ? row.content : {}) as {
+      briefText?: unknown;
+      markets?: unknown;
+    };
+    if (typeof content.briefText === 'string' && content.briefText.length > 0) {
+      const rendered = renderDossierEmail({
+        briefText: content.briefText,
+        date: today,
+        time: '10:00 UTC',
+        markets: Array.isArray(content.markets) ? (content.markets as never[]) : [],
+        archiveUrl: `https://nexuswatch.dev/brief/${today}`,
+      });
+      briefHtml = rendered.emailHtml;
+      briefPlain = rendered.plainText;
+      console.warn(`[deliver-briefs] ${today}: no stored email_html — rendered at delivery time instead.`);
+    }
+  }
+
+  if (!briefHtml) {
+    // No stored document and nothing renderable. Never send the fragment.
     return res.status(200).json({
       success: true,
       skipped: true,
-      reason: `Brief for ${today} is still generating. Skipping delivery.`,
+      reason: `Brief for ${today} has no renderable full email document; refusing to send the summary fragment (no unsubscribe link). Will retry next hour.`,
     });
   }
+
+  // Guard: skip if brief generation hasn't completed yet
 
   // 2. Find timezone buckets where local time is 7:00–7:59 AM right now
   //
