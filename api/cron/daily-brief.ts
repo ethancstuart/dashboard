@@ -11,6 +11,7 @@ import {
   chooseSubject,
 } from '../_lib/brief-structure.js';
 import { formatLedgerSummary, CALIBRATION_KINDS, type Call, type LedgerSummaryRow } from '../_lib/calls.js';
+import { UNSUB_PLACEHOLDER } from '../_lib/unsubscribe-token.js';
 import { checkBudget, recordAnthropicSpend } from '../_lib/llm-budget.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 300 };
@@ -1274,6 +1275,24 @@ ${(() => {
           summary = ${briefHtml}
       WHERE brief_date = ${today}
     `;
+    // The FULL email document, stored beside the embeddable summary. A
+    // separate non-fatal statement: the archive write above failing means the
+    // run is broken and must 500; this one failing (migration not applied
+    // yet) must not — deliver-briefs probes and falls back to the fragment,
+    // which is exactly the previous behaviour.
+    try {
+      await sql`
+        UPDATE daily_briefs
+        SET email_html = ${dossier.emailHtml}, plain_text = ${dossier.plainText}
+        WHERE brief_date = ${today}
+      `;
+    } catch (emailColErr) {
+      console.error(
+        '[daily-brief] email_html/plain_text not stored (non-fatal — send falls back to summary; is 2026-09-05-brief-email-html.sql applied?):',
+        emailColErr instanceof Error ? emailColErr.message : emailColErr,
+      );
+    }
+
     await logDelivery({
       channel: 'archive',
       status: 'success',
@@ -2363,9 +2382,14 @@ function renderFooter(date: string, archiveUrl: string): string {
     `<a href="${escapeHtml(archiveUrl)}" ${styleAttr(footerLink)}>Forward today's brief →</a>` +
     `</p>` +
     `<p ${styleAttr(footerText)}>` +
-    `<a href="https://nexuswatch.dev/#/preferences" ${styleAttr(footerLink)}>Preferences</a>` +
+    // Preferences points at /settings — a route that EXISTS. Both this and
+    // the unsubscribe link used to point at routes that were never in the
+    // router: every footer link a subscriber could act on was a 404.
+    `<a href="https://nexuswatch.dev/settings" ${styleAttr(footerLink)}>Preferences</a>` +
     ` · ` +
-    `<a href="https://nexuswatch.dev/#/unsubscribe" ${styleAttr(footerLink)}>Unsubscribe</a>` +
+    // Per-recipient: one body is rendered for all recipients, so the signed
+    // link is substituted at send time (deliver-briefs), never baked here.
+    `<a href="${UNSUB_PLACEHOLDER}" ${styleAttr(footerLink)}>Unsubscribe</a>` +
     ` · ` +
     `<a href="mailto:hello@nexuswatch.dev" ${styleAttr(footerLink)}>hello@nexuswatch.dev</a>` +
     `</p>` +
@@ -2406,8 +2430,8 @@ function renderPlainText(briefText: string, date: string, time: string, archiveU
     `Read the Brief Archive: https://nexuswatch.dev/#/briefs`,
     `Forward today's brief: ${archiveUrl}`,
     ``,
-    `Preferences: https://nexuswatch.dev/#/preferences`,
-    `Unsubscribe: https://nexuswatch.dev/#/unsubscribe`,
+    `Preferences: https://nexuswatch.dev/settings`,
+    `Unsubscribe: ${UNSUB_PLACEHOLDER}`,
     `Contact: hello@nexuswatch.dev`,
     ``,
     `NexusWatch Intelligence`,
