@@ -54,45 +54,9 @@ const PAGES: Array<{ id: string; title: string; href: string; keywords: string[]
       keywords: ['predictions', 'tracking', 'transparency'],
       icon: '✓',
     },
-    {
-      id: 'audit',
-      title: 'Audit Trail',
-      href: '#/audit',
-      keywords: ['computation', 'history', 'rule version'],
-      icon: '🔍',
-    },
     { id: 'status', title: 'System Status', href: '#/status', keywords: ['health', 'uptime', 'outage'], icon: '📡' },
     { id: 'api', title: 'API Docs', href: '#/api', keywords: ['endpoint', 'developer', 'rest', 'json'], icon: '⚙' },
-    { id: 'compare', title: 'Compare Countries', href: '#/compare', keywords: ['side by side', 'diff'], icon: '⇄' },
-    {
-      id: 'entities',
-      title: 'Entity Registry',
-      href: '#/entities',
-      keywords: ['wagner', 'irgc', 'isis', 'apt', 'terrorist', 'proxy'],
-      icon: '🕸',
-    },
-    {
-      id: 'portfolio',
-      title: 'Portfolio Exposure',
-      href: '#/portfolio',
-      keywords: ['hedge fund', 'risk', 'stocks', 'tsmc'],
-      icon: '📈',
-    },
-    {
-      id: 'whats-new',
-      title: "What's New",
-      href: '#/whats-new',
-      keywords: ['release', 'changelog', 'updates'],
-      icon: '🆕',
-    },
     { id: 'roadmap', title: 'Roadmap', href: '#/roadmap', keywords: ['future', 'planned', 'coming soon'], icon: '🗺' },
-    {
-      id: 'feed',
-      title: 'Intelligence Feed',
-      href: '#/feed',
-      keywords: ['signals', 'updates', 'stream', 'cards'],
-      icon: '📡',
-    },
     { id: 'about', title: 'About NexusWatch', href: '#/about', keywords: ['company', 'info'], icon: 'ⓘ' },
   ];
 
@@ -143,13 +107,6 @@ const COMMANDS: Array<{
     keywords: ['notify', 'watch'],
     icon: '🔔',
     shortcut: 'A',
-  },
-  {
-    id: 'cmd-new-watchlist',
-    title: 'Manage Watchlist',
-    href: '#/watchlist',
-    keywords: ['save country', 'track'],
-    icon: '★',
   },
 ];
 

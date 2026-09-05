@@ -123,9 +123,6 @@ function renderEmptyState(container: HTMLElement): void {
             <a href="#/ledger">✓ The Ledger</a>
             <a href="#/intel">🌐 Intel Map</a>
             <a href="#/briefs">☕ Briefs</a>
-            <a href="#/compare">⇄ Compare</a>
-            <a href="#/entities">🕸 Entities</a>
-            <a href="#/audit">🔍 Audit</a>
             <a href="#/status">📡 Status</a>
           </div>
         </div>

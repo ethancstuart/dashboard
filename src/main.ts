@@ -193,15 +193,6 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/case-study', () => {
-    // Legacy route — preserve access to the old technical case study.
-    import('./pages/casestudy.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderCaseStudy(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
   .on('/roadmap', () => {
     import('./pages/roadmap.ts')
       .then(async (m) => {
@@ -258,14 +249,6 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/portfolio', () => {
-    import('./pages/portfolio.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderPortfolioPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
   .on('/api', () => {
     import('./pages/apidocs.ts')
       .then(async (m) => {
@@ -282,14 +265,6 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/whats-new', () => {
-    import('./pages/releaseNotes.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderReleaseNotes(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
   .on('/status', () => {
     import('./pages/status.ts')
       .then(async (m) => {
@@ -298,62 +273,7 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/audit', () => {
-    import('./pages/audit.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderAuditPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/audit/:country', (params) => {
-    import('./pages/audit.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderAuditPage(appRoot, params?.country);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/compare', () => {
-    import('./pages/compare.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderComparePage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/entities', () => {
-    import('./pages/entities.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderEntitiesPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/entities/:id', (params) => {
-    import('./pages/entities.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderEntitiesPage(appRoot, params?.id);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/watchlist', () => {
-    import('./pages/watchlist.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderWatchlistPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/feed', () => {
-    import('./pages/feed.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderFeedPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
+
   // /welcome was the third of three competing onboarding flows, all deleted
   // 2026-08-23. Old links land on /settings, which is where interests live now.
   .on('/welcome', () => {
