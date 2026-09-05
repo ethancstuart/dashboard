@@ -51,7 +51,6 @@ export function renderLanding(root: HTMLElement): void {
       <div class="nw-nav-links">
         <a href="#/ledger">The Ledger</a>
         <a href="#/briefs">Briefs</a>
-        <a href="#/intel">Intel Map</a>
         <a href="#/about">About</a>
       </div>
     </nav>
@@ -203,26 +202,7 @@ export function renderLanding(root: HTMLElement): void {
       </div>
     </section>
 
-    <section class="nw-reveal" aria-label="Cinema mode">
-      <div class="nw-cinema">
-        <div class="nw-cinema-copy">
-          <span class="nw-section-eyebrow">Cinema Mode</span>
-          <h2 class="nw-section-heading">Drop it on a TV. Watch the world.</h2>
-          <p>Cinema is the same intelligence, choreographed for a wall — slow globe rotation, alert pills cycling,
-            instability deltas ticking. Set it once. Forget the remote. The world keeps moving.</p>
-          <a href="#/intel?cinema=1" class="nw-hero-cta" data-cta="cinema-preview">
-            Try Cinema <span class="nw-hero-cta-arrow" aria-hidden="true">→</span>
-          </a>
-        </div>
-        <div class="nw-cinema-stage" aria-hidden="true">
-          <span class="nw-cinema-pill">CINEMA / LIVE</span>
-          <div class="nw-cinema-bottombar">
-            <span>EARTHQUAKE · 6.2 · LUZON</span>
-            <span>CII · YE +3 · 84</span>
-          </div>
-        </div>
-      </div>
-    </section>
+
 
     <section class="nw-reveal" aria-label="Today's brief">
       <span class="nw-section-eyebrow">Today's Brief</span>
@@ -297,7 +277,6 @@ export function renderLanding(root: HTMLElement): void {
         <div class="nw-footer-brand"><span>●</span> NexusWatch</div>
         <div class="nw-footer-links">
           <a href="#/ledger">The Ledger</a>
-          <a href="#/intel">Intel Map</a>
           <a href="#/briefs">Briefs</a>
           <a href="#/why-free">Why Free</a>
           <a href="#/about">About</a>

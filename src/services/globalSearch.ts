@@ -32,7 +32,6 @@ export interface SearchResult {
 
 const PAGES: Array<{ id: string; title: string; href: string; keywords: string[]; icon?: string; shortcut?: string }> =
   [
-    { id: 'intel', title: 'Intel Map', href: '#/intel', keywords: ['map', 'globe', 'home', 'dashboard'], icon: '🌐' },
     {
       id: 'briefs',
       title: 'Brief Archive',
@@ -67,48 +66,7 @@ const COMMANDS: Array<{
   keywords: string[];
   icon?: string;
   shortcut?: string;
-}> = [
-  {
-    id: 'cmd-sitrep',
-    title: 'Generate Sitrep',
-    href: '#/intel?cmd=sitrep',
-    keywords: ['sitrep', 'report', 'brief now'],
-    icon: '📡',
-    shortcut: 'S',
-  },
-  {
-    id: 'cmd-timeline',
-    title: 'Open Time-Travel',
-    href: '#/intel?cmd=timeline',
-    keywords: ['history', 'scrubber', 'past'],
-    icon: '◷',
-    shortcut: 'T',
-  },
-  {
-    id: 'cmd-shortcuts',
-    title: 'Keyboard Shortcuts',
-    href: '#/intel?cmd=shortcuts',
-    keywords: ['hotkeys', 'help'],
-    icon: '⌨',
-    shortcut: '?',
-  },
-  {
-    id: 'cmd-cascades',
-    title: 'Show Risk Cascades',
-    href: '#/intel?cmd=cascades',
-    keywords: ['cascade', 'propagation'],
-    icon: '↯',
-    shortcut: 'R',
-  },
-  {
-    id: 'cmd-new-alert',
-    title: 'Create Alert Rule',
-    href: '#/intel?cmd=alert',
-    keywords: ['notify', 'watch'],
-    icon: '🔔',
-    shortcut: 'A',
-  },
-];
+}> = [];
 
 /**
  * Score a search term against a target string. Higher = better match.
@@ -230,7 +188,7 @@ export function search(query: string, limit = 30): SearchResult[] {
         id: s.id,
         title: s.name,
         subtitle: s.description.slice(0, 70),
-        href: `#/intel?scenario=${s.id}`,
+        href: '#/ledger',
         icon: '?',
         score: maxScore,
       });
@@ -248,7 +206,7 @@ export function search(query: string, limit = 30): SearchResult[] {
         id: sig.id,
         title: sig.summary.slice(0, 70),
         subtitle: `${sig.level.toUpperCase()} · ${sig.sources.length} sources`,
-        href: sig.countryCode ? `#/audit/${sig.countryCode}` : '#/intel',
+        href: '#/ledger',
         icon: sig.level === 'confirmed' ? '🛡' : '◈',
         score: score * 0.8, // live signals slightly deprioritized vs canonical
       });

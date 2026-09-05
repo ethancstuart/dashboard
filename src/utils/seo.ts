@@ -98,12 +98,6 @@ export const PAGE_SEO = {
       '45+ live data layers on a 3D globe. 158 countries scored. Daily AI briefs and dark vessel detection. Open-source. Free.',
     canonicalPath: '/',
   },
-  intel: {
-    title: 'Intel Map',
-    description:
-      'A 3D globe of every conflict, disaster, vessel, satellite, and signal we track in real time. Toggle 45+ data layers. Free.',
-    canonicalPath: '/intel',
-  },
   about: {
     title: 'About',
     description:
