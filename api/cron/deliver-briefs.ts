@@ -112,8 +112,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  // Guard: skip if brief generation hasn't completed yet
-
   // 2. Find timezone buckets where local time is 7:00–7:59 AM right now
   //
   // We compute which UTC offsets correspond to 7 AM local time at the current
