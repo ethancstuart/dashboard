@@ -1191,11 +1191,16 @@ ${(() => {
     // Non-fatal by construction — a brief must still go out if the ledger
     // query fails, and it must never claim a record it does not have.
     try {
+      // Same derivation as the prompt queries above: the exclusion reads from
+      // CALIBRATION_KINDS, never a literal — round three of the rule-2 review
+      // caught these three queries still naming seismicity_window while the
+      // commit message claimed the class was fixed.
+      const calKinds = [...CALIBRATION_KINDS];
       const resolvedToday = (await sql`
         SELECT country_code, status, probability::float AS probability
         FROM calls
         WHERE resolved_at::date = CURRENT_DATE AND status IN ('hit','miss')
-          AND kind <> 'seismicity_window'
+          AND NOT (kind = ANY(${calKinds}))
       `) as unknown as Array<{ country_code: string; status: string; probability: number }>;
 
       // kind and resolved_at are REQUIRED, not decorative: the summary scores
@@ -1206,7 +1211,7 @@ ${(() => {
         SELECT kind, probability::float AS probability, base_rate::float AS base_rate,
                status, resolved_at::text AS resolved_at
         FROM calls
-        WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
+        WHERE status IN ('hit','miss') AND NOT (kind = ANY(${calKinds}))
       `) as unknown as Array<{
         kind: string;
         probability: number;
@@ -1217,7 +1222,7 @@ ${(() => {
 
       const openRows = (await sql`
         SELECT COUNT(*)::int AS n, MIN(resolves_on)::text AS next_resolves
-        FROM calls WHERE status = 'pending' AND kind <> 'seismicity_window'
+        FROM calls WHERE status = 'pending' AND NOT (kind = ANY(${calKinds}))
       `) as unknown as Array<{ n: number; next_resolves: string | null }>;
 
       const scoredRows: LedgerSummaryRow[] = allScoredRows.map((r) => ({
@@ -2694,15 +2699,16 @@ function claimWording(kind: string, resolvesOn: string): string {
 export function formatResolvedCallLines(
   rows: ResolvedCallRow[],
   stillDuePending: number,
-  nameOf?: Map<string, string>,
-  totals?: { total: number; hits: number },
+  nameOf: Map<string, string> | undefined,
+  // REQUIRED, deliberately. Round three caught the optional version: a caller
+  // omitting totals silently fell back to rows.length — a PAGE — which is the
+  // by_kind page-size defect with a default parameter for a disguise. The
+  // aggregate comes from COUNT(*) or the caller does not compile.
+  totals: { total: number; hits: number },
   cap = 12,
 ): string[] {
-  // The aggregate comes from COUNT(*) via `totals`, never from rows.length —
-  // rows is a PAGE (the most divergent N), and a published count that equals
-  // a page size is the defect the ledger endpoint shipped on 2026-08-30.
-  const total = totals?.total ?? rows.length;
-  const hits = totals?.hits ?? rows.filter((r) => r.status === 'hit').length;
+  const total = totals.total;
+  const hits = totals.hits;
   if (total === 0 && stillDuePending === 0) return [];
   const lines: string[] = [];
   const graceNote =

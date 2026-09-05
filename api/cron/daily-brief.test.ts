@@ -297,14 +297,14 @@ describe('formatResolvedCallLines', () => {
   });
 
   it('speaks when calls are due but NONE resolved — the silent-resolver case', () => {
-    const lines = formatResolvedCallLines([], 5);
+    const lines = formatResolvedCallLines([], 5, undefined, { total: 0, hits: 0 });
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('5 calls came due and none has resolved yet');
     expect(lines[0]).toContain('coverage-grace');
   });
 
   it('is empty when there is genuinely nothing to say', () => {
-    expect(formatResolvedCallLines([], 0)).toEqual([]);
+    expect(formatResolvedCallLines([], 0, undefined, { total: 0, hits: 0 })).toEqual([]);
   });
 
   it('phrases FX and censorship claims differently, and only censorship hits carry evidence days', () => {
