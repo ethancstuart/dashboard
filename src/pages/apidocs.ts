@@ -85,8 +85,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
 
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
-      <div class="nw-endpoint-path">/api/v2/signals</div>
-      <div class="nw-endpoint-desc">Cross-source verified signals (CONFIRMED, CORROBORATED).</div>
+      
     </div>
 
     <div class="nw-endpoint">

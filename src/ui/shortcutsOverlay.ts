@@ -46,7 +46,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: '#/intel', description: 'Main intel map' },
       { key: '#/briefs', description: 'Daily brief archive' },
       { key: '#/accuracy', description: 'Prediction accuracy ledger' },
-      { key: '#/portfolio', description: 'Geopolitical exposure (Pro)' },
       { key: '#/methodology', description: 'How NexusWatch works' },
       { key: '#/roadmap', description: 'Upcoming features' },
     ],
