@@ -7,12 +7,6 @@
     "api/v2/council.ts": {
       "maxDuration": 60
     },
-    "api/cron/export-parquet.ts": {
-      "maxDuration": 300
-    },
-    "api/cron/audio-brief.ts": {
-      "maxDuration": 300
-    },
     "api/voice/ask.ts": {
       "maxDuration": 30
     }
@@ -117,42 +111,6 @@
     {
       "source": "/mcp",
       "destination": "/index.html"
-    },
-    {
-      "source": "/live-brief/:code",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/what-if",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/what-if/:id",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/cinematic",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/lab",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/audio",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/globe",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/data/manifest.json",
-      "destination": "/api/data/manifest"
-    },
-    {
-      "source": "/podcast.xml",
-      "destination": "/api/podcast.xml"
     },
     {
       "source": "/whats-new",
@@ -311,14 +269,6 @@
     {
       "path": "/api/cron/cost-summary",
       "schedule": "0 9 * * 1"
-    },
-    {
-      "path": "/api/cron/export-parquet",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/audio-brief",
-      "schedule": "30 10 * * *"
     },
     {
       "path": "/api/cron/record-calls",

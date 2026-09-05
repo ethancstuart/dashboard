@@ -282,62 +282,6 @@ router
       })
       .catch((err) => showRouteError(appRoot, err));
   })
-  .on('/live-brief/:code', (params) => {
-    import('./pages/liveBrief.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderLiveBriefPage(appRoot, params?.code ?? '');
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/what-if', () => {
-    import('./pages/whatIf.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderWhatIfPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/what-if/:id', (params) => {
-    import('./pages/whatIf.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderWhatIfPage(appRoot, params?.id);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/cinematic', () => {
-    import('./pages/cinematic.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderCinematicPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/lab', () => {
-    import('./pages/lab.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderLabPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/audio', () => {
-    import('./pages/audio.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderAudioPage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/globe', () => {
-    import('./pages/globe.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        void m.renderGlobePage(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
   .on('/whats-new', () => {
     import('./pages/releaseNotes.ts')
       .then(async (m) => {
@@ -391,14 +335,6 @@ router
       .then(async (m) => {
         await transition(appRoot);
         m.renderEntitiesPage(appRoot, params?.id);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/brief-country/:code', (params) => {
-    import('./pages/countryBrief.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderCountryBrief(appRoot, params?.code || '');
       })
       .catch((err) => showRouteError(appRoot, err));
   })

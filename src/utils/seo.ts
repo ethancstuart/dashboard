@@ -182,12 +182,6 @@ export const PAGE_SEO = {
       'Browse geopolitical non-state actors — armed groups, intelligence agencies, PMCs, sanctioned organizations. Sponsors, proxies, operating countries. Free.',
     canonicalPath: '/entities',
   },
-  countryBrief: {
-    title: 'Country Brief',
-    description:
-      'Printable single-page country brief: CII score, 6-component breakdown, top signals, data gaps, rule version. Suitable for boardrooms. Free.',
-    canonicalPath: '/brief-country',
-  },
   releaseNotes: {
     title: "What's New",
     description:
@@ -217,42 +211,6 @@ export const PAGE_SEO = {
     description:
       'Connect Claude Code, Cursor, or any MCP client to NexusWatch. 9 geopolitical intelligence tools — country risk, scenarios, portfolio exposure. No auth. Free.',
     canonicalPath: '/mcp',
-  },
-  liveBrief: {
-    title: 'Live Agent Brief',
-    description:
-      'Watch a NexusWatch AI agent gather live data and synthesize a geopolitical brief for any country — every tool call visible, every source named. Free.',
-    canonicalPath: '/live-brief',
-  },
-  whatIf: {
-    title: 'What-If Scenarios',
-    description:
-      'Counterfactual geopolitical scenarios — Strait of Hormuz, Taiwan blockade, Russia-NATO, and 11 more. Deterministic CII cascade + AI agent interpretation. Free.',
-    canonicalPath: '/what-if',
-  },
-  cinematic: {
-    title: 'The World, As It Moves',
-    description:
-      'A cinematic look at the world tonight — live crisis triggers, animated globe, scroll-driven narrative. The shareable face of NexusWatch. Free.',
-    canonicalPath: '/cinematic',
-  },
-  lab: {
-    title: 'Data Lab',
-    description:
-      'Run SQL against the NexusWatch public dataset in your browser. DuckDB-WASM, Parquet exports, one-click charts. No login. Free.',
-    canonicalPath: '/lab',
-  },
-  audio: {
-    title: 'NexusWatch FM',
-    description:
-      'Daily 90-second AI-narrated geopolitical brief, public podcast feed, plus a "call the analyst" voice agent. Subscribe in Apple/Spotify. Free.',
-    canonicalPath: '/audio',
-  },
-  globe: {
-    title: 'Time-Machine Globe',
-    description:
-      'WebGL Earth with atmospheric glow, day/night terminator, NASA clouds, pulsing crisis markers, and a draggable time scrubber. Free.',
-    canonicalPath: '/globe',
   },
   audit: {
     title: 'Public Audit Viewer',
