@@ -10,12 +10,6 @@
     "api/cron/export-parquet.ts": {
       "maxDuration": 300
     },
-    "api/cron/forecast-record.ts": {
-      "maxDuration": 300
-    },
-    "api/cron/forecast-backtest.ts": {
-      "maxDuration": 180
-    },
     "api/cron/audio-brief.ts": {
       "maxDuration": 300
     },
