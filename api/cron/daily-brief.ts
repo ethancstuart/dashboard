@@ -51,6 +51,17 @@ export interface BriefData {
   newsHeadlines: NewsItem[];
   /** Pre-formatted open-call lines (divergence-ordered), for Today's Call. */
   openCallLines: string[];
+  /**
+   * Pre-formatted lines for calls RESOLVED in the current window (today, or
+   * the last 7 days on Sundays). First line is always the aggregate.
+   *
+   * This field exists because of 2026-09-05: on the first resolution day in
+   * the product's history, the model led with an unrelated FX call. It had no
+   * way to do otherwise — the only calls query feeding the prompt selected
+   * `status = 'pending'`, so the one thing the register exists to produce was
+   * invisible to the writer the moment it existed.
+   */
+  resolvedCallLines: string[];
 }
 
 interface WeeklyTrend {
@@ -271,7 +282,7 @@ ${SUNDAY_SECTIONS[0]}
 2-3 sentences. Warm, reflective. "Happy Sunday. Here's what mattered this week — and what we're watching heading into Monday."
 
 ${SUNDAY_SECTIONS[1]}
-The week on the record. From OUR OPEN CALLS in the context: which calls resolved this week and how, which are open, and the single most divergent open call restated in one sentence with its probability, base rate and resolution date. Every number verbatim from the context. If the context lists no calls, write exactly: "No calls on the book this week." Never invent a call.
+The week on the record. From the RESOLVED CALLS section of the context: the aggregate line verbatim (settled, hits, misses, grace-held), then the two or three most informative resolutions with our stated probability and base rate beside each outcome — where we were right cheaply, where we were wrong confidently. Then from OUR OPEN CALLS: the single most divergent open call restated in one sentence with its probability, base rate and resolution date. Every number verbatim from the context. If both sections are empty, write exactly: "No calls on the book this week." Never invent a call.
 
 ${SUNDAY_SECTIONS[2]}
 5-7 of the biggest stories from the past 7 days. Each story gets:
@@ -336,13 +347,24 @@ template inserts the mechanical Ledger line above your output):
 
 ${DAILY_SECTIONS[0]}
 
-The one call we are making today, from the OUR OPEN CALLS section of the
-context — pick the call listed FIRST (they arrive ordered by divergence from
-the base rate; the first is where we are saying the most). Restate it in 1-2
-sentences: the country, the claim, our probability, the base rate beside it,
-and the resolution date. Every number verbatim from the context. If the
-context lists no open calls, write exactly: "No open calls today." Never
-invent a call, never adjust a probability, never editorialise the criterion.
+FIRST check the RESOLVED CALLS section of the context. If it lists anything,
+LEAD WITH THE RECORD: state the aggregate line verbatim (how many settled,
+hits, misses, and any still pending under the grace rule), then the single
+most informative resolution — the one listed first — with our stated
+probability and its base rate beside the outcome. A model that publishes
+dated, falsifiable calls and then buries the day they settle is doing public
+relations, not forecasting; the settled record ALWAYS outranks a new call.
+Then, in one further sentence, give the top open call from OUR OPEN CALLS.
+
+If RESOLVED CALLS is empty: the one call we are making today, from the OUR
+OPEN CALLS section of the context — pick the call listed FIRST (they arrive
+ordered by divergence from the base rate; the first is where we are saying
+the most). Restate it in 1-2 sentences: the country, the claim, our
+probability, the base rate beside it, and the resolution date.
+
+Every number verbatim from the context. If the context lists no calls at
+all, write exactly: "No open calls today." Never invent a call, never adjust
+a probability, never editorialise the criterion.
 
 ${DAILY_SECTIONS[1]}
 
@@ -434,6 +456,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const sql = neon(dbUrl);
     const now = new Date();
+    // Sunday drives both the prompt variant (weekly recap) and the resolved-
+    // calls window (7 days, so "the week on the record" is answerable).
+    const isSunday = now.getUTCDay() === 0;
     const today = now.toISOString().split('T')[0];
     const utcTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')} UTC`;
 
@@ -793,6 +818,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       correlations,
       newsHeadlines,
       openCallLines: [],
+      resolvedCallLines: [],
     };
 
     // === Generate AI brief (outputs markdown text) ===
@@ -881,6 +907,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           briefData.openCallLines = openCallLines;
 
+          // RESOLVED CALLS — the reason this block exists is 2026-09-05: the
+          // first resolution day in the product's history, and the model led
+          // with an unrelated FX call because nothing below selected anything
+          // but status='pending'. The register's whole output was invisible to
+          // its own writer.
+          //
+          // Window: today on weekdays; the last 7 days on Sunday, whose prompt
+          // has asked "which calls resolved this week and how" since 08-23 —
+          // an instruction that was unsatisfiable until this query existed.
+          const resolvedWindowDays = isSunday ? 7 : 1;
+          const resolvedRows = (await sql`
+            SELECT kind, country_code, probability::float AS probability,
+                   base_rate::float AS base_rate, status,
+                   resolves_on::text AS resolves_on, evidence_count
+            FROM calls
+            WHERE status IN ('hit','miss') AND kind <> 'seismicity_window'
+              AND resolved_at > NOW() - make_interval(days => ${resolvedWindowDays})
+            ORDER BY resolved_at DESC
+            LIMIT 200
+          `) as unknown as ResolvedCallRow[];
+          // Due-but-unresolved: matured rows still pending. Includes the
+          // coverage-grace holds (expected, and the formatter says so) — and,
+          // in the failure case, a resolver that did not run. Either way the
+          // brief must not read like an ordinary day by silent omission.
+          const dueStillPending = (await sql`
+            SELECT COUNT(*)::int AS n FROM calls
+            WHERE status = 'pending' AND resolves_on <= CURRENT_DATE
+              AND kind <> 'seismicity_window'
+          `) as unknown as Array<{ n: number }>;
+          const duePending = dueStillPending[0]?.n ?? 0;
+          if (resolvedRows.length === 0 && duePending > 0) {
+            console.error(
+              `[daily-brief] ${duePending} calls due but ZERO resolved in window — ` +
+                'resolve-calls may not have run; the brief will say so rather than go quiet',
+            );
+          }
+          briefData.resolvedCallLines = formatResolvedCallLines(resolvedRows, duePending, nameOf);
+
           // Designation deltas — real adds/removes/updates from the rebuilt
           // sanctions collector (a diff against the stored snapshot, not a
           // re-insert of the whole list). Sparse by nature: ~5 designation
@@ -926,6 +990,9 @@ ${movers.length > 0 ? movers.map((m) => `${m.name}: deviation ${m.delta > 0 ? '+
 
 === POLITICAL SIGNAL — NETWORK INTERFERENCE (OONI, last 7 days) ===
 ${censorshipLines.length > 0 ? censorshipLines.join('\n') : 'No confirmed blocking events recorded in the last 7 days.'}
+
+=== RESOLVED CALLS (settled against external ground truth — ${isSunday ? 'the last 7 days' : 'today'}) ===
+${briefData.resolvedCallLines.length > 0 ? briefData.resolvedCallLines.join('\n') : isSunday ? 'No calls resolved this week.' : 'No calls resolved today.'}
 
 === OUR OPEN CALLS (dated, falsifiable, resolved against OONI and FX reference rates) ===
 ${openCallLines.length > 0 ? openCallLines.join('\n') : 'No open calls.'}
@@ -1047,7 +1114,7 @@ ${(() => {
             // deterministic builder — which is grounded by construction —
             // rather than silently shipping invention.
             grounding = groundDraft(briefText, dataContext);
-            const structure = validateBriefStructure(briefText, now.getUTCDay() === 0);
+            const structure = validateBriefStructure(briefText, isSunday);
             if (!grounding.pass) {
               aiDebug = `grounding-failed: ${grounding.unsupported.length}/${grounding.draftNumerals.length} unsupported numerals [${grounding.unsupported.slice(0, 8).join(', ')}]`;
               console.error('[daily-brief] GROUNDING GATE REFUSED THE DRAFT:', aiDebug);
@@ -1136,13 +1203,7 @@ ${(() => {
         nextResolvesOn: openRows[0]?.next_resolves ?? null,
       });
 
-      // Insert immediately after the H1 so it is the first thing read.
-      const lines = briefText.split('\n');
-      const h1 = lines.findIndex((l) => l.startsWith('# '));
-      const block = ['', `> **The Ledger** — ${ledger}`, ''];
-      if (h1 >= 0) lines.splice(h1 + 1, 0, ...block);
-      else lines.unshift(...block);
-      briefText = lines.join('\n');
+      briefText = spliceLedgerLine(briefText, ledger);
     } catch (ledgerErr) {
       console.error(
         '[daily-brief] ledger line skipped (non-fatal):',
@@ -2525,6 +2586,102 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
 // Matches the A.5 locked structure (Apr 10 Decision 5): 7 weekday sections
 // + optional Friday Tool of the Week. No Space & Tech (deliberately dropped
 // during A.5 — wasn't in the locked structure). Sunday falls back to the
+/**
+ * Format resolved calls for the prompt context and the fallback.
+ *
+ * The first line is ALWAYS the aggregate; detail lines follow, ordered by
+ * divergence from the stored base rate (most informative first — a hit at 16%
+ * against a 10% base says more than the seventh hit at 84%). Capped so a
+ * 105-resolution morning cannot flood the prompt; the cap is stated in the
+ * output so the model knows the list is bounded rather than complete.
+ *
+ * Every numeral here lands in dataContext, which is what makes it QUOTABLE:
+ * the grounding gate (groundDraft) verifies the draft's numerals against the
+ * context, so a resolution the model mentions must appear here first or the
+ * whole draft is refused in favour of the fallback.
+ */
+export interface ResolvedCallRow {
+  kind: string;
+  country_code: string;
+  probability: number;
+  base_rate: number | null;
+  status: string;
+  resolves_on: string;
+  evidence_count: number | null;
+}
+
+/**
+ * Splice the standing ledger line into a brief body.
+ *
+ * INSIDE the first section, as a bold paragraph — never as a preamble and
+ * never as a blockquote. Both halves of that were learned on 2026-09-05, the
+ * first resolution day: the old splice put `> **The Ledger** ...` at line 0,
+ * and (a) no renderer in the product handles `>`, so the literal character
+ * shipped to every subscriber, while (b) parseSections splits on `^## `, so
+ * everything before the first header became a TITLELESS pseudo-section with
+ * an empty kicker and empty h2 above it. The single most important line the
+ * product had ever published went out mis-rendered on all three surfaces.
+ *
+ * A bold paragraph under the first `## ` header renders correctly in the
+ * email renderer, the SPA mirror, and the archive today, with zero renderer
+ * changes. The dedicated masthead treatment belongs to the redesign.
+ */
+export function spliceLedgerLine(briefText: string, ledger: string): string {
+  const lines = briefText.split('\n');
+  const firstHeader = lines.findIndex((l) => l.startsWith('## '));
+  const block = ['', `**The Ledger** — ${ledger}`];
+  if (firstHeader >= 0) lines.splice(firstHeader + 1, 0, ...block);
+  else lines.push(...block);
+  return lines.join('\n');
+}
+
+export function formatResolvedCallLines(
+  rows: ResolvedCallRow[],
+  stillDuePending: number,
+  nameOf?: Map<string, string>,
+  cap = 12,
+): string[] {
+  if (rows.length === 0 && stillDuePending === 0) return [];
+  const hits = rows.filter((r) => r.status === 'hit').length;
+  const lines: string[] = [];
+  const graceNote =
+    stillDuePending > 0
+      ? ` ${stillDuePending} due call${stillDuePending === 1 ? '' : 's'} remain${stillDuePending === 1 ? 's' : ''} pending under the coverage-grace rule (thin evidence, never scored as a miss).`
+      : '';
+  if (rows.length === 0) {
+    // Due calls exist and NONE resolved — either everything is grace-held, or
+    // the resolver did not run. Say which is knowable, and never go quiet.
+    lines.push(`${stillDuePending} calls came due and none has resolved yet.${graceNote}`);
+    return lines;
+  }
+  lines.push(
+    `${rows.length} calls settled against external ground truth: ${hits} hit, ${rows.length - hits} miss.${graceNote}`,
+  );
+  const byInfo = [...rows].sort(
+    (a, b) =>
+      Math.abs((b.probability ?? 0) - (b.base_rate ?? b.probability ?? 0)) -
+      Math.abs((a.probability ?? 0) - (a.base_rate ?? a.probability ?? 0)),
+  );
+  for (const r of byInfo.slice(0, cap)) {
+    const name = nameOf?.get(r.country_code) ?? r.country_code;
+    const outcome = r.status === 'hit' ? 'HIT' : 'MISS';
+    const base = r.base_rate !== null ? ` (base rate ${(r.base_rate * 100).toFixed(0)}%)` : '';
+    const claim =
+      r.kind === 'fx_devaluation'
+        ? `currency depreciation by ${r.resolves_on}`
+        : `a confirmed censorship event by ${r.resolves_on}`;
+    const evidence =
+      r.kind === 'censorship_event' && r.evidence_count !== null && r.status === 'hit'
+        ? ` — OONI confirmed blocking on ${r.evidence_count} day${r.evidence_count === 1 ? '' : 's'} in the window`
+        : '';
+    lines.push(
+      `${name} (${r.country_code}): ${outcome} — we said ${(r.probability * 100).toFixed(0)}%${base} for ${claim}${evidence}`,
+    );
+  }
+  if (byInfo.length > cap) lines.push(`…and ${byInfo.length - cap} more, listed in full on the ledger.`);
+  return lines;
+}
+
 // weekday shape rather than Week in Review, because the fallback only fires
 // when Sonnet is fully unavailable and we want coverage parity over format.
 export function buildFallbackText(data: BriefData): string {
@@ -2544,6 +2701,14 @@ export function buildFallbackText(data: BriefData): string {
   const topCountry = data.topRiskCountries[0];
 
   let text = `${DAILY_SECTIONS[0]}\n\n`;
+  // The record first, when there is one. Same rule as the model prompt: a
+  // register that buries the day its calls settle is doing PR, and the
+  // mechanical edition is not exempt. Aggregate line, most informative
+  // resolution, then the top open call.
+  if (data.resolvedCallLines.length > 0) {
+    text += `${data.resolvedCallLines[0]}\n\n`;
+    if (data.resolvedCallLines.length > 1) text += `${data.resolvedCallLines[1]}\n\n`;
+  }
   text += data.openCallLines.length > 0 ? `${data.openCallLines[0]}\n\n` : `No open calls today.\n\n`;
 
   text += `${DAILY_SECTIONS[1]}\n\n`;

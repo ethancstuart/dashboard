@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildFallbackText, renderDossierEmail, type BriefData } from './daily-brief.js';
+import {
+  buildFallbackText,
+  formatResolvedCallLines,
+  spliceLedgerLine,
+  type ResolvedCallRow,
+  renderDossierEmail,
+  type BriefData,
+} from './daily-brief.js';
 import { validateBriefStructure } from '../_lib/brief-structure.js';
 import { type, typeStyleAttr } from '../../src/styles/email-tokens.js';
 
@@ -53,6 +60,7 @@ const base: BriefData = {
   ] as BriefData['weeklyTrends'],
   correlations: [],
   newsHeadlines: [{ title: 'Ceasefire talks stall in Port Sudan', source: 'Reuters' }],
+  resolvedCallLines: [],
   openCallLines: [
     'Iran (IR): 62% chance of a confirmed censorship event by 2026-09-05 — +18pts vs its base rate of 44%',
   ],
@@ -73,6 +81,7 @@ describe('buildFallbackText — the safe harbor honours the structure contract',
       markets: [],
       newsHeadlines: [],
       weeklyTrends: [],
+      resolvedCallLines: [],
       openCallLines: [],
     };
     const text = buildFallbackText(empty);
@@ -194,4 +203,129 @@ describe('typeStyleAttr — the one shared helper is safe for every token', () =
       expect(value).toContain('color:#12161C');
     });
   }
+});
+
+describe('resolution day is first-class', () => {
+  /**
+   * All of this exists because of 2026-09-05: 39 calls settled for the first
+   * time and the brief led with an unrelated FX call, because the model's
+   * context selected only status='pending' and the fallback read only
+   * openCallLines. These tests pin the repaired behaviour on both paths.
+   */
+  const resolvedDay: BriefData = {
+    ...base,
+    resolvedCallLines: [
+      '34 calls settled against external ground truth: 10 hit, 24 miss. 5 due calls remain pending under the coverage-grace rule (thin evidence, never scored as a miss).',
+      'Kazakhstan (KZ): HIT — we said 16% (base rate 10%) for a confirmed censorship event by 2026-09-05 — OONI confirmed blocking on 2 days in the window',
+    ],
+  };
+
+  it('the fallback leads with the record, then the open call', () => {
+    const text = buildFallbackText(resolvedDay);
+    const agg = text.indexOf('34 calls settled');
+    const detail = text.indexOf('Kazakhstan (KZ): HIT');
+    const open = text.indexOf(base.openCallLines[0]);
+    expect(agg).toBeGreaterThan(-1);
+    expect(detail).toBeGreaterThan(agg);
+    expect(open).toBeGreaterThan(detail);
+    // And it still satisfies the gate that would otherwise refuse it.
+    expect(validateBriefStructure(text, false).pass).toBe(true);
+  });
+
+  it('with no resolutions the fallback is byte-identical to before', () => {
+    expect(buildFallbackText(base)).not.toContain('settled against external ground truth');
+  });
+});
+
+describe('formatResolvedCallLines', () => {
+  const row = (over: Partial<ResolvedCallRow>): ResolvedCallRow => ({
+    kind: 'censorship_event',
+    country_code: 'KZ',
+    probability: 0.16,
+    base_rate: 0.1,
+    status: 'hit',
+    resolves_on: '2026-09-05',
+    evidence_count: 2,
+    ...over,
+  });
+
+  it('leads with the aggregate, orders detail by divergence', () => {
+    const lines = formatResolvedCallLines(
+      [
+        row({ country_code: 'TR', probability: 0.84, base_rate: 0.9 }), // div .06
+        row({ country_code: 'KZ', probability: 0.16, base_rate: 0.1 }), // div .06
+        row({ country_code: 'UZ', probability: 0.52, base_rate: 0.7, status: 'miss', evidence_count: 0 }), // div .18 — first
+      ],
+      0,
+    );
+    expect(lines[0]).toContain('3 calls settled');
+    expect(lines[0]).toContain('2 hit, 1 miss');
+    expect(lines[1]).toContain('UZ');
+    expect(lines[1]).toContain('MISS');
+  });
+
+  it('caps the list and says so — a 105-resolution morning must not flood the prompt', () => {
+    const many = Array.from({ length: 105 }, (_, i) =>
+      row({ country_code: `C${i}`, probability: 0.5, base_rate: 0.4 }),
+    );
+    const lines = formatResolvedCallLines(many, 0);
+    expect(lines.length).toBe(1 + 12 + 1);
+    expect(lines.at(-1)).toContain('and 93 more');
+  });
+
+  it('speaks when calls are due but NONE resolved — the silent-resolver case', () => {
+    const lines = formatResolvedCallLines([], 5);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('5 calls came due and none has resolved yet');
+    expect(lines[0]).toContain('coverage-grace');
+  });
+
+  it('is empty when there is genuinely nothing to say', () => {
+    expect(formatResolvedCallLines([], 0)).toEqual([]);
+  });
+
+  it('phrases FX and censorship claims differently, and only censorship hits carry evidence days', () => {
+    const lines = formatResolvedCallLines(
+      [
+        row({ kind: 'fx_devaluation', country_code: 'SE', status: 'miss', evidence_count: null }),
+        row({ country_code: 'IN', probability: 0.84, base_rate: 0.9, evidence_count: 14 }),
+      ],
+      0,
+    );
+    const fx = lines.find((l) => l.includes('SE'))!;
+    const oo = lines.find((l) => l.includes('IN'))!;
+    expect(fx).toContain('currency depreciation');
+    expect(fx).not.toContain('OONI');
+    expect(oo).toContain('OONI confirmed blocking on 14 days');
+  });
+});
+
+describe('spliceLedgerLine', () => {
+  /**
+   * The old splice put "> **The Ledger**" at line 0. No renderer handles ">",
+   * and parseSections turns any preamble into a titleless pseudo-section — so
+   * the first resolution day shipped mis-rendered on all three surfaces.
+   */
+  const body = "## 🎯 Today's Call\n\nA call.\n\n## 📊 Top Signal\n\nSignal.";
+
+  it('splices INSIDE the first section, never as a preamble', () => {
+    const out = spliceLedgerLine(body, '34 resolved today, 10 hit');
+    expect(out.startsWith('## ')).toBe(true); // nothing before the first header
+    const lines = out.split('\n');
+    expect(lines[0]).toBe("## 🎯 Today's Call");
+    expect(lines[2]).toBe('**The Ledger** — 34 resolved today, 10 hit');
+  });
+
+  it('emits no blockquote — the character no renderer parses', () => {
+    expect(spliceLedgerLine(body, 'x')).not.toContain('\n> ');
+  });
+
+  it('still satisfies the structure gate', () => {
+    const full = buildFallbackText(base);
+    expect(validateBriefStructure(spliceLedgerLine(full, '1 open'), false).pass).toBe(true);
+  });
+
+  it('appends rather than losing the line when no header exists', () => {
+    expect(spliceLedgerLine('plain text', 'the line')).toContain('**The Ledger** — the line');
+  });
 });
