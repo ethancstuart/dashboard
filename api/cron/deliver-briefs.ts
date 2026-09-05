@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { personalizeUnsubscribe, unsubscribeUrl } from '../_lib/unsubscribe-token.js';
+import { renderDossierEmail } from './daily-brief.js';
 
 export const config = { runtime: 'nodejs', maxDuration: 120 };
 
@@ -27,11 +29,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const currentUtcHour = now.getUTCHours();
 
   // 1. Get today's brief from archive
-  const briefs = await sql`
-    SELECT brief_date, summary, content FROM daily_briefs
-    WHERE brief_date = ${today}
-    LIMIT 1
-  `;
+  // `email_html`/`plain_text` arrive with 2026-09-05-brief-email-html.sql.
+  // Probe rather than assume: naming a missing column fails the whole SELECT
+  // and stops delivery entirely; an absent column just means the legacy path.
+  let hasEmailColumns = false;
+  try {
+    const cols = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'daily_briefs' AND column_name IN ('email_html', 'plain_text')
+    `;
+    hasEmailColumns = cols.length === 2;
+  } catch (probeErr) {
+    console.error('[deliver-briefs] column probe failed, assuming legacy schema:', probeErr);
+  }
+
+  const briefs = hasEmailColumns
+    ? await sql`
+        SELECT brief_date, summary, content, email_html, plain_text FROM daily_briefs
+        WHERE brief_date = ${today}
+        LIMIT 1
+      `
+    : await sql`
+        SELECT brief_date, summary, content FROM daily_briefs
+        WHERE brief_date = ${today}
+        LIMIT 1
+      `;
 
   if (briefs.length === 0) {
     return res.status(200).json({
@@ -41,14 +63,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  const briefHtml = briefs[0].summary as string;
+  // What a subscriber actually receives is ALWAYS the full document —
+  // masthead, footer, unsubscribe. `summary` is beehiivHtml, an embeddable
+  // fragment with none of that chrome; sending it directly was the
+  // compliance hole this file carried for months.
+  //
+  // Preference order, and why the fragment is NOT in it:
+  //   1. stored email_html (written by daily-brief since the migration) —
+  //      cheap, byte-identical to what generation produced;
+  //   2. rendered NOW from the archived briefText via renderDossierEmail —
+  //      the same renderer generation uses, so a missing column or failed
+  //      storage write costs a re-render, never a non-compliant send;
+  //   3. skip with an explicit reason. The rule-2 review caught the first
+  //      version falling back to `summary`: an email without a way out does
+  //      not go, full stop — a skipped hour retries, a sent fragment is
+  //      unrecallable.
+  const row = briefs[0] as { email_html?: unknown; plain_text?: unknown; summary: string; content: unknown };
+  const storedEmailHtml = typeof row.email_html === 'string' && row.email_html.length > 0 ? row.email_html : null;
+  const storedPlainText = typeof row.plain_text === 'string' && row.plain_text.length > 0 ? row.plain_text : null;
 
-  // Guard: skip if brief generation hasn't completed yet
-  if (!briefHtml || briefHtml === 'generating...') {
+  let briefHtml: string | null = storedEmailHtml;
+  let briefPlain: string | null = storedPlainText;
+  if (!briefHtml) {
+    const content = (typeof row.content === 'object' && row.content !== null ? row.content : {}) as {
+      briefText?: unknown;
+      markets?: unknown;
+    };
+    if (typeof content.briefText === 'string' && content.briefText.length > 0) {
+      const rendered = renderDossierEmail({
+        briefText: content.briefText,
+        date: today,
+        time: '10:00 UTC',
+        markets: Array.isArray(content.markets) ? (content.markets as never[]) : [],
+        archiveUrl: `https://nexuswatch.dev/brief/${today}`,
+      });
+      briefHtml = rendered.emailHtml;
+      briefPlain = rendered.plainText;
+      console.warn(`[deliver-briefs] ${today}: no stored email_html — rendered at delivery time instead.`);
+    }
+  }
+
+  if (!briefHtml) {
+    // No stored document and nothing renderable. Never send the fragment.
     return res.status(200).json({
       success: true,
       skipped: true,
-      reason: `Brief for ${today} is still generating. Skipping delivery.`,
+      reason: `Brief for ${today} has no renderable full email document; refusing to send the summary fragment (no unsubscribe link). Will retry next hour.`,
     });
   }
 
@@ -71,8 +131,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     SELECT es.email, es.timezone
     FROM email_subscribers es
     WHERE es.unsubscribed = FALSE
-      AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE es.timezone)) >= ${targetLocalHour}
-      AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE es.timezone)) < ${targetLocalHour + 1}
+      -- COALESCE: subscribe.ts historically never wrote timezone, and a NULL
+      -- zone makes both EXTRACTs NULL — the subscriber matches NO hour bucket
+      -- and silently never receives anything, forever.
+      AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE COALESCE(es.timezone, 'UTC'))) >= ${targetLocalHour}
+      AND EXTRACT(HOUR FROM (NOW() AT TIME ZONE COALESCE(es.timezone, 'UTC'))) < ${targetLocalHour + 1}
       AND NOT EXISTS (
         SELECT 1 FROM brief_subscriber_delivery bsd
         WHERE bsd.subscriber_email = es.email
@@ -144,13 +207,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   let sent = 0;
   let failed = 0;
 
+  // Exactly who succeeded — not a count. The old dedup did
+  // `recipients.slice(0, sent)`, which assumes failures are always the tail:
+  // on a mixed outcome the WRONG addresses were marked delivered and the ones
+  // actually missed were never retried, silently, forever.
+  const delivered: string[] = [];
+
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const chunk = recipients.slice(i, i + BATCH_SIZE);
     const payload = chunk.map((email) => ({
       from,
       to: [email],
       subject,
-      html: briefHtml,
+      // The unsubscribe link is per-recipient: one body is rendered for the
+      // whole day, the signed URL is substituted here at send time.
+      html: personalizeUnsubscribe(briefHtml, email),
+      ...(briefPlain ? { text: personalizeUnsubscribe(briefPlain, email) } : {}),
+      // RFC 8058 one-click. Mail clients surface their own unsubscribe
+      // button off these headers — the path most readers actually use.
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl(email)}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     }));
 
     try {
@@ -166,6 +244,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (resp.ok) {
         sent += chunk.length;
+        delivered.push(...chunk);
       } else {
         const body = await resp.text().catch(() => '');
         console.error(`[deliver-briefs] Resend batch error: ${resp.status} ${body.slice(0, 200)}`);
@@ -184,8 +263,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // 5. Record deliveries in dedup table (only for successful sends)
   //    Uses parameterized queries — never sql.unsafe() with user-provided data.
-  if (sent > 0) {
-    const deliveredEmails = recipients.slice(0, sent);
+  if (delivered.length > 0) {
+    const deliveredEmails = delivered;
     try {
       for (const email of deliveredEmails) {
         await sql`

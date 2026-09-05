@@ -451,7 +451,7 @@ function wireSubscribe(formId: string, statusId: string, source: string): void {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source }),
+        body: JSON.stringify({ email, source, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (statusEl) {

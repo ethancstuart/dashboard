@@ -410,7 +410,11 @@ export function renderLanding(root: HTMLElement): void {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, source: 'landing-rebuild' }),
+        body: JSON.stringify({
+          email,
+          source: 'landing-rebuild',
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (statusEl) {

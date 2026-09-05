@@ -180,7 +180,7 @@ export function capture(opts: CaptureOptions): HTMLElement {
     void fetch('/api/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, source }),
+      body: JSON.stringify({ email, source, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     })
       .then((r) => r.json() as Promise<{ success?: boolean; error?: string }>)
       .then((data) => {

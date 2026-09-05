@@ -27,17 +27,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return res.status(500).json({ error: 'Database not configured' });
 
-  const { email, source } = req.body as { email?: string; source?: string };
+  const { email, source, timezone } = req.body as { email?: string; source?: string; timezone?: string };
   if (!email || !email.includes('@') || email.length < 5) {
     return res.status(400).json({ error: 'Valid email required' });
   }
 
+  // The browser knows the reader's zone (Intl.DateTimeFormat), but validate
+  // against the shape of an IANA name and never trust it into SQL semantics:
+  // deliver-briefs buckets on `NOW() AT TIME ZONE tz`, and an invalid zone
+  // there errors the whole delivery query for everyone. Unknown → UTC, which
+  // means "7am UTC" rather than "never delivered" — the failure this fixes:
+  // subscribe.ts NEVER wrote timezone, every new subscriber's zone was NULL,
+  // and a NULL zone matches no delivery bucket at all.
+  const tz =
+    typeof timezone === 'string' && /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/.test(timezone) && timezone.length <= 64
+      ? timezone
+      : 'UTC';
+
   try {
     const sql = neon(dbUrl);
     await sql`
-      INSERT INTO email_subscribers (email, source)
-      VALUES (${email.toLowerCase().trim()}, ${source || 'landing'})
-      ON CONFLICT (email) DO UPDATE SET unsubscribed = FALSE
+      INSERT INTO email_subscribers (email, source, timezone)
+      VALUES (${email.toLowerCase().trim()}, ${source || 'landing'}, ${tz})
+      ON CONFLICT (email) DO UPDATE
+        SET unsubscribed = FALSE,
+            timezone = COALESCE(email_subscribers.timezone, EXCLUDED.timezone)
     `;
 
     // Send welcome email via Resend
