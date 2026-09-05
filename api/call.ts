@@ -224,7 +224,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? 'Voided before resolution.'
           : `Result: ${c.status.toUpperCase()}.`);
 
-    return res.status(200).send(shell(parts.join('\n'), { title, description, canonicalPath: `/call/${c.id}` }));
+    // The unfurl card. /call/:id is the citeable unit — the thing a journalist
+    // pastes into a post — and it previously declared a large twitter card
+    // with no image, which unfurls to nothing. The card renders the claim, the
+    // stated probability and the resolution date off this same row.
+    const ogImage = `https://nexuswatch.dev/api/og?type=call&id=${c.id}`;
+
+    return res
+      .status(200)
+      .send(shell(parts.join('\n'), { title, description, canonicalPath: `/call/${c.id}`, ogImage }));
   } catch (err) {
     console.error('[call] failed:', err instanceof Error ? err.message : err);
     return res.status(500).send('call_unavailable');

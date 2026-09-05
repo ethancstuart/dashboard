@@ -55,6 +55,11 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // The unfurl card for the register's front page. This shell used to declare
+  // summary_large_image with no image at all — the one combination that
+  // unfurls to NOTHING — so every /ledger link ever posted was a bare url.
+  const ogImage = 'https://nexuswatch.dev/api/og?type=ledger';
+
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).send('method_not_allowed');
@@ -430,7 +435,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `</p>`,
     );
 
-    return res.send(shell(parts.join('\n'), { title, description, canonicalPath: '/ledger' }));
+    return res.send(shell(parts.join('\n'), { title, description, canonicalPath: '/ledger', ogImage }));
   } catch (err) {
     console.error('[ledger] failed:', err instanceof Error ? err.message : err);
     return res.send(
