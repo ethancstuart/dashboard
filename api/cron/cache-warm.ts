@@ -20,7 +20,10 @@ export const config = { runtime: 'nodejs', maxDuration: 25 };
  * 2026-05-02 G3.
  */
 
-const TARGETS = ['/api/webcam-catalog', '/api/aurora', '/api/energy', '/api/briefs-sample', '/api/cii'];
+// Trimmed to the narrowed product (PR-9): the other three targets were map
+// endpoints whose ONLY remaining reference was this warmer — a cache kept
+// warm for pages that no longer exist.
+const TARGETS = ['/api/briefs-sample', '/api/cii'];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cronSecret = process.env.CRON_SECRET;

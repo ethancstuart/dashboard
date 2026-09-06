@@ -156,18 +156,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Dynamic country pages — one per country with CII data
-  let countryEntries: string[] = [];
-  if (dbUrl) {
-    try {
-      const sql = neon(dbUrl);
-      const countries = (await sql`
-        SELECT DISTINCT country_code FROM country_cii_history ORDER BY country_code
-      `) as unknown as Array<{ country_code: string }>;
-      countryEntries = countries.map((r) => urlEntry(`${base}/country/${r.country_code}`, today, 'daily', '0.6'));
-    } catch {
-      // Soft-fail
-    }
-  }
+  // Country pages DELETED 2026-09-06 (PR-9): 85 sitemap URLs serving the
+  // retired six-component model's JSON-LD. The sitemap stops advertising them
+  // in the same PR that removes the rewrite — a sitemap URL nobody can load
+  // is the /roadmap defect inverted.
+  const countryEntries: string[] = [];
 
   // Per-call pages — the citeable unit. Resolved calls are immutable documents
   // (changefreq yearly); open calls change once, on their resolution date.
