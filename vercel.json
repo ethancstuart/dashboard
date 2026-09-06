@@ -29,10 +29,6 @@
       "destination": "/api/rss/cii"
     },
     {
-      "source": "/country/:code",
-      "destination": "/api/country/:code"
-    },
-    {
       "source": "/call/:id(\\d+)",
       "destination": "/api/call?id=:id"
     },
@@ -104,11 +100,11 @@
   "crons": [
     {
       "path": "/api/cron/compute-cii",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/snapshot",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/cii-snapshot",
@@ -136,19 +132,11 @@
     },
     {
       "path": "/api/cron/data-health",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/cron/source-ofac",
       "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/source-copernicus",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/source-vdem",
-      "schedule": "0 3 1 * *"
     },
     {
       "path": "/api/cron/cron-health",

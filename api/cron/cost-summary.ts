@@ -31,7 +31,7 @@ const PROVIDERS = [
   {
     name: 'EIA',
     dashboardUrl: 'https://www.eia.gov/opendata/',
-    note: 'Free tier: 5k req/hour. /api/energy uses 30min cache → ~48 calls/day.',
+    note: 'Free tier: 5k req/hour. (/api/energy retired 2026-09-06 with the map.)',
   },
   {
     name: 'Vercel',

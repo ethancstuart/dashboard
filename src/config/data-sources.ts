@@ -48,471 +48,96 @@ export interface LayerConfig {
 
 // Default timeout and freshness windows used across most layers.
 const DEFAULT_TIMEOUT_MS = 5000;
-const FRESH_1H = 3600;
 const FRESH_6H = 6 * 3600;
 const FRESH_24H = 24 * 3600;
-const FRESH_7D = 7 * 24 * 3600;
 const FRESH_30D = 30 * 24 * 3600;
 
 export const DATA_SOURCES: LayerConfig[] = [
   // -------------------------------------------------------------------------
-  // Conflict & Military (7)
+  // The register's inputs (PR-9, 2026-09-06). The previous thirty entries
+  // were the Intel Map's layers — deleted with the map — so /status was
+  // reporting health for a product that no longer existed. What deserves a
+  // heartbeat now is exactly the set of upstreams whose silence would corrupt
+  // a resolution or starve the brief:
+  //
+  //   ooni        → resolves every censorship call
+  //   fx-rates    → resolves every FX call
+  //   sanctions   → the brief's designation-delta section
+  //   wikipedia   → the CII attention component
+  //   governance  → the CII structural component (yearly cadence upstream)
+  //   ucdp        → the CII conflict component (yearly cadence upstream)
+  //
+  // Probes hit the SAME upstream the collector calls, so a red row means the
+  // next collector run will fail, not that some proxy endpoint is moody.
   // -------------------------------------------------------------------------
   {
-    id: 'acled',
+    id: 'ooni',
     primary: {
-      name: 'proxy-acled',
-      probeUrl: '/api/acled',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [
-      {
-        name: 'acled-api',
-        probeUrl: 'https://api.acleddata.com/acled/read?limit=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_24H,
-      },
-    ],
-  },
-  {
-    id: 'conflicts',
-    // Static dataset; no upstream fetch. GDELT conflict events used for refresh.
-    primary: {
-      name: 'gdelt-conflict',
-      probeUrl: 'https://api.gdeltproject.org/api/v2/doc/doc?query=conflict&mode=artlist&format=json&maxrecords=1',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'military',
-    // Hard-coded registry of 28 bases; source-of-truth is public OSINT.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'cyber',
-    primary: {
-      name: 'proxy-cyber',
-      probeUrl: '/api/cyber',
+      name: 'ooni-api',
+      probeUrl:
+        'https://api.ooni.io/api/v1/aggregation?probe_cc=TR&test_name=web_connectivity&since=2026-01-01&until=2026-01-02',
       probeTimeoutMs: DEFAULT_TIMEOUT_MS,
       freshnessWindowSeconds: FRESH_6H,
     },
-    fallbacks: [
-      {
-        name: 'cloudflare-radar',
-        probeUrl: 'https://radar.cloudflare.com/',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_6H,
-      },
-    ],
+    fallbacks: [],
+  },
+  {
+    id: 'fx-rates',
+    primary: {
+      name: 'open-er-api',
+      probeUrl: 'https://open.er-api.com/v6/latest/USD',
+      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
+      freshnessWindowSeconds: FRESH_24H,
+    },
+    fallbacks: [],
   },
   {
     id: 'sanctions',
-    // OFAC SDN list refreshed from Treasury publications.
     primary: {
-      name: 'ofac-treasury',
-      probeUrl: 'https://www.treasury.gov/ofac/downloads/sdn.xml',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_7D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'gps-jamming',
-    // Static curated dataset — public GPSJam.org is the reference source for
-    // manual refreshes, but there's no public JSON API. Probing their landing
-    // page tells us nothing about whether our own bundled data is serving,
-    // so we probe /api/feed (our own serverless liveness) instead. The
-    // `source.name` still reflects data provenance for admin display.
-    primary: {
-      name: 'gpsjam',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'frontlines',
-    // Static curated dataset refreshed manually from OSINT/ISW situation
-    // reports. ISW has no structured public data API; probing the landing
-    // page was misleading because an ISW outage doesn't affect our bundled
-    // frontlines. Probe our own liveness instead.
-    primary: {
-      name: 'isw',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_7D,
-    },
-    fallbacks: [],
-  },
-
-  // -------------------------------------------------------------------------
-  // Natural Hazards (5)
-  // -------------------------------------------------------------------------
-  {
-    id: 'earthquakes',
-    primary: {
-      name: 'proxy-earthquakes',
-      probeUrl: '/api/earthquakes?period=day&minMag=2.5',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: 600,
-    },
-    fallbacks: [
-      {
-        name: 'usgs-direct',
-        probeUrl: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_day.geojson',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: 900,
-      },
-      {
-        name: 'emsc',
-        probeUrl: 'https://www.seismicportal.eu/fdsnws/event/1/query?limit=1&format=json',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: 900,
-      },
-    ],
-  },
-  {
-    id: 'fires',
-    primary: {
-      name: 'proxy-fires',
-      probeUrl: '/api/fires?days=1',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'nasa-firms',
-        probeUrl: 'https://firms.modaps.eosdis.nasa.gov/api/area/csv/',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_6H,
-      },
-    ],
-  },
-  {
-    id: 'gdacs',
-    primary: {
-      name: 'proxy-gdacs',
-      probeUrl: '/api/gdacs',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_6H,
-    },
-    fallbacks: [
-      {
-        name: 'gdacs-direct',
-        probeUrl: 'https://www.gdacs.org/xml/rss.xml',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_6H,
-      },
-    ],
-  },
-  {
-    id: 'diseases',
-    primary: {
-      name: 'proxy-disease',
-      probeUrl: '/api/disease-outbreaks',
+      name: 'ofac-sdn',
+      probeUrl: 'https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/SDN.CSV',
       probeTimeoutMs: DEFAULT_TIMEOUT_MS,
       freshnessWindowSeconds: FRESH_24H,
     },
     fallbacks: [
       {
-        name: 'who-don',
-        probeUrl: 'https://www.who.int/feeds/entity/csr/don/en/rss.xml',
+        name: 'un-consolidated',
+        probeUrl: 'https://scsanctions.un.org/resources/xml/en/consolidated.xml',
         probeTimeoutMs: DEFAULT_TIMEOUT_MS,
         freshnessWindowSeconds: FRESH_24H,
       },
     ],
   },
   {
-    id: 'weather-alerts',
+    id: 'wikipedia',
     primary: {
-      name: 'proxy-weather-alerts',
-      probeUrl: '/api/weather-alerts',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'open-meteo',
-        probeUrl: 'https://api.open-meteo.com/v1/forecast?latitude=0&longitude=0&current=temperature_2m',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_1H,
-      },
-    ],
-  },
-
-  // -------------------------------------------------------------------------
-  // Infrastructure (9)
-  // -------------------------------------------------------------------------
-  {
-    id: 'ships',
-    primary: {
-      name: 'proxy-ships',
-      probeUrl: '/api/ships',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'chokepoints',
-    // Static curated dataset; status updates derived from ship/news overlays.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
+      name: 'wikimedia-pageviews',
+      probeUrl:
+        'https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/Ukraine/daily/2026010100/2026010200',
       probeTimeoutMs: DEFAULT_TIMEOUT_MS,
       freshnessWindowSeconds: FRESH_24H,
     },
     fallbacks: [],
   },
   {
-    id: 'cables',
-    // Static curated dataset; TeleGeography's public submarinecablemap.com
-    // is the provenance source but it's a static viewer — no JSON API, and
-    // their landing page is a huge JS bundle that's slow to probe. The
-    // bundled cables dataset is manually refreshed, so upstream liveness
-    // is irrelevant to our health signal. Probe our own /api/feed instead.
+    id: 'governance',
     primary: {
-      name: 'telegeography',
-      probeUrl: '/api/feed',
+      name: 'worldbank-wgi',
+      probeUrl: 'https://api.worldbank.org/v2/country/TUR/indicator/VA.EST?format=json&per_page=1',
       probeTimeoutMs: DEFAULT_TIMEOUT_MS,
       freshnessWindowSeconds: FRESH_30D,
     },
     fallbacks: [],
   },
   {
-    id: 'pipelines',
-    // Static curated dataset.
+    id: 'ucdp',
     primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
+      name: 'ucdp-api',
+      probeUrl: 'https://ucdpapi.pcr.uu.se/api/gedevents/25.1?pagesize=1',
       probeTimeoutMs: DEFAULT_TIMEOUT_MS,
       freshnessWindowSeconds: FRESH_30D,
     },
     fallbacks: [],
-  },
-  {
-    id: 'nuclear',
-    // Static curated dataset; IAEA PRIS is the refresh source. PRIS is
-    // ASPX-only with no public JSON API, so probing its landing page is a
-    // weak signal and is prone to WAF false-positives (Cloudflare challenges).
-    // Probe /api/feed instead — static-bundle liveness is the real signal.
-    primary: {
-      name: 'iaea-pris',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'ports',
-    // Static curated dataset.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'trade-routes',
-    // Static curated dataset.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'launches',
-    primary: {
-      name: 'proxy-launches',
-      probeUrl: '/api/launches',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [
-      {
-        name: 'launchlibrary',
-        probeUrl: 'https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_24H,
-      },
-    ],
-  },
-  {
-    id: 'energy',
-    // Static curated dataset of oil/gas facilities.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-
-  // -------------------------------------------------------------------------
-  // Intelligence (7)
-  // -------------------------------------------------------------------------
-  {
-    id: 'news',
-    primary: {
-      name: 'proxy-gdelt',
-      probeUrl: '/api/gdelt',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'gdelt-direct',
-        probeUrl: 'https://api.gdeltproject.org/api/v2/doc/doc?query=world&mode=artlist&format=json&maxrecords=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_1H,
-      },
-    ],
-  },
-  {
-    id: 'predictions',
-    primary: {
-      name: 'proxy-prediction',
-      probeUrl: '/api/prediction',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'polymarket',
-        probeUrl: 'https://gamma-api.polymarket.com/markets?limit=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_1H,
-      },
-    ],
-  },
-  {
-    id: 'satellites',
-    primary: {
-      name: 'proxy-satellites',
-      probeUrl: '/api/satellites',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [
-      {
-        name: 'celestrak',
-        probeUrl: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=json',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_24H,
-      },
-    ],
-  },
-  {
-    id: 'internet-outages',
-    primary: {
-      name: 'proxy-internet-outages',
-      probeUrl: '/api/internet-outages',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'cloudflare-radar',
-        probeUrl: 'https://radar.cloudflare.com/',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_1H,
-      },
-    ],
-  },
-  {
-    id: 'elections',
-    // Static curated calendar.
-    primary: {
-      name: 'static-bundle',
-      probeUrl: '/api/feed',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_30D,
-    },
-    fallbacks: [],
-  },
-  {
-    id: 'displacement',
-    primary: {
-      name: 'proxy-displacement',
-      probeUrl: '/api/displacement',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_24H,
-    },
-    fallbacks: [
-      {
-        name: 'unhcr',
-        probeUrl: 'https://api.unhcr.org/population/v1/population/?limit=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_7D,
-      },
-    ],
-  },
-  {
-    id: 'sentiment',
-    // Derived from the news layer — no independent fetch. Probe GDELT so the
-    // breaker still opens when the upstream that feeds sentiment is down.
-    primary: {
-      name: 'proxy-gdelt',
-      probeUrl: '/api/gdelt',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [],
-  },
-
-  // -------------------------------------------------------------------------
-  // Environment (2)
-  // -------------------------------------------------------------------------
-  {
-    id: 'air-quality',
-    primary: {
-      name: 'proxy-air-quality',
-      probeUrl: '/api/air-quality',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: FRESH_1H,
-    },
-    fallbacks: [
-      {
-        name: 'openaq',
-        probeUrl: 'https://api.openaq.org/v2/latest?limit=1',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: FRESH_1H,
-      },
-    ],
-  },
-  {
-    id: 'flights',
-    primary: {
-      name: 'proxy-flights',
-      probeUrl: '/api/flights',
-      probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-      freshnessWindowSeconds: 900,
-    },
-    fallbacks: [
-      {
-        name: 'opensky',
-        probeUrl: 'https://opensky-network.org/api/states/all',
-        probeTimeoutMs: DEFAULT_TIMEOUT_MS,
-        freshnessWindowSeconds: 900,
-      },
-    ],
   },
 ];
 
