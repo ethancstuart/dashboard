@@ -318,7 +318,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           severity: 'critical',
           key: 'resolve-calls-errored',
           body:
-            `due=${due.length} resolved=${hits + misses} unresolvable=${unresolvable} ` +
+            `due=${due.length >= 500 ? '500+ (page-capped)' : due.length} resolved=${hits + misses} unresolvable=${unresolvable} ` +
             `still_waiting=${stillWaiting} errored=${errored}. Per-call errors are in the ` +
             'function logs. Rows stay pending, so a rerun after the fix resolves them.',
         });
