@@ -56,10 +56,33 @@
  * and the manifest lists both for the install prompt. B1 reclaimed the two
  * files that POINT at these icons and not the icons themselves.
  *
+ * WHERE THE DERIVATION STOPS, AND WHY IT STOPS THERE. A third review round
+ * blocked this again for naming `src`, `api` and `public` at all. That
+ * objection has a limit: no guard can define its universe without naming
+ * something, and the only alternative — walk the whole repo — means
+ * enumerating EXCLUSIONS instead. `docs/` alone holds 391 literals in
+ * generated Lighthouse reports, `ledger-snapshots/` holds sixteen 300 KB
+ * fixtures, and this guard's own test file asserts colours on purpose. That is
+ * the same list wearing the opposite sign, and a longer one.
+ *
+ * These three roots are not a list of places colour has been found. They are
+ * the deployment contract: Vite builds `index.html` plus `src/` and copies
+ * `public/` verbatim, Vercel runs `api/`, and nothing else reaches a browser.
+ * A fourth served root cannot appear without an edit to `vite.config.ts` or
+ * `vercel.json`. The residual is that such an edit lands and nobody updates
+ * this line — stated here rather than defended against, because defending
+ * against it means parsing the build config to learn what the build config
+ * says.
+ *
  * WHAT IT STILL DOES NOT PROVE. It reads text, so a colour computed at runtime
- * (`'#' + code`) or held in a database row is invisible to it. And it says
- * nothing about whether a pinned literal is the RIGHT colour — only that the
- * set has not changed behind anyone's back.
+ * (`'#' + code`) or held in a database row is invisible to it. It says nothing
+ * about whether a pinned literal is the RIGHT colour — only that the set has
+ * not changed behind anyone's back. And a `//` INSIDE a TypeScript string is
+ * read as the start of a comment, so a literal after one on the same line
+ * would be masked away: measured at zero instances across 122 script files,
+ * and a quote-parity heuristic was rejected because `const s = "it's"; //
+ * #ff6600` would then be charged for a comment — trading a blind spot with no
+ * instances for a false positive with several.
  *
  * Usage: npx tsx scripts/check-hex-literals.ts
  */
