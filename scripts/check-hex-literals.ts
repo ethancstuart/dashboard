@@ -13,15 +13,17 @@
  * identity change strands a public surface, which is the failure rule 8 exists
  * for; this is that rule with an exit code.
  *
- * WHY A RATCHET AND NOT A BAN. 275 literals survive across 28 files the day
- * this lands. The retired terminal orange `#ff6600` alone appears 34 times on
- * a branch whose whole premise is that the terminal identity is gone. A guard
- * that fails 275 times on arrival is a guard someone switches off, and the
+ * WHY A RATCHET AND NOT A BAN. 302 literals survive across 31 files the day
+ * this lands. The retired terminal orange `#ff6600` alone appears 39 times on
+ * a branch whose whole premise is that the terminal identity is gone — still
+ * the most common literal in the tree, ahead of the dossier's own oxblood at
+ * 12. A guard
+ * that fails 302 times on arrival is a guard someone switches off, and the
  * lesson already written into `.githooks/pre-push` is that friction gets
- * skipped rather than paid. So the SCOPE is derived — every `.ts` and `.css`
- * under `src/` and `api/` — and only the DEBT is enumerated. The 112 files
- * that are clean today are protected at zero, a file that does not exist yet
- * is protected at zero, and each dirty file is pinned at exactly what it has.
+ * skipped rather than paid. So the SCOPE is derived and only the DEBT is
+ * enumerated. The 113 files that are clean today are protected at zero, a file
+ * that does not exist yet is protected at zero, and each dirty file is pinned
+ * at exactly what it has.
  *
  * THE PIN IS EXACT IN BOTH DIRECTIONS, deliberately. A budget that is only
  * ever checked upward becomes a ceiling nobody lowers — which is how three
@@ -29,6 +31,22 @@
  * them silently. So REMOVING a literal fails too, with the corrected line
  * printed ready to paste. The cost is one line per cleanup commit. The benefit
  * is that BASELINE cannot quietly stop describing the tree.
+ *
+ * WHY THE SCOPE IS WIDER THAN IT FIRST WAS. The first version walked `src/`
+ * and `api/` and then named `index.html` and `public/site.webmanifest` as two
+ * known "unreachable surfaces". An independent review blocked it for exactly
+ * that: naming the two files that had already burned us leaves a third to pass
+ * by omission, which is the enumerate-don't-derive failure this repo has
+ * legislated against, committed inside a guard whose own subject is deriving.
+ *
+ * Widening it to every served document found one immediately. `public/icons/
+ * icon-192.svg` and `icon-512.svg` are a black `#0a0a0a` tile with an
+ * `#ff6600` "NW" set in Courier New — the whole retired terminal identity,
+ * font included. `index.html:6` points the browser tab at one and
+ * `index.html:100` gives the other as the JSON-LD organisation logo, and the
+ * manifest lists both for the install prompt. B1 reclaimed the two files that
+ * POINT at these icons and not the icons themselves. The verdict that forced
+ * the widening is in `.codex-reviews/feat-hex-literal-guard/`.
  *
  * WHAT IT DOES NOT PROVE. A per-file count cannot see a swap: delete one
  * literal and add a different one in the same file and the number is
@@ -51,16 +69,27 @@ import { fileURLToPath } from 'node:url';
  */
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Derived scope: everything under these roots, by extension, no file list. */
-const SCAN_ROOTS = ['src', 'api'];
+/**
+ * The guarded property is "a colour that reaches a browser", so the scope is
+ * the three directories whose contents reach one: `src/` and `api/` generate
+ * the markup, `public/` is served verbatim. Everything inside them is walked
+ * by extension. No file is named.
+ */
+const SCAN_ROOTS = ['src', 'api', 'public'];
+
+/** Anything a browser can be handed and read as text. Binaries are excluded
+ *  by omission from this set, not by a skip list. */
+const SERVED_TEXT = /\.(tsx?|css|html|svg|webmanifest|js)$/;
 
 /**
- * Two files no walk of `src/` or `api/` reaches, and the two that actually
- * stranded a retired identity in production: the critical CSS inlined into
- * `index.html`, and the PWA theme colour in the manifest. Being unreachable
- * from the walk is precisely why they drifted, so they are named.
+ * Served documents that sit at the repo ROOT rather than inside a served
+ * directory — `index.html` today, and nothing else. DERIVED from the root
+ * listing by extension rather than named, so a second root document is in
+ * scope the day it appears. Non-recursive, and deliberately excluding `.ts`
+ * and `.js`: `vite.config.ts` and `eslint.config.js` live here too and are
+ * build configuration, never served.
  */
-const UNREACHABLE_SURFACES = ['index.html', 'public/site.webmanifest'];
+const ROOT_DOCUMENT = /\.(html|css|svg|webmanifest)$/;
 
 /**
  * The palette must be stated somewhere. These are the two places allowed to
@@ -110,12 +139,15 @@ export interface HexHit {
 export function maskComments(src: string, ext: string): string {
   const blank = (m: string) => m.replace(/[^\n]/g, ' ');
   let out = src;
-  // Block comments: TypeScript, CSS, and the inline <style> inside index.html.
+  // Block comments: TypeScript, CSS, JavaScript, and the inline <style> in an
+  // HTML or SVG document. JSON and the manifest have no comment syntax at all.
   if (ext !== '.webmanifest' && ext !== '.json') out = out.replace(/\/\*[\s\S]*?\*\//g, blank);
-  // Line comments: TypeScript only. The `[^:]` guard keeps `https://` intact.
-  if (ext === '.ts' || ext === '.tsx') out = out.replace(/(^|[^:])\/\/[^\n]*/g, (_m, p1: string) => p1);
-  // HTML comments: index.html, where the identity notes live next to the CSS.
-  if (ext === '.html') out = out.replace(/<!--[\s\S]*?-->/g, blank);
+  // Line comments: the script dialects only. The `[^:]` guard keeps `https://`
+  // intact, and CSS is excluded because `//` is not a comment there.
+  if (/^\.(tsx?|js)$/.test(ext)) out = out.replace(/(^|[^:])\/\/[^\n]*/g, (_m, p1: string) => p1);
+  // Markup comments: index.html, where the identity notes sit beside the CSS,
+  // and the icon SVGs, which are XML and take the same form.
+  if (ext === '.html' || ext === '.svg') out = out.replace(/<!--[\s\S]*?-->/g, blank);
   return out;
 }
 
@@ -148,6 +180,16 @@ export const BASELINE: Readonly<Record<string, number>> = {
   'api/cron/daily-brief.ts': 9,
   'api/unsubscribe.ts': 3,
   'index.html': 8,
+  // PINNED, NOT ACCEPTED. These are the favicon, the PWA install icon and the
+  // JSON-LD organisation logo, and they are still the retired terminal
+  // identity: a #0a0a0a tile with an #ff6600 "NW" set in Courier New. B1
+  // reclaimed index.html and site.webmanifest, which POINT at these two files.
+  // The recolour is a design decision and belongs to the identity lane.
+  'public/icons/icon-192.svg': 4,
+  'public/icons/icon-512.svg': 4,
+  // An unreferenced manual OG-image tool from the terminal era. #00ff88 belongs
+  // to no palette in this repo. A deletion candidate, not a token candidate.
+  'public/og-gen.html': 19,
   'public/site.webmanifest': 2,
   'src/main.ts': 16,
   'src/pages/briefs.ts': 19,
@@ -250,16 +292,21 @@ function walk(dir: string, out: string[] = []): string[] {
     // Tests are excluded on purpose: a test that asserts the card background
     // EQUALS the token can only do that by writing the value down, and
     // api/_lib/satori-html.test.ts is doing exactly the right thing.
-    else if (/\.(tsx?|css)$/.test(full) && !/\.test\.tsx?$/.test(full)) out.push(full);
+    else if (SERVED_TEXT.test(full) && !/\.test\.tsx?$/.test(full)) out.push(full);
   }
   return out;
 }
 
+/** Served documents at the repo root, by extension, one level only. */
+function rootDocuments(): string[] {
+  return readdirSync(ROOT)
+    .filter((e) => ROOT_DOCUMENT.test(e))
+    .map((e) => join(ROOT, e))
+    .filter((f) => statSync(f).isFile());
+}
+
 function main(): void {
-  const files = [
-    ...SCAN_ROOTS.flatMap((r) => walk(join(ROOT, r))),
-    ...UNREACHABLE_SURFACES.map((f) => join(ROOT, f)).filter((f) => existsSync(f)),
-  ];
+  const files = [...SCAN_ROOTS.flatMap((r) => walk(join(ROOT, r))), ...rootDocuments()];
 
   // A filter that silently matches nothing is how a guard passes while
   // guarding nothing. run-guards.mjs refuses the same way.

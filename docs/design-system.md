@@ -321,3 +321,15 @@ Three rules:
    palette is missing a semantic name — add it here first, then use it.
 3. **Marketing-only stuff goes inside `.marketing-surface`.** Don't bleed
    serif typography into the dashboard. The hybrid line is the system.
+
+Rule 2 has an exit code as of 2026-09-06: `npm run check:hex-literals` scans
+every `.ts` and `.css` under `src/` and `api/`, plus `index.html` and
+`public/site.webmanifest` — the two surfaces that stranded a retired palette
+precisely because no `src/` scan reaches them. `src/styles/email-tokens.ts`
+and `src/styles/tokens.css` are the two places allowed to state a colour.
+
+The literals that predate the guard are pinned file by file in
+`scripts/check-hex-literals.ts`; a file with no pin is pinned at zero, so a
+new file fails by default. Moving a pin in either direction means editing
+that block in the same commit, which is how the pins get to zero instead of
+becoming a ceiling nobody lowers.

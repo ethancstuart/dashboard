@@ -58,6 +58,13 @@ describe('what counts as a colour literal', () => {
     expect(values('<!-- was #04050a --><meta content="#faf8f3">', '.html')).toEqual(['#faf8f3']);
   });
 
+  it('reads an SVG as markup — the icon files are XML, and they are in scope', () => {
+    // public/icons/icon-*.svg is the favicon, the install icon and the JSON-LD
+    // logo. Scoping them in is what found that all three are still the retired
+    // terminal identity, so the dialect they are written in has to be handled.
+    expect(values('<!-- was #ff6600 --><rect fill="#9a1b1b"/>', '.svg')).toEqual(['#9a1b1b']);
+  });
+
   it('does NOT treat // as a comment in CSS, where it is not one', () => {
     // A TypeScript stripper turned loose on a stylesheet would blank the rest
     // of any line holding a protocol-relative url() and hide the colours after
