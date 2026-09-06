@@ -2572,9 +2572,15 @@ export function formatResolvedCallLines(
   const hits = totals.hits;
   if (total === 0 && stillDuePending === 0) return [];
   const lines: string[] = [];
+  // "Under the coverage-grace rule" was WRONG on 2026-09-06: 63 of the 74
+  // due-pending rows were FX calls stuck on a resolver defect, and the brief
+  // confidently attributed all of them to a rule that only governs
+  // censorship coverage. A pending row has many possible reasons; the line
+  // now states the fact (due, unresolved, never auto-missed) and only the
+  // fact. The reason belongs to the ledger row, which carries it.
   const graceNote =
     stillDuePending > 0
-      ? ` ${stillDuePending} due call${stillDuePending === 1 ? '' : 's'} remain${stillDuePending === 1 ? 's' : ''} pending under the coverage-grace rule (thin evidence, never scored as a miss).`
+      ? ` ${stillDuePending} due call${stillDuePending === 1 ? '' : 's'} remain${stillDuePending === 1 ? 's' : ''} unresolved — held, never scored as a miss by default; each row on the ledger carries its reason.`
       : '';
   if (total === 0) {
     // Due calls exist and NONE resolved — either everything is grace-held, or

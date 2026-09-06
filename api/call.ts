@@ -86,9 +86,22 @@ function statusBlock(c: CallRow): string {
   return (
     `<div class="stat"><div class="v" style="color:var(--${hit ? 'up' : 'down'})">${hit ? 'HIT' : 'MISS'}</div>` +
     `<div class="l">resolved ${c.resolved_at ? esc(c.resolved_at.slice(0, 10)) : esc(c.resolves_on)}</div>` +
-    `<div class="d">${c.evidence_count !== null ? `${c.evidence_count} qualifying event${c.evidence_count === 1 ? '' : 's'} recorded` : 'resolved on the stored criterion'}</div>` +
+    `<div class="d">${evidenceLine(c.kind, c.evidence_count)}</div>` +
     `<div class="p">resolver: ${esc(c.resolver)}</div></div>`
   );
+}
+
+/**
+ * Evidence, in the units its kind actually measures. "N qualifying events"
+ * was written for the censorship resolver and would have described an FX
+ * call's 112 BASIS POINTS as "112 qualifying events" — the no-kind-speaks-
+ * for-another rule, third appearance this week.
+ */
+function evidenceLine(kind: string, evidence: number | null): string {
+  if (evidence === null) return 'resolved on the stored criterion';
+  if (kind === 'fx_devaluation') return `peak depreciation ${(evidence / 100).toFixed(2)}% (stored as basis points)`;
+  if (kind === 'censorship_event') return `${evidence} day${evidence === 1 ? '' : 's'} with a confirmed block`;
+  return `${evidence} qualifying event${evidence === 1 ? '' : 's'} recorded`;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -224,7 +237,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? 'Voided before resolution.'
           : `Result: ${c.status.toUpperCase()}.`);
 
-    return res.status(200).send(shell(parts.join('\n'), { title, description, canonicalPath: `/call/${c.id}` }));
+    // The unfurl card. /call/:id is the citeable unit — the thing a journalist
+    // pastes into a post — and it previously declared a large twitter card
+    // with no image, which unfurls to nothing. The card renders the claim, the
+    // stated probability and the resolution date off this same row.
+    const ogImage = `https://nexuswatch.dev/api/og?type=call&id=${c.id}`;
+
+    return res
+      .status(200)
+      .send(shell(parts.join('\n'), { title, description, canonicalPath: `/call/${c.id}`, ogImage }));
   } catch (err) {
     console.error('[call] failed:', err instanceof Error ? err.message : err);
     return res.status(500).send('call_unavailable');
