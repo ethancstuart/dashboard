@@ -3,11 +3,6 @@
   "build": {
     "env": {}
   },
-  "functions": {
-    "api/v2/council.ts": {
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     {
       "source": "/sitemap.xml",
@@ -44,10 +39,6 @@
     {
       "source": "/brief/:date(\\d{4}-\\d{2}-\\d{2})",
       "destination": "/api/brief/og?date=:date"
-    },
-    {
-      "source": "/intel",
-      "destination": "/index.html"
     },
     {
       "source": "/briefs",
@@ -132,10 +123,6 @@
       "schedule": "0 * * * *"
     },
     {
-      "path": "/api/cron/alert-dispatch",
-      "schedule": "*/30 * * * *"
-    },
-    {
       "path": "/api/cron/source-fx-rates",
       "schedule": "0 5 * * *"
     },
@@ -148,28 +135,8 @@
       "schedule": "0 */6 * * *"
     },
     {
-      "path": "/api/cron/source-unhcr",
-      "schedule": "0 3 15 * *"
-    },
-    {
-      "path": "/api/cron/dark-vessels",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/data-lake",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/data-health",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/crisis-detection",
-      "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/slack-alerts",
-      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/source-ofac",

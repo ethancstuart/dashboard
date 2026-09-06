@@ -85,8 +85,8 @@ function showRouteError(root: HTMLElement, err: unknown, retryFn?: (() => void) 
   }
 
   const mapLink = document.createElement('a');
-  mapLink.href = '#/intel';
-  mapLink.textContent = 'Go to Intel Map';
+  mapLink.href = '#/ledger';
+  mapLink.textContent = 'Go to the Ledger';
   mapLink.style.cssText =
     'padding:8px 20px;border:1px solid var(--nw-border, #222);color:var(--nw-text, #ededed);border-radius:6px;text-decoration:none;font-size:14px';
   actions.appendChild(mapLink);
@@ -120,8 +120,8 @@ function show404(root: HTMLElement) {
   actions.style.cssText = 'display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:0 0 32px';
 
   const mapLink = document.createElement('a');
-  mapLink.href = '#/intel';
-  mapLink.textContent = 'Go to Intel Map';
+  mapLink.href = '#/ledger';
+  mapLink.textContent = 'Go to the Ledger';
   mapLink.style.cssText =
     'padding:8px 20px;background:var(--nw-accent, #ff6600);color:#000;border:none;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px';
   actions.appendChild(mapLink);
@@ -138,8 +138,7 @@ function show404(root: HTMLElement) {
   const links = [
     ['The Ledger', '#/ledger'],
     ['Briefs', '#/briefs'],
-    ['Intel Map', '#/intel'],
-    ['Watchlist', '#/watchlist'],
+    ['Methodology', '#/methodology'],
     ['Status', '#/status'],
   ];
   nav.innerHTML =
@@ -158,22 +157,6 @@ router
       .then(async (m) => {
         await transition(appRoot);
         m.renderLanding(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/intel', () => {
-    import('./pages/nexuswatch.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderNexusWatch(appRoot);
-      })
-      .catch((err) => showRouteError(appRoot, err));
-  })
-  .on('/app', () => {
-    import('./pages/nexuswatch.ts')
-      .then(async (m) => {
-        await transition(appRoot);
-        m.renderNexusWatch(appRoot);
       })
       .catch((err) => showRouteError(appRoot, err));
   })

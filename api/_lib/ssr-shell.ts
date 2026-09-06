@@ -108,7 +108,6 @@ export function shell(body: string, opts: ShellOptions): string {
   <a class="wordmark" href="https://nexuswatch.dev/">NexusWatch</a>
   <a href="https://nexuswatch.dev/ledger">The Ledger</a>
   <a href="https://nexuswatch.dev/briefs">Briefs</a>
-  <a href="https://nexuswatch.dev/intel">Intel Map</a>
   <a href="https://nexuswatch.dev/methodology">Method</a>
   <a href="https://nexuswatch.dev/about">About</a>
 </nav>

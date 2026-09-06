@@ -74,7 +74,6 @@ function urlEntry(loc: string, lastmod: string, changefreq: string, priority: st
 const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
   { path: '', changefreq: 'daily', priority: '1.0' },
   { path: 'briefs', changefreq: 'daily', priority: '0.9' },
-  { path: 'intel', changefreq: 'hourly', priority: '0.9' },
   { path: 'why-free', changefreq: 'monthly', priority: '0.7' },
   { path: 'about', changefreq: 'monthly', priority: '0.5' },
   { path: 'methodology', changefreq: 'monthly', priority: '0.5' },

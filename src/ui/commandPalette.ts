@@ -121,7 +121,7 @@ function renderEmptyState(container: HTMLElement): void {
           <div class="nw-cmdk-section-label">Jump to</div>
           <div class="nw-cmdk-quick-links">
             <a href="#/ledger">✓ The Ledger</a>
-            <a href="#/intel">🌐 Intel Map</a>
+            <a href="#/ledger">🧾 The Ledger</a>
             <a href="#/briefs">☕ Briefs</a>
             <a href="#/status">📡 Status</a>
           </div>
@@ -139,7 +139,7 @@ function renderEmptyState(container: HTMLElement): void {
   container.querySelectorAll('.nw-cmdk-quick-links a').forEach((a) => {
     a.addEventListener('click', (e) => {
       e.preventDefault();
-      navigate((a as HTMLAnchorElement).getAttribute('href') || '#/intel');
+      navigate((a as HTMLAnchorElement).getAttribute('href') || '#/ledger');
     });
   });
 }

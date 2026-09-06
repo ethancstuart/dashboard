@@ -32,15 +32,16 @@ interface StatusPayload {
   endpoints: EndpointHealth[];
 }
 
+// The probe list matches the NARROWED product (2026-09-05): the register,
+// the brief, and the CII that feeds it. It had been probing six map-layer
+// endpoints — including /api/reliefweb, which was deleted a day earlier, so
+// the status page was manufacturing a permanent failure for a surface the
+// product no longer had. A probe list is a claim about what matters; it has
+// to shrink when the product does.
 const ENDPOINTS: Array<{ path: string; category: 'core' | 'data' | 'derived' }> = [
   { path: '/api/cii', category: 'core' },
   { path: '/api/briefs', category: 'core' },
-  { path: '/api/news-feed?country=Ukraine', category: 'data' },
-  { path: '/api/webcam-catalog', category: 'data' },
-  { path: '/api/aurora', category: 'data' },
-  { path: '/api/energy', category: 'data' },
-  { path: '/api/trade-flows?reporter=USA', category: 'data' },
-  { path: '/api/reliefweb?country=UA&limit=5', category: 'data' },
+  { path: '/api/calls/ledger', category: 'core' },
   { path: '/api/briefs-sample', category: 'derived' },
 ];
 
