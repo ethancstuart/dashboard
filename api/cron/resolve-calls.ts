@@ -8,6 +8,29 @@ import {
   UNRESOLVABLE_GRACE_DAYS,
 } from '../_lib/calls.js';
 import { usgsCountUrl, type RegionBox } from '../_lib/seismicity.js';
+import { raiseAlert } from '../_lib/alert.js';
+
+/**
+ * EVIDENCE UNITS ARE PER KIND, and the column is an INTEGER — a fact this
+ * file learned on 2026-09-06, the first FX resolution day, when it wrote the
+ * measured move (e.g. "1.12") into evidence_count and threw
+ * `invalid input syntax for type integer` on SIXTY-THREE of sixty-six calls.
+ * The three that "resolved" were the ones whose move happened to round to a
+ * whole number. Every failure was caught by the per-call isolation, counted
+ * in `errored`, reported in a response body nobody reads, and the run said
+ * ok:true. Resolution day two, and the machine was broken in a way that
+ * looked exactly like working.
+ *
+ *   censorship_event  → days with a confirmed block   (integer, natural)
+ *   fx_devaluation    → peak depreciation in BASIS POINTS (integer, exact:
+ *                       1.12% → 112; no float ever meets the column)
+ *   seismicity_window → qualifying USGS events        (integer, natural)
+ *
+ * Display code renders each kind in its own units (api/call.ts).
+ */
+export function fxEvidenceBasisPoints(movedPct: number): number {
+  return Math.round(movedPct * 100);
+}
 
 export const config = { runtime: 'nodejs', maxDuration: 60 };
 
@@ -98,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
           const moved = fxDepreciationPct(ref, peak[0].peak);
           outcome = moved >= pct ? 1 : 0;
-          count = Math.round(moved * 100) / 100;
+          count = fxEvidenceBasisPoints(moved);
         } else if (call.kind === 'seismicity_window') {
           // Calibration harness: did USGS record a qualifying event inside the
           // frozen box and window? The box and magnitude come from
@@ -284,6 +307,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `${unresolvable} unresolvable (settled, never scored), ` +
         `${stillWaiting} awaiting late evidence (still pending), ${errored} errored`,
     );
+    if (errored > 0) {
+      // A resolver error is a resolution that silently didn't happen, on the
+      // one job whose whole point is happening unattended. 63 of these hid in
+      // a response body on 2026-09-06; now they wake a human. Fails open —
+      // the alert path must never break resolution itself.
+      try {
+        await raiseAlert({
+          title: `[resolve-calls] ${errored} call(s) threw and were left pending`,
+          severity: 'critical',
+          key: 'resolve-calls-errored',
+          body:
+            `due=${due.length >= 500 ? '500+ (page-capped)' : due.length} resolved=${hits + misses} unresolvable=${unresolvable} ` +
+            `still_waiting=${stillWaiting} errored=${errored}. Per-call errors are in the ` +
+            'function logs. Rows stay pending, so a rerun after the fix resolves them.',
+        });
+      } catch (alertErr) {
+        console.error('[resolve-calls] alert failed (non-fatal):', alertErr);
+      }
+    }
+
     return res.status(200).json({
       ok: true,
       due: due.length,
