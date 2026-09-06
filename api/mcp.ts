@@ -209,8 +209,13 @@ async function handleToolsCall(req: JsonRpcRequest) {
 
   if (!name) return rpcError(req.id, -32602, 'Missing tool name');
 
+  // Retired tools must REACH executeTool to get their structured retirement
+  // message — this validation gate was rejecting them as unknown before the
+  // branch built for them could run, which was caught only by CALLING a
+  // retired tool against the deployed endpoint after merge (the deployed-
+  // model rule: the slim looked complete in every local read of the code).
   const tool = TOOLS.find((t) => t.name === name);
-  if (!tool) return rpcError(req.id, -32602, `Unknown tool: ${name}`);
+  if (!tool && !(name in RETIRED_TOOLS)) return rpcError(req.id, -32602, `Unknown tool: ${name}`);
 
   try {
     const result = await executeTool(name, args);
