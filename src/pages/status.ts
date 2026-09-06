@@ -126,7 +126,12 @@ export async function renderStatusPage(container: HTMLElement): Promise<void> {
     apiList.innerHTML = '';
     for (const ep of data.endpoints) {
       const row = createElement('div', { className: 'nw-status-api-row' });
-      const dotColor = ep.status === 'ok' ? '#22c55e' : ep.status === 'degraded' ? '#eab308' : '#dc2626';
+      const dotColor =
+        ep.status === 'ok'
+          ? 'var(--color-signal-ok)'
+          : ep.status === 'degraded'
+            ? '#eab308'
+            : 'var(--color-signal-critical)';
       row.innerHTML = `
         <span class="nw-status-dot" style="background:${dotColor}"></span>
         <code style="font-size:12px;flex:1">${ep.path}</code>
@@ -177,9 +182,9 @@ function renderOverall(container: HTMLElement, layers: LayerStatus[]): void {
       <span>${bannerText}</span>
     </div>
     <div class="nw-status-summary">
-      <div class="nw-status-stat"><span class="nw-status-stat-num" style="color: #22c55e">${green}</span><span class="nw-status-stat-label">GREEN</span></div>
+      <div class="nw-status-stat"><span class="nw-status-stat-num" style="color: var(--color-signal-ok)">${green}</span><span class="nw-status-stat-label">GREEN</span></div>
       <div class="nw-status-stat"><span class="nw-status-stat-num" style="color: #eab308">${amber}</span><span class="nw-status-stat-label">AMBER</span></div>
-      <div class="nw-status-stat"><span class="nw-status-stat-num" style="color: #dc2626">${red}</span><span class="nw-status-stat-label">RED</span></div>
+      <div class="nw-status-stat"><span class="nw-status-stat-num" style="color: var(--color-signal-critical)">${red}</span><span class="nw-status-stat-label">RED</span></div>
       <div class="nw-status-stat"><span class="nw-status-stat-num">${total}</span><span class="nw-status-stat-label">TOTAL</span></div>
     </div>
   `;
@@ -195,10 +200,10 @@ function renderLayerList(container: HTMLElement, layers: LayerStatus[]): void {
   for (const layer of sorted) {
     const color =
       layer.status === 'green'
-        ? '#22c55e'
+        ? 'var(--color-signal-ok)'
         : layer.status === 'amber' || layer.status === 'degraded'
           ? '#eab308'
-          : '#dc2626';
+          : 'var(--color-signal-critical)';
 
     const row = createElement('div', { className: 'nw-status-row' });
     row.innerHTML = `

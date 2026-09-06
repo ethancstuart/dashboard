@@ -367,11 +367,11 @@ export function runVerification(layerData: Map<string, unknown>): VerifiedSignal
 export function verificationColor(level: VerificationLevel): string {
   switch (level) {
     case 'confirmed':
-      return '#22c55e';
+      return 'var(--color-signal-ok)';
     case 'corroborated':
       return '#eab308';
     case 'unverified':
-      return '#6b7280';
+      return 'var(--color-text-2)';
     case 'contested':
       return '#f97316';
   }

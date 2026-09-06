@@ -57,13 +57,13 @@ export function computeFreshness(prov: DataProvenance): Freshness {
 export function freshnessColor(f: Freshness): string {
   switch (f) {
     case 'live':
-      return '#22c55e';
+      return 'var(--color-signal-ok)';
     case 'recent':
       return '#eab308';
     case 'stale':
       return '#f97316';
     case 'offline':
-      return '#dc2626';
+      return 'var(--color-signal-critical)';
   }
 }
 

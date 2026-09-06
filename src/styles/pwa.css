@@ -1,6 +1,6 @@
 /* PWA Install Button */
 .install-btn {
-  background: var(--color-accent, #ff6600);
+  background: var(--color-accent, var(--color-tension-high));
   color: var(--color-bg, #fff);
   border: none;
   border-radius: 6px;

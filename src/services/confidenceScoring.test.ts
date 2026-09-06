@@ -53,10 +53,16 @@ describe('confidenceScoring', () => {
   });
 
   describe('display helpers', () => {
+    // CHANGED WITH ARGUMENT (hex ratchet, 2026-09-06): these assertions
+    // pinned raw hexes that the token sweep converted to css vars. The
+    // helper has ZERO consumers since the map deletion (verified before
+    // editing — var() would be wrong in a canvas fillStyle, but nothing
+    // feeds one), so the token form is the correct shape and the old
+    // assertions were pinning exactly what check:hex-literals now forbids.
     it('returns color for each confidence level', () => {
-      expect(confidenceColor('high')).toBe('#22c55e');
-      expect(confidenceColor('medium')).toBe('#eab308');
-      expect(confidenceColor('low')).toBe('#dc2626');
+      expect(confidenceColor('high')).toBe('var(--color-signal-ok)');
+      expect(confidenceColor('medium')).toBe('var(--color-signal-warning)');
+      expect(confidenceColor('low')).toBe('var(--color-signal-critical)');
     });
 
     it('returns icon for each confidence level', () => {

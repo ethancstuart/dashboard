@@ -23,7 +23,8 @@
     "check:collectors": "tsx scripts/check-collectors.ts",
     "check:cron-auth": "tsx scripts/check-cron-auth.ts",
     "check:style-attr": "tsx scripts/check-style-attr.ts",
-    "check:client-safe-imports": "tsx scripts/check-client-safe-imports.ts"
+    "check:client-safe-imports": "tsx scripts/check-client-safe-imports.ts",
+    "check:hex-literals": "tsx scripts/check-hex-literals.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

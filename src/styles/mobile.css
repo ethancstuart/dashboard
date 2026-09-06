@@ -592,7 +592,7 @@ body {
   .nw-ai-terminal-launcher {
     width: 56px;
     height: 56px;
-    background: var(--color-accent, #ff6600);
+    background: var(--color-accent, var(--color-tension-high));
     color: #000;
     border: none;
     border-radius: 50%;

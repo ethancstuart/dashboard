@@ -820,10 +820,10 @@ function computeCountryCII(
 
 /** Get a color for a CII score */
 export function ciiColor(score: number): string {
-  if (score >= 75) return '#dc2626';
+  if (score >= 75) return 'var(--color-signal-critical)';
   if (score >= 50) return '#f97316';
   if (score >= 25) return '#eab308';
-  return '#22c55e';
+  return 'var(--color-signal-ok)';
 }
 
 /** Get a label for a CII score */

@@ -252,11 +252,11 @@ function computeOverallConfidence(components: CIIEvidence[]): ConfidenceLevel {
 export function confidenceColor(level: ConfidenceLevel): string {
   switch (level) {
     case 'high':
-      return '#22c55e';
+      return 'var(--color-signal-ok)';
     case 'medium':
-      return '#eab308';
+      return 'var(--color-signal-warning)';
     case 'low':
-      return '#dc2626';
+      return 'var(--color-signal-critical)';
   }
 }
 

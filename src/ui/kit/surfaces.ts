@@ -27,7 +27,7 @@ import { themeTokens, type NewThemeName } from '../../styles/tokens.ts';
 
 const STYLE_ID = 'nw-kit-surfaces';
 
-/** `--color-bg: #FAF8F3;` for every token in a theme. */
+/** `--color-bg: var(--color-bg);` for every token in a theme. */
 function declarations(tokens: Record<string, string>): string {
   return Object.entries(tokens)
     .map(([prop, value]) => `  ${prop}: ${value};`)

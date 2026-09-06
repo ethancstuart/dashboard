@@ -1,0 +1,18 @@
+{
+  "src/main.ts": 12,
+  "src/pages/briefs.ts": 11,
+  "src/pages/mcp.ts": 12,
+  "src/pages/status.ts": 4,
+  "src/services/countryInstabilityIndex.ts": 2,
+  "src/services/dataProvenance.ts": 2,
+  "src/services/verificationEngine.ts": 2,
+  "src/styles/auth.css": 3,
+  "src/styles/base.css": 3,
+  "src/styles/briefs-dossier.css": 10,
+  "src/styles/briefs.css": 28,
+  "src/styles/landing.css": 9,
+  "src/styles/mobile.css": 6,
+  "src/styles/pwa.css": 2,
+  "src/styles/toast.css": 2,
+  "src/ui/dataToast.ts": 4
+}
