@@ -9,25 +9,15 @@
 import '../styles/landing.css';
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 export function renderAbout(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.about);
-  root.textContent = '';
+  const shellMain = pageShell(root, { active: '/about' });
 
-  const main = createElement('main', { className: 'marketing-surface nw-landing-surface' });
-  main.id = 'main-content';
-  main.setAttribute('role', 'main');
+  const main = createElement('div', { className: 'marketing-surface nw-landing-surface' });
 
   main.innerHTML = `
-    <nav class="nw-nav" aria-label="Primary">
-      <a href="#/" class="nw-nav-brand"><span class="nw-nav-mark">●</span>&nbsp;NexusWatch</a>
-      <div class="nw-nav-links">
-        <a href="#/intel">Intel Map</a>
-        <a href="#/briefs">Briefs</a>
-        <a href="#/why-free">Why Free</a>
-        <a href="#/about">About</a>
-      </div>
-    </nav>
 
     <article class="nw-essay">
       <p class="nw-section-eyebrow" style="margin-bottom: 32px;">Operator</p>
@@ -84,24 +74,7 @@ export function renderAbout(root: HTMLElement): void {
       </p>
     </article>
 
-    <footer class="nw-footer">
-      <div class="nw-footer-top">
-        <div class="nw-footer-brand"><span>●</span> NexusWatch</div>
-        <div class="nw-footer-links">
-          <a href="#/intel">Intel Map</a>
-          <a href="#/briefs">Briefs</a>
-          <a href="#/why-free">Why Free</a>
-          <a href="#/about">About</a>
-          <a href="#/api">API</a>
-          <a href="https://github.com/ethancstuart/nexus-watch" target="_blank" rel="noopener">GitHub</a>
-          <a href="/api/feed" rel="alternate" type="application/rss+xml">RSS</a>
-        </div>
-      </div>
-      <div class="nw-footer-meta">
-        © ${new Date().getFullYear()} NexusWatch · MIT License · Built in the open.
-      </div>
-    </footer>
   `;
 
-  root.appendChild(main);
+  shellMain.appendChild(main);
 }

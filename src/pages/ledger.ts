@@ -1,5 +1,5 @@
 import { createElement } from '../utils/dom.ts';
-import { installSurfaces, stat, sectionRule, figure, capture, row } from '../ui/kit/index.ts';
+import { installSurfaces, stat, sectionRule, figure, capture, row, pageShell } from '../ui/kit/index.ts';
 import { setPageSeo } from '../utils/seo.ts';
 
 /**
@@ -180,12 +180,13 @@ export async function renderLedgerPage(root: HTMLElement): Promise<void> {
       'Dated, falsifiable calls resolved against external sources, with the score published whether it flatters us or not.',
     canonicalPath: '/ledger',
   });
-
-  root.textContent = '';
-  const page = createElement('div', { className: 'surface-dossier nw-ledger' });
+  // The shell owns nav/footer; this page's own <main class="nw-reading">
+  // stays as the measure-width reading column inside it.
+  const shellMain = pageShell(root, { active: '/ledger' });
+  const page = createElement('div', { className: 'nw-ledger' });
   const main = createElement('main', { className: 'nw-reading' });
   page.appendChild(main);
-  root.appendChild(page);
+  shellMain.appendChild(page);
 
   main.appendChild(
     sectionRule({

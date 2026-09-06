@@ -7,6 +7,7 @@
 
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 interface LayerStatus {
   layer: string;
@@ -59,25 +60,23 @@ const LAYER_DISPLAY_NAMES: Record<string, string> = {
 
 export async function renderStatusPage(container: HTMLElement): Promise<void> {
   setPageSeo(PAGE_SEO.status);
-  container.innerHTML = '';
-  container.className = 'nw-status-page';
+  const main = pageShell(container, { active: '/status' });
 
   const header = createElement('header', { className: 'nw-status-header' });
   header.innerHTML = `
-    <a href="#/intel" class="nw-status-back">← Back to Intel Map</a>
     <h1>System Status</h1>
     <p class="nw-status-subtitle">
       Real-time health of every NexusWatch data source. If something's broken, you'll see it here first.
     </p>
   `;
-  container.appendChild(header);
+  main.appendChild(header);
 
   const overall = createElement('div', { className: 'nw-status-overall' });
   overall.innerHTML = '<div class="nw-status-loading">Loading system status...</div>';
-  container.appendChild(overall);
+  main.appendChild(overall);
 
   const list = createElement('div', { className: 'nw-status-list' });
-  container.appendChild(list);
+  main.appendChild(list);
 
   try {
     const res = await fetch('/api/public/status');
@@ -108,7 +107,7 @@ export async function renderStatusPage(container: HTMLElement): Promise<void> {
       <div class="nw-status-loading">Pinging endpoints…</div>
     </div>
   `;
-  container.appendChild(apiSection);
+  main.appendChild(apiSection);
 
   try {
     const res = await fetch('/api/status');
@@ -153,7 +152,7 @@ export async function renderStatusPage(container: HTMLElement): Promise<void> {
       Status refreshes every 5 minutes. We publish the honest numbers — broken layers count against us.
     </p>
   `;
-  container.appendChild(footer);
+  main.appendChild(footer);
 }
 
 function renderOverall(container: HTMLElement, layers: LayerStatus[]): void {

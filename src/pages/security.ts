@@ -1,5 +1,6 @@
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 /**
  * Security & Trust page (/#/security).
@@ -17,8 +18,7 @@ export function renderSecurity(root: HTMLElement): void {
       'How NexusWatch handles your data, what protects this site, and how we respond to incidents. Public posture.',
     canonicalPath: '/security',
   });
-
-  root.textContent = '';
+  const main = pageShell(root, { active: '/security' });
   const page = createElement('div', { className: 'nw-doc-page' });
   page.innerHTML = `
     <article class="nw-doc">
@@ -128,5 +128,5 @@ export function renderSecurity(root: HTMLElement): void {
       </p>
     </article>
   `;
-  root.appendChild(page);
+  main.appendChild(page);
 }

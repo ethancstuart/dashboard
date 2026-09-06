@@ -12,6 +12,7 @@
 
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
@@ -54,8 +55,7 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
 
 export function renderFaqPage(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.faq);
-  root.innerHTML = '';
-  root.className = 'nw-faq-page';
+  const main = pageShell(root, { active: '/faq' });
 
   const page = createElement('div', { className: 'nw-faq' });
   page.setAttribute('role', 'main');
@@ -102,5 +102,5 @@ export function renderFaqPage(root: HTMLElement): void {
   `;
   page.appendChild(footer);
 
-  root.appendChild(page);
+  main.appendChild(page);
 }

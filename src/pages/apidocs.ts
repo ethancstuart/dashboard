@@ -5,22 +5,21 @@
 
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 export function renderApiDocsPage(container: HTMLElement): void {
   setPageSeo(PAGE_SEO.apidocs);
-  container.innerHTML = '';
-  container.className = 'nw-apidocs-page';
+  const main = pageShell(container, { active: '/api' });
 
   const header = createElement('header', { className: 'nw-apidocs-header' });
   header.innerHTML = `
-    <a href="#/intel" class="nw-apidocs-back">← Back to Intel Map</a>
     <h1>NexusWatch API v2</h1>
     <p class="nw-apidocs-subtitle">
       Verified geopolitical intelligence for your product. Every response includes
       source attribution, confidence levels, and methodology metadata.
     </p>
   `;
-  container.appendChild(header);
+  main.appendChild(header);
 
   // Quick start
   const quickstart = createElement('section', { className: 'nw-apidocs-section' });
@@ -32,7 +31,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
     </p>
     <pre><code>curl https://nexuswatch.dev/api/calls/ledger</code></pre>
   `;
-  container.appendChild(quickstart);
+  main.appendChild(quickstart);
 
   // Endpoints
   const endpoints = createElement('section', { className: 'nw-apidocs-section' });
@@ -98,7 +97,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
       <div class="nw-endpoint-desc">A dated brief — the first resolution day, for instance.</div>
     </div>
   `;
-  container.appendChild(endpoints);
+  main.appendChild(endpoints);
 
   // Rate limits + SLA
   const limits = createElement('section', { className: 'nw-apidocs-section' });
@@ -111,7 +110,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
     </p>
     <p>Data freshness: the ledger resolves daily at 09:45 UTC; the brief publishes at 10:00 UTC.</p>
   `;
-  container.appendChild(limits);
+  main.appendChild(limits);
 
   // Attribution
   const attribution = createElement('section', { className: 'nw-apidocs-section' });
@@ -128,5 +127,5 @@ export function renderApiDocsPage(container: HTMLElement): void {
     </ul>
     <p>Example: "Geopolitical risk data via <a href="https://nexuswatch.dev">NexusWatch</a>"</p>
   `;
-  container.appendChild(attribution);
+  main.appendChild(attribution);
 }

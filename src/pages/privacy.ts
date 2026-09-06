@@ -4,11 +4,11 @@
 
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 export function renderPrivacyPage(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.privacy);
-  root.innerHTML = '';
-  root.className = 'nw-legal-page nw-page';
+  const main = pageShell(root, { active: '/privacy' });
 
   const page = createElement('div', {});
   page.setAttribute('role', 'main');
@@ -16,9 +16,7 @@ export function renderPrivacyPage(root: HTMLElement): void {
   page.style.cssText =
     'max-width:700px;margin:0 auto;padding:48px 24px;font-family:var(--nw-font-body, Inter, sans-serif)';
 
-  page.innerHTML = `
-    <a href="#/" style="font-size:12px;color:var(--nw-text-muted);text-decoration:none">\u2190 Home</a>
-    <h1 style="font-size:28px;font-weight:700;color:var(--nw-text);margin:16px 0 8px">Privacy Policy</h1>
+  page.innerHTML = `    <h1 style="font-size:28px;font-weight:700;color:var(--nw-text);margin:16px 0 8px">Privacy Policy</h1>
     <p style="font-size:12px;color:var(--nw-text-muted);margin:0 0 32px">Last updated: April 19, 2026</p>
 
     <div style="font-size:14px;color:var(--nw-text-secondary);line-height:1.7">
@@ -56,5 +54,5 @@ export function renderPrivacyPage(root: HTMLElement): void {
     </div>
   `;
 
-  root.appendChild(page);
+  main.appendChild(page);
 }

@@ -1,5 +1,6 @@
 import '../styles/briefs-dossier.css';
 import { createElement } from '../utils/dom.ts';
+import { pageShell } from '../ui/kit/index.ts';
 import { escapeHtml, renderBriefBody } from '../utils/briefRenderer.ts';
 import { setPageSeo, setJsonLd, PAGE_SEO } from '../utils/seo.ts';
 
@@ -51,20 +52,12 @@ interface BriefDetailResponse {
 // ---------------------------------------------------------------------------
 
 export function renderBriefs(root: HTMLElement): void {
-  root.textContent = '';
+  const main = pageShell(root, { active: '/briefs' });
 
   setPageSeo(PAGE_SEO.briefs);
 
   const page = createElement('div', { className: 'briefs-dossier' });
   page.innerHTML = `
-    <nav class="dossier-nav">
-      <a href="#/" class="dossier-nav-logo">NexusWatch</a>
-      <div class="dossier-nav-links">
-        <a href="#/ledger" class="dossier-nav-link">LEDGER</a>
-        <a href="#/intel" class="dossier-nav-link">PLATFORM</a>
-        <a href="#/briefs" class="dossier-nav-link">BRIEFS</a>
-      </div>
-    </nav>
 
     <header class="dossier-header">
       <div class="dossier-kicker">SITUATION BRIEF · DAILY</div>
@@ -82,15 +75,9 @@ export function renderBriefs(root: HTMLElement): void {
       <div class="dossier-loading">Loading briefs…</div>
     </main>
 
-    <footer class="dossier-footer">
-      <a href="#/">Home</a>
-      <a href="#/intel">Live Map</a>
-      <a href="#/methodology">Methodology</a>
-      <a href="mailto:hello@nexuswatch.dev">hello@nexuswatch.dev</a>
-    </footer>
   `;
 
-  root.appendChild(page);
+  main.appendChild(page);
 
   wireSubscribe('briefs-subscribe', 'briefs-sub-status', 'briefs-archive');
 
@@ -265,18 +252,10 @@ function renderSampleHero(samples: SampleBrief[] = SAMPLE_BRIEFS): string {
 // ---------------------------------------------------------------------------
 
 export function renderBrief(root: HTMLElement, date: string): void {
-  root.textContent = '';
+  const main = pageShell(root, { active: '/briefs' });
 
   const page = createElement('div', { className: 'briefs-dossier' });
   page.innerHTML = `
-    <nav class="dossier-nav">
-      <a href="#/" class="dossier-nav-logo">NexusWatch</a>
-      <div class="dossier-nav-links">
-        <a href="#/briefs" class="dossier-nav-link">ALL BRIEFS</a>
-        <a href="#/intel" class="dossier-nav-link">PLATFORM</a>
-        <a href="https://brief.nexuswatch.dev" target="_blank" rel="noopener" class="dossier-nav-link dossier-nav-subscribe">SUBSCRIBE</a>
-      </div>
-    </nav>
 
     <article class="dossier-article" id="brief-content">
       <div class="dossier-loading">Loading brief for ${escapeHtml(date)}…</div>
@@ -292,15 +271,9 @@ export function renderBrief(root: HTMLElement, date: string): void {
       <div class="dossier-subscribe-status" id="brief-sub-status" role="status" aria-live="polite"></div>
     </section>
 
-    <footer class="dossier-footer">
-      <a href="#/briefs">All Briefs</a>
-      <a href="#/intel">Live Map</a>
-      <a href="#/methodology">Methodology</a>
-      <a href="mailto:hello@nexuswatch.dev">hello@nexuswatch.dev</a>
-    </footer>
   `;
 
-  root.appendChild(page);
+  main.appendChild(page);
 
   wireSubscribe('brief-subscribe', 'brief-sub-status', 'brief-page');
 

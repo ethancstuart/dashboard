@@ -1,5 +1,6 @@
 import '../styles/briefs-dossier.css';
 import { createElement } from '../utils/dom.ts';
+import { pageShell } from '../ui/kit/index.ts';
 import {
   loadInterests,
   saveInterests,
@@ -48,7 +49,7 @@ interface DraftState {
 }
 
 export function renderSettings(root: HTMLElement): void {
-  root.textContent = '';
+  const shellMain = pageShell(root, { active: '/settings' });
 
   document.title = 'Account Settings — NexusWatch';
   const descMeta = document.querySelector('meta[name="description"]');
@@ -67,19 +68,11 @@ export function renderSettings(root: HTMLElement): void {
 
   const page = createElement('div', { className: 'briefs-dossier' });
   page.innerHTML = `
-    <nav class="dossier-nav">
-      <a href="#/" class="dossier-nav-logo">NexusWatch</a>
-      <div class="dossier-nav-links">
-        <a href="#/intel" class="dossier-nav-link">PLATFORM</a>
-        <a href="#/briefs" class="dossier-nav-link">BRIEFS</a>
-        <a href="#/settings" class="dossier-nav-link dossier-nav-subscribe">SETTINGS</a>
-      </div>
-    </nav>
 
     <main class="dossier-article" id="nw-settings-main" style="max-width: 680px;"></main>
   `;
 
-  root.appendChild(page);
+  shellMain.appendChild(page);
 
   const main = page.querySelector<HTMLElement>('#nw-settings-main');
   if (main) {

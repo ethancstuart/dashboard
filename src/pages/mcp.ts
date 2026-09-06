@@ -9,6 +9,7 @@
 import '../styles/landing.css';
 import { createElement } from '../utils/dom.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
+import { pageShell } from '../ui/kit/index.ts';
 
 interface ToolRow {
   name: string;
@@ -44,25 +45,13 @@ const EXAMPLE_PROMPTS: string[] = [
 
 export function renderMcpPage(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.mcp);
-  root.textContent = '';
+  const shellMain = pageShell(root, { active: '/mcp' });
 
-  const main = createElement('main', { className: 'marketing-surface nw-landing-surface nw-mcp-page' });
-  main.id = 'main-content';
-  main.setAttribute('role', 'main');
+  const main = createElement('div', { className: 'marketing-surface nw-landing-surface nw-mcp-page' });
 
   injectStyles();
 
   main.innerHTML = `
-    <nav class="nw-nav" aria-label="Primary">
-      <a href="#/" class="nw-nav-brand"><span class="nw-nav-mark">●</span>&nbsp;NexusWatch</a>
-      <div class="nw-nav-links">
-        <a href="#/intel">Intel Map</a>
-        <a href="#/briefs">Briefs</a>
-        <a href="#/api">API</a>
-        <a href="#/mcp" aria-current="page">MCP</a>
-        <a href="#/about">About</a>
-      </div>
-    </nav>
 
     <article class="nw-essay">
       <p class="nw-section-eyebrow" style="margin-bottom: 32px;">MCP Server</p>
@@ -147,25 +136,9 @@ export function renderMcpPage(root: HTMLElement): void {
       </p>
     </article>
 
-    <footer class="nw-footer">
-      <div class="nw-footer-top">
-        <div class="nw-footer-brand"><span>●</span> NexusWatch</div>
-        <div class="nw-footer-links">
-          <a href="#/intel">Intel Map</a>
-          <a href="#/briefs">Briefs</a>
-          <a href="#/api">API</a>
-          <a href="#/mcp">MCP</a>
-          <a href="#/accuracy">Accuracy</a>
-          <a href="https://github.com/ethancstuart/nexus-watch" target="_blank" rel="noopener">GitHub</a>
-        </div>
-      </div>
-      <div class="nw-footer-meta">
-        © ${new Date().getFullYear()} NexusWatch · MIT License · Built in the open.
-      </div>
-    </footer>
   `;
 
-  root.appendChild(main);
+  shellMain.appendChild(main);
 
   // Wire copy buttons
   main.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
