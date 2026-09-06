@@ -202,18 +202,18 @@ function injectStyles(): void {
       transition: all 0.15s;
     }
     .nw-mcp-copy:hover {
-      border-color: var(--color-accent, #ff6600);
-      color: var(--color-accent, #ff6600);
+      border-color: var(--color-accent, var(--color-tension-high));
+      color: var(--color-accent, var(--color-tension-high));
     }
     .nw-mcp-copy.is-copied {
       background: rgba(34, 197, 94, 0.15);
-      border-color: #22c55e;
-      color: #22c55e;
+      border-color: var(--color-signal-ok);
+      color: var(--color-signal-ok);
     }
     .nw-mcp-code {
       background: var(--color-surface-2, #0f0f0f);
       border: 1px solid var(--color-border, #2a2a2a);
-      border-left: 2px solid var(--color-accent, #ff6600);
+      border-left: 2px solid var(--color-accent, var(--color-tension-high));
       border-radius: 4px;
       padding: 0.9rem 1.1rem;
       overflow-x: auto;
@@ -258,7 +258,7 @@ function injectStyles(): void {
       display: grid; place-items: center;
       font-family: var(--font-mono, 'JetBrains Mono', monospace);
       font-size: 1.1rem;
-      color: var(--color-accent, #ff6600);
+      color: var(--color-accent, var(--color-tension-high));
       background: rgba(255, 102, 0, 0.08);
       border: 1px solid rgba(255, 102, 0, 0.3);
       border-radius: 4px;
@@ -267,7 +267,7 @@ function injectStyles(): void {
     .nw-mcp-tool-name {
       font-family: var(--font-mono, 'JetBrains Mono', monospace);
       font-size: 0.8rem;
-      color: var(--color-accent, #ff6600);
+      color: var(--color-accent, var(--color-tension-high));
       background: transparent;
       padding: 0;
       display: block;
@@ -299,7 +299,7 @@ function injectStyles(): void {
       content: '>';
       position: absolute;
       left: 0;
-      color: var(--color-accent, #ff6600);
+      color: var(--color-accent, var(--color-tension-high));
       font-weight: 600;
     }
     .nw-mcp-prompts li:last-child { border-bottom: none; }

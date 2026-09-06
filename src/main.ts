@@ -77,7 +77,7 @@ function showRouteError(root: HTMLElement, err: unknown, retryFn?: (() => void) 
     const retryBtn = document.createElement('button');
     retryBtn.textContent = 'Try again';
     retryBtn.style.cssText =
-      'padding:8px 20px;background:var(--nw-accent, #ff6600);color:#000;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px';
+      'padding:8px 20px;background:var(--nw-accent, var(--color-tension-high));color:#000;border:none;border-radius:6px;font-weight:600;cursor:pointer;font-size:14px';
     retryBtn.addEventListener('click', retryFn);
     actions.appendChild(retryBtn);
   }
@@ -92,7 +92,7 @@ function showRouteError(root: HTMLElement, err: unknown, retryFn?: (() => void) 
   const footer = document.createElement('p');
   footer.style.cssText = 'color:var(--nw-text-muted, #757575);font-size:12px;margin:24px 0 0';
   footer.innerHTML =
-    'If this keeps happening: <a href="#/status" style="color:var(--nw-accent, #ff6600)">Status page</a>';
+    'If this keeps happening: <a href="#/status" style="color:var(--nw-accent, var(--color-tension-high))">Status page</a>';
 
   container.append(title, desc, actions, footer);
   root.appendChild(container);
@@ -121,7 +121,7 @@ function show404(root: HTMLElement) {
   mapLink.href = '#/ledger';
   mapLink.textContent = 'Go to the Ledger';
   mapLink.style.cssText =
-    'padding:8px 20px;background:var(--nw-accent, #ff6600);color:#000;border:none;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px';
+    'padding:8px 20px;background:var(--nw-accent, var(--color-tension-high));color:#000;border:none;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px';
   actions.appendChild(mapLink);
 
   const homeLink = document.createElement('a');
@@ -142,7 +142,10 @@ function show404(root: HTMLElement) {
   nav.innerHTML =
     'Popular pages: ' +
     links
-      .map(([label, href]) => `<a href="${href}" style="color:var(--nw-accent, #ff6600);margin:0 6px">${label}</a>`)
+      .map(
+        ([label, href]) =>
+          `<a href="${href}" style="color:var(--nw-accent, var(--color-tension-high));margin:0 6px">${label}</a>`,
+      )
       .join('');
 
   container.append(title, desc, actions, nav);

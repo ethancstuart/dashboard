@@ -241,28 +241,25 @@ export const BASELINE: Readonly<Record<string, string>> = {
   // to no palette in this repo. A deletion candidate, not a token candidate.
   'public/og-gen.html': '12×#00ff88 1×#0a0a0f 1×#111 1×#1a1a2e 1×#555 1×#666 1×#888 1×#fff',
   'public/site.webmanifest': '2×#faf8f3',
-  'src/main.ts': '4×#757575 4×#ededed 4×#ff6600 2×#000 2×#222',
-  'src/pages/briefs.ts':
-    '3×#3d3a35 3×#ddd8ce 2×#8b8478 2×#b8341c 1×#06b6d4 1×#1f7a4c 1×#222 1×#6b7280 1×#999 1×#9a1b1b 1×#dc2626 1×#e5e0d4 1×#ff6600',
-  'src/pages/mcp.ts': '6×#ff6600 4×#2a2a2a 3×#888 2×#0f0f0f 2×#22c55e 2×#ccc 1×#e0e0e0',
-  'src/pages/status.ts': '3×#22c55e 3×#dc2626 3×#eab308 1×#757575',
-  'src/services/confidenceScoring.ts': '1×#22c55e 1×#dc2626 1×#eab308',
-  'src/services/countryInstabilityIndex.ts': '1×#22c55e 1×#dc2626 1×#eab308 1×#f97316',
-  'src/services/dataProvenance.ts': '1×#22c55e 1×#dc2626 1×#eab308 1×#f97316',
-  'src/services/verificationEngine.ts': '1×#22c55e 1×#6b7280 1×#eab308 1×#f97316',
+  'src/main.ts': '4×#757575 4×#ededed 2×#000 2×#222',
+  'src/pages/briefs.ts': '3×#3d3a35 3×#ddd8ce 2×#8b8478 1×#06b6d4 1×#222 1×#999',
+  'src/pages/mcp.ts': '4×#2a2a2a 3×#888 2×#0f0f0f 2×#ccc 1×#e0e0e0',
+  'src/pages/status.ts': '3×#eab308 1×#757575',
+  'src/services/countryInstabilityIndex.ts': '1×#eab308 1×#f97316',
+  'src/services/dataProvenance.ts': '1×#eab308 1×#f97316',
+  'src/services/verificationEngine.ts': '1×#eab308 1×#f97316',
   'src/styles/auth.css': '2×#8b5cf6 1×#f59e0b',
   'src/styles/base.css': '1×#0a0a0a 1×#ededed 1×#fff',
-  'src/styles/briefs-dossier.css':
-    '2×#757575 2×#999 2×#ededed 2×#ff6600 2×#ffffff 1×#111 1×#12161c 1×#1f7a4c 1×#222 1×#3b4252 1×#6b7280 1×#9a1b1b 1×#b8341c 1×#c7453f 1×#c9a86b 1×#c9c3b4 1×#e5d8b6 1×#e5e0d4 1×#f2efe6 1×#f6e4e2 1×#faf8f3',
+  'src/styles/briefs-dossier.css': '2×#757575 2×#999 2×#ededed 1×#111 1×#222 1×#c9a86b 1×#e5d8b6',
   'src/styles/briefs.css':
-    '14×#ff6600 5×#888 5×#e0e0e0 3×#0a0a0a 3×#1a1a1a 3×#333 3×#666 2×#555 1×#000 1×#aaa 1×#ccc 1×#ff660010 1×#ff660015 1×#ff660030 1×#ff660040 1×#ff7722',
+    '5×#888 5×#e0e0e0 3×#0a0a0a 3×#1a1a1a 3×#333 3×#666 2×#555 1×#000 1×#aaa 1×#ccc 1×#ff660010 1×#ff660015 1×#ff660030 1×#ff660040 1×#ff7722',
   'src/styles/design-tokens.css':
     '2×#00d4aa 2×#1a1a1a 2×#dc2626 2×#e5a913 2×#ff6600 1×#000000 1×#0a0a0a 1×#111111 1×#181818 1×#222222 1×#22c55e 1×#6b8aff 1×#757575 1×#999999 1×#ededed 1×#ff7722',
   'src/styles/landing.css': '5×#000 2×#050505 1×#0a0a0a 1×#0c0c0c',
-  'src/styles/mobile.css': '2×#000 1×#0a0a0a 1×#1a1a1a 1×#888 1×#ff6600 1×#fff',
-  'src/styles/pwa.css': '1×#000 1×#ff6600 1×#fff',
+  'src/styles/mobile.css': '2×#000 1×#0a0a0a 1×#1a1a1a 1×#888 1×#fff',
+  'src/styles/pwa.css': '1×#000 1×#fff',
   'src/styles/toast.css': '2×#fff',
-  'src/ui/dataToast.ts': '1×#1a0a0a 1×#1a1400 1×#666 1×#dc2626 1×#e5a913 1×#ededed',
+  'src/ui/dataToast.ts': '1×#1a0a0a 1×#1a1400 1×#666 1×#ededed',
 };
 
 export interface Failure {

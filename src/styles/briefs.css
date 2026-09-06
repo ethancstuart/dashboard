@@ -26,7 +26,7 @@
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 3px;
-  color: #ff6600;
+  color: var(--color-tension-high);
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -43,10 +43,10 @@
   font-family: 'JetBrains Mono', monospace;
 }
 .briefs-nav-link:hover {
-  color: #ff6600;
+  color: var(--color-tension-high);
 }
 .briefs-nav-subscribe {
-  color: #ff6600;
+  color: var(--color-tension-high);
   border: 1px solid #ff660040;
   padding: 4px 12px;
   border-radius: 3px;
@@ -67,7 +67,7 @@
   font-size: 24px;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #ff6600;
+  color: var(--color-tension-high);
   margin: 0 0 12px;
 }
 .briefs-subtitle {
@@ -95,10 +95,10 @@
   outline: none;
 }
 .briefs-email-input:focus {
-  border-color: #ff6600;
+  border-color: var(--color-tension-high);
 }
 .briefs-subscribe-btn {
-  background: #ff6600;
+  background: var(--color-tension-high);
   color: #000;
   font-size: 11px;
   font-weight: 700;
@@ -155,7 +155,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 1px;
-  color: #ff6600;
+  color: var(--color-tension-high);
   margin-bottom: 6px;
 }
 .briefs-card-preview {
@@ -170,7 +170,7 @@
   margin-top: 8px;
 }
 .briefs-card:hover .briefs-card-read {
-  color: #ff6600;
+  color: var(--color-tension-high);
 }
 
 /* Individual brief */
@@ -196,7 +196,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   letter-spacing: 2px;
-  color: #ff6600;
+  color: var(--color-tension-high);
   background: #ff660010;
   border: 1px solid #ff660030;
   padding: 3px 10px;
@@ -214,7 +214,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
   letter-spacing: 1px;
-  color: #ff6600;
+  color: var(--color-tension-high);
   margin: 28px 0 12px;
   padding-bottom: 6px;
   border-bottom: 1px solid #1a1a1a;
@@ -244,8 +244,8 @@
   cursor: pointer;
 }
 .brief-share-btn:hover {
-  border-color: #ff6600;
-  color: #ff6600;
+  border-color: var(--color-tension-high);
+  color: var(--color-tension-high);
 }
 .brief-not-found {
   text-align: center;
@@ -257,7 +257,7 @@
   margin-bottom: 12px;
 }
 .brief-not-found a {
-  color: #ff6600;
+  color: var(--color-tension-high);
 }
 
 /* Bottom CTA */
@@ -296,7 +296,7 @@
   text-decoration: none;
 }
 .briefs-footer a:hover {
-  color: #ff6600;
+  color: var(--color-tension-high);
 }
 
 /* ── Methodology Page ── */

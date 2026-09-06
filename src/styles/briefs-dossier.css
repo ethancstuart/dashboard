@@ -15,21 +15,21 @@
 
 .briefs-dossier {
   /* Tokens — mirror src/styles/email-tokens.ts `colors` and `fonts` */
-  --bg-page: #faf8f3;
-  --bg-card: #ffffff;
-  --bg-muted: #f2efe6;
-  --text-primary: #12161c;
-  --text-secondary: #3b4252;
-  --text-tertiary: #6b7280;
-  --accent: #9a1b1b;
-  --accent-soft: #c7453f;
-  --accent-bg-soft: #f6e4e2;
+  --bg-page: var(--color-bg);
+  --bg-card: var(--color-surface);
+  --bg-muted: var(--color-bg-2);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-2);
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-hover);
+  --accent-bg-soft: var(--color-accent-bg-soft);
   --divider: #c9a86b;
   --divider-soft: #e5d8b6;
-  --up: #1f7a4c;
-  --down: #b8341c;
-  --border: #e5e0d4;
-  --border-strong: #c9c3b4;
+  --up: var(--color-up);
+  --down: var(--color-down);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-2);
 
   --font-serif:
     'Tiempos Headline', 'GT Alpina', Charter, 'Iowan Old Style', 'Apple Garamond', Georgia, 'Times New Roman', Times,
@@ -153,7 +153,7 @@
 .briefs-dossier .dossier-subscribe-btn {
   padding: 12px 24px;
   background: var(--accent);
-  color: #ffffff;
+  color: var(--color-surface);
   border: 1px solid var(--accent);
   border-radius: 4px;
   font-family: var(--font-mono);
@@ -527,7 +527,7 @@
 }
 
 .briefs-dossier .dossier-sample-card:hover {
-  border-color: var(--nw-accent, #ff6600);
+  border-color: var(--nw-accent, var(--color-tension-high));
 }
 
 .briefs-dossier .dossier-sample-theme {
@@ -565,7 +565,7 @@
 }
 
 .briefs-dossier .dossier-sample-cta a {
-  color: var(--nw-accent, #ff6600);
+  color: var(--nw-accent, var(--color-tension-high));
   text-decoration: none;
 }
 

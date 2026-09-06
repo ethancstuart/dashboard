@@ -33,7 +33,7 @@ export function showDataToast(layerId: string, message: string, severity: 'warn'
   toast.className = `nw-data-toast nw-data-toast-${severity}`;
   toast.style.cssText = `
     background: ${severity === 'error' ? '#1a0a0a' : '#1a1400'};
-    border: 1px solid ${severity === 'error' ? '#dc2626' : '#e5a913'};
+    border: 1px solid ${severity === 'error' ? 'var(--color-signal-critical)' : 'var(--color-signal-warning)'};
     border-radius: 8px;
     padding: 12px 16px;
     display: flex;
