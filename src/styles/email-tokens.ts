@@ -5,8 +5,8 @@
  * ("Email aesthetic") and Decision 5 ("Email rendering ownership — we own
  * the HTML, beehiiv handles delivery + referrals only").
  *
- * Design principle: serious typography carrying an accessible voice. Think
- * Stratfor-meets-Rundown. The product UI uses a dark terminal aesthetic;
+ * Design principle: serious typography carrying an accessible voice. The
+ * register's own voice — no borrowed references. The product UI uses a dark terminal aesthetic;
  * the email is a LIGHT dossier that feels like a briefing on a desk at 6 AM.
  * Different medium, different rules.
  *

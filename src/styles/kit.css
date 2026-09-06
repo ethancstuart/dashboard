@@ -104,7 +104,10 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  /* Graphite, NOT oxblood: the ruling reserves oxblood for misses — the only
+     red on the register is where we were wrong. The kicker's job is quiet
+     labelling, and 11px mono uppercase in red was reading as a stamp. */
+  color: var(--color-text-secondary);
   margin-bottom: 8px;
 }
 

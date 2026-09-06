@@ -1,15 +1,15 @@
 {
   "name": "NexusWatch",
   "short_name": "NexusWatch",
-  "description": "Real-time geopolitical intelligence platform. 45+ live data layers, 86 countries scored, daily AI briefs. Free.",
+  "description": "A public register of dated, externally-resolved forecasts. Rules published first, misses kept forever. Free.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
   "scope": "/",
   "lang": "en-US",
   "categories": ["news", "productivity", "utilities"],
-  "theme_color": "#04050a",
-  "background_color": "#04050a",
+  "theme_color": "#FAF8F3",
+  "background_color": "#FAF8F3",
   "icons": [
     {
       "src": "/icons/favicon-16.png",

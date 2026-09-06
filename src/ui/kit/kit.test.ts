@@ -106,25 +106,19 @@ describe('row', () => {
 });
 
 describe('surfaces — generated from tokens, never a second copy of the palette', () => {
-  it('emits a rule per theme', () => {
+  // CHANGED TESTS, ARGUED (the standing rule for editing a green test):
+  // both used to assert `.surface-terminal` existed and mirrored the dossier
+  // token-for-token. The terminal theme was DELETED on 2026-09-06 with the
+  // Intel Map — the product has one identity — so a surface class for a
+  // retired identity is the defect, not the regression. What still deserves
+  // asserting: the dossier surface exists, and NO OTHER surface does (a
+  // second theme reappearing should have to argue with this test the way
+  // deleting one did).
+  it('emits exactly one surface — the identity is singular now', () => {
     const css = surfaceCss();
     expect(css).toContain('.surface-dossier');
-    expect(css).toContain('.surface-terminal');
-  });
-
-  it('declares the SAME token names on both surfaces, so a component can nest in either', () => {
-    const css = surfaceCss();
-    const namesIn = (surface: string) => {
-      const block = css.split(`.surface-${surface} {`)[1].split('}')[0];
-      return new Set([...block.matchAll(/(--[a-z0-9-]+):/g)].map((m) => m[1]));
-    };
-    const dossier = namesIn('dossier');
-    const terminal = namesIn('terminal');
-    // Any token declared on one surface and not the other is a component that
-    // renders correctly in one context and breaks in the other.
-    const onlyDossier = [...dossier].filter((n) => !terminal.has(n));
-    const onlyTerminal = [...terminal].filter((n) => !dossier.has(n));
-    expect({ onlyDossier, onlyTerminal }).toEqual({ onlyDossier: [], onlyTerminal: [] });
+    const surfaces = [...css.matchAll(/\.surface-([a-z-]+) \{/g)].map((m) => m[1]);
+    expect(surfaces).toEqual(['dossier']);
   });
 
   it('reads its values from the token source rather than restating them', () => {

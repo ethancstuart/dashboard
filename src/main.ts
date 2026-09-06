@@ -1,5 +1,4 @@
 import './styles/main.css';
-import { applyTheme } from './config/theme.ts';
 import { applyDensity } from './config/density.ts';
 import { Router } from './router.ts';
 import { registerCommandPalette } from './ui/commandPalette.ts';
@@ -8,7 +7,6 @@ import { initDataToasts } from './ui/dataToast.ts';
 import { initSentry, captureError } from './services/sentry.ts';
 import { initWebAnalytics } from './services/webAnalytics.ts';
 
-applyTheme();
 applyDensity();
 initDataToasts();
 // Aggregate traffic for nexuswatch.dev. Reports hash-route changes itself —

@@ -54,7 +54,7 @@ export function shell(body: string, opts: ShellOptions): string {
   .wrap { max-width:940px; margin:0 auto; padding:56px 24px 96px; }
   .rule { height:2px; background:var(--gold); margin:64px 0 14px; }
   .rule:first-of-type { margin-top:0; }
-  .kicker { font-family:${fonts.mono}; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  .kicker { font-family:${fonts.mono}; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink2); margin-bottom:8px; }
   h1,h2 { font-family:${fonts.serif}; font-weight:600; line-height:1.15; margin:0; }
   h1 { font-size:clamp(30px,4vw,46px); }
   h2 { font-size:clamp(24px,3vw,34px); }
@@ -70,7 +70,7 @@ export function shell(body: string, opts: ShellOptions): string {
   .row .lead { font-family:${fonts.mono}; font-variant-numeric:tabular-nums; font-size:15px; min-width:3.5em; }
   .row .det { font-size:14px; color:var(--ink2); flex:1 1 auto; }
   .row .trail { font-family:${fonts.mono}; font-variant-numeric:tabular-nums; font-size:15px; margin-left:auto; }
-  .hit .trail { color:var(--up); } .miss .trail { color:var(--down); } .pending .trail { color:var(--ink3); }
+  .hit .trail { color:var(--up); } .miss .trail { color:var(--accent); } .pending .trail { color:var(--ink3); }
   a { color:var(--accent); }
   .foot { margin-top:64px; font-size:14px; color:var(--ink2); }
   .masthead { display:flex; align-items:baseline; gap:22px; flex-wrap:wrap; padding:18px 0; border-bottom:2px solid var(--gold); margin-bottom:40px; }

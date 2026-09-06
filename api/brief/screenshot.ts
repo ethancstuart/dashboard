@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { colors } from '../../src/styles/email-tokens.js';
 import { neon } from '@neondatabase/serverless';
 
 export const config = { runtime: 'nodejs', maxDuration: 10 };
@@ -142,15 +143,16 @@ function renderFallbackSvg(opts: {
   const safeName = countryName.replace(/[<>"']/g, '');
   const safeDate = date.replace(/[<>"']/g, '');
 
-  // Light Intel Dossier palette — must stay in sync with
-  // src/styles/email-tokens.ts. Duplicated here (not imported) because
-  // this file is in api/ and email-tokens lives in src/; we'd rather
-  // keep this one small than pull an import chain.
-  const bgPage = '#FAF8F3';
-  const textPrimary = '#12161C';
-  const textTertiary = '#6B7280';
-  const accent = '#9A1B1B';
-  const divider = '#C9A86B';
+  // IMPORTED, not duplicated (2026-09-06). The old comment argued the copy
+  // was cheaper than an import chain — but email-tokens.ts has zero imports,
+  // ssr-shell and og.ts already import it from api/, and rule 8 exists
+  // because a private palette copy is exactly how an identity change strands
+  // a public surface. This was the sixth copy; now there is one source.
+  const bgPage = colors.bgPage;
+  const textPrimary = colors.textPrimary;
+  const textTertiary = colors.textTertiary;
+  const accent = colors.accent;
+  const divider = colors.divider;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}">

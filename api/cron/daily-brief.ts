@@ -2128,7 +2128,7 @@ function renderMasthead(date: string, time: string): string {
     )}>NexusWatch</div>` +
     `<div ${styleAttr(
       typeStyle(type.kicker, {
-        color: colors.accent,
+        color: colors.textSecondary,
         margin: `0 0 ${space.md} 0`,
       }),
     )}>SITUATION BRIEF</div>` +

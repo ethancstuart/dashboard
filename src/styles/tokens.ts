@@ -38,7 +38,7 @@ import { colors as emailColors, fonts as emailFonts } from './email-tokens';
  * `oled` are migrated on read (see src/config/theme.ts `getTheme`).
  * New code should use these names only.
  */
-export type NewThemeName = 'terminal' | 'dossier';
+export type NewThemeName = 'dossier';
 
 /**
  * Legacy theme names preserved in localStorage for backward compat.
@@ -59,52 +59,9 @@ export type AnyThemeName = NewThemeName | LegacyThemeName;
 // (`/#/intel`) expects. B.1 does NOT change any of this — it just
 // moves the values into a token object so B.2+ can swap them.
 
-export const terminalTokens: Record<string, string> = {
-  // Surfaces
-  '--color-bg': '#000000',
-  '--color-bg-page': '#000000',
-  '--color-surface': '#0a0a0a',
-  '--color-surface-elevated': '#111111',
-  '--color-surface-sunken': '#000000',
-  '--color-surface-muted': '#0d0d0d',
-
-  // Borders
-  '--color-border': '#1a1a1a',
-  '--color-border-subtle': '#141414',
-  '--color-border-strong': '#262626',
-
-  // Text
-  '--color-text': '#cccccc',
-  '--color-text-primary': '#ffffff',
-  '--color-text-secondary': '#cccccc',
-  '--color-text-muted': '#666666',
-  '--color-text-tertiary': '#888888',
-  '--color-text-inverse': '#000000',
-
-  // Accents
-  '--color-accent': '#ff6600',
-  '--color-accent-soft': '#ff8533',
-  '--color-accent-dim': 'rgba(255, 102, 0, 0.15)',
-  '--color-accent-border': 'rgba(255, 102, 0, 0.3)',
-  '--color-accent-bg-soft': 'rgba(255, 102, 0, 0.08)',
-
-  // Semantic (data change indicators)
-  '--color-positive': '#00ff00',
-  '--color-negative': '#ff3333',
-  '--color-up': '#00ff00',
-  '--color-down': '#ff3333',
-  '--color-flat': '#888888',
-
-  // Dividers (reused from accent + muted borders in terminal)
-  '--color-divider': '#1a1a1a',
-  '--color-divider-soft': '#141414',
-
-  // Typography
-  '--font-sans': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  '--font-serif': 'Georgia, "Times New Roman", Times, serif',
-  '--font-mono': "'JetBrains Mono', 'SF Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace",
-  '--font-body': "'JetBrains Mono', 'SF Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace",
-};
+// terminalTokens DELETED 2026-09-06 with the Intel Map — the product has one
+// identity. The dossier is not a 'theme' any more; it is the ground truth the
+// root stylesheet states directly.
 
 // ---------------------------------------------------------------------------
 // Dossier theme (light, reading-surface aesthetic)
@@ -174,18 +131,5 @@ export const dossierTokens: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export const themeTokens: Record<NewThemeName, Record<string, string>> = {
-  terminal: terminalTokens,
   dossier: dossierTokens,
 };
-
-/**
- * Map a legacy storage value to a canonical theme name. Called from
- * `getTheme()` so stored values like `dashview:theme=light` from
- * before Track B.1 still resolve correctly.
- */
-export function canonicalizeThemeName(value: string | null | undefined): NewThemeName {
-  if (!value) return 'terminal';
-  if (value === 'dossier' || value === 'light') return 'dossier';
-  // `terminal`, `dark`, `oled`, and any unknown value all map here.
-  return 'terminal';
-}
