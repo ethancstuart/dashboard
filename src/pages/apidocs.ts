@@ -27,12 +27,10 @@ export function renderApiDocsPage(container: HTMLElement): void {
   quickstart.innerHTML = `
     <h2>Quick Start</h2>
     <p>
-      All endpoints require an API key in the <code>X-API-Key</code> header or
-      <code>?apikey=</code> query parameter. Request a key via
-      <a href="mailto:hello@nexuswatch.dev?subject=API%20Access">hello@nexuswatch.dev</a>.
+      No key, no auth, no signup. Every endpoint below is open JSON — the same
+      data the site renders. Please be reasonable; this runs on a hobby budget.
     </p>
-    <pre><code>curl -H "X-API-Key: your_key_here" \\
-  https://nexuswatch.dev/api/v2/cii</code></pre>
+    <pre><code>curl https://nexuswatch.dev/api/calls/ledger</code></pre>
   `;
   container.appendChild(quickstart);
 
@@ -43,7 +41,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
 
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
-      <div class="nw-endpoint-path">/api/v2/cii</div>
+      <div class="nw-endpoint-path">/api/v1/cii</div>
       <div class="nw-endpoint-desc">All 85 scored countries with CII scores, components, and confidence.</div>
       <details>
         <summary>Example response</summary>
@@ -79,7 +77,7 @@ export function renderApiDocsPage(container: HTMLElement): void {
 
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
-      <div class="nw-endpoint-path">/api/v2/cii?code=UA</div>
+      <div class="nw-endpoint-path">/api/v1/cii?country=UA</div>
       <div class="nw-endpoint-desc">Single country with full evidence chain.</div>
     </div>
 
@@ -90,14 +88,14 @@ export function renderApiDocsPage(container: HTMLElement): void {
 
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
-      <div class="nw-endpoint-path">/api/v2/scenario</div>
-      <div class="nw-endpoint-desc">List all available scenario simulations.</div>
+      <div class="nw-endpoint-path">/api/v1/brief</div>
+      <div class="nw-endpoint-desc">The latest daily brief from the archive, ledger line included.</div>
     </div>
 
     <div class="nw-endpoint">
       <div class="nw-endpoint-method">GET</div>
-      <div class="nw-endpoint-path">/api/v2/scenario?id=hormuz-closure</div>
-      <div class="nw-endpoint-desc">Run a specific scenario simulation.</div>
+      <div class="nw-endpoint-path">/api/v1/brief?date=2026-09-05</div>
+      <div class="nw-endpoint-desc">A dated brief — the first resolution day, for instance.</div>
     </div>
   `;
   container.appendChild(endpoints);
@@ -106,11 +104,12 @@ export function renderApiDocsPage(container: HTMLElement): void {
   const limits = createElement('section', { className: 'nw-apidocs-section' });
   limits.innerHTML = `
     <h2>Rate Limits</h2>
-    <ul>
-      <li><strong>Default:</strong> 1,000 requests/day per API key, with webhooks</li>
-      <li><strong>Need more?</strong> Email <a href="mailto:hello@nexuswatch.dev">hello@nexuswatch.dev</a> for higher limits</li>
-    </ul>
-    <p>Data freshness: CII scores update every 5 minutes. Snapshots recorded daily.</p>
+    <p>
+      None are enforced today, and we won't advertise limits we don't enforce.
+      Limits will be introduced before they are documented, not after.
+      Questions: <a href="mailto:hello@nexuswatch.dev">hello@nexuswatch.dev</a>.
+    </p>
+    <p>Data freshness: the ledger resolves daily at 09:45 UTC; the brief publishes at 10:00 UTC.</p>
   `;
   container.appendChild(limits);
 

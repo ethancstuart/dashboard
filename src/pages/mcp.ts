@@ -18,40 +18,19 @@ interface ToolRow {
 
 const TOOLS: ToolRow[] = [
   {
-    name: 'get_country_risk',
-    glyph: '⊕',
-    oneLine: 'CII score for one or all 85 scored countries (6-component breakdown + confidence).',
-  },
-  {
-    name: 'get_alerts',
-    glyph: '▲',
-    oneLine: 'Active alerts: countries over a CII threshold, 7-day movers, live crisis triggers.',
-  },
-  {
-    name: 'run_scenario',
-    glyph: '∿',
-    oneLine: 'What-if scenarios: hormuz-closure, taiwan-blockade, suez-disruption, russia-nato, +10 more.',
-  },
-  {
-    name: 'get_portfolio_exposure',
-    glyph: '◊',
-    oneLine: 'Map a ticker portfolio to country exposure, chokepoint dependencies, CII-weighted risk.',
-  },
-  {
-    name: 'get_risk_factors',
-    glyph: '⌖',
-    oneLine: 'Quant factors: z-scores, 7d/30d momentum, realized volatility per country.',
-  },
-  {
-    name: 'get_audit_trail',
-    glyph: '⊢',
-    oneLine: 'Full CII computation history for a country — every rule, every source, every delta.',
-  },
-  { name: 'get_active_crises', glyph: '◉', oneLine: 'All currently unresolved crisis triggers across the network.' },
-  {
     name: 'get_call_ledger',
     glyph: '✓',
     oneLine: 'The public call ledger: open and resolved calls, Brier, and skill vs base rate — negative included.',
+  },
+  {
+    name: 'get_country_risk',
+    glyph: '⊕',
+    oneLine: 'The CII: a structural level plus a separate live deviation, per country. Two numbers, never one sum.',
+  },
+  {
+    name: 'get_brief',
+    glyph: '☰',
+    oneLine: 'Any daily brief from the archive, ledger line included. Latest by default; pass a date for history.',
   },
 ];
 
