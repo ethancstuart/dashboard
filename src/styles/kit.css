@@ -335,3 +335,119 @@ a.nw-row:hover .nw-row__detail {
   gap: 32px;
   margin: var(--rhythm-block) 0;
 }
+
+/* ---------------------------------------------------------------------------
+   THE SHELL (B2) — one nav, one footer, one frame. Replaces four per-page nav
+   implementations and ~18 one-off back links. Motion rides the tokens, so
+   reduced-motion turns the whole choreography off without a second code path.
+--------------------------------------------------------------------------- */
+.nw-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.nw-shell-nav {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  max-width: 940px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 28px 24px 22px;
+  border-bottom: 2px solid var(--color-border-2);
+}
+
+.nw-shell-brand {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.nw-shell-links {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.nw-shell-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+  transition:
+    color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
+}
+
+.nw-shell-link:hover {
+  color: var(--color-text-primary);
+}
+
+.nw-shell-link[aria-current='page'] {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent-border, var(--color-border-2));
+}
+
+.nw-shell-main {
+  flex: 1;
+  max-width: 940px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+  /* Reading-order reveal: children fade-rise once, staggered by the tokens.
+     Presentation only — content is fully present with animation off. */
+  animation: nw-shell-enter var(--motion-base) var(--motion-ease) both;
+}
+
+@keyframes nw-shell-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nw-shell-footer {
+  border-top: 1px solid var(--color-border);
+  padding: 28px 24px 48px;
+  max-width: 940px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.nw-shell-footer-links {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.nw-shell-footer-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  text-decoration: none;
+}
+
+.nw-shell-footer-link:hover {
+  color: var(--color-text-primary);
+}
+
+.nw-shell-footer-tag {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  max-width: 60ch;
+}

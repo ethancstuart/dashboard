@@ -1,5 +1,6 @@
 import '../styles/briefs.css'; // Reuse briefs page styling
 import { createElement } from '../utils/dom.ts';
+import { pageShell } from '../ui/kit/index.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
 // The published thresholds are READ FROM THE RESOLVER'S OWN MODULE, never retyped.
 // api/_lib/calls.ts has no imports of its own, so it bundles into the client
@@ -13,21 +14,16 @@ import { MIN_MEASUREMENTS_PER_REQUIRED_DAY, coverageRequirement } from '../../ap
  */
 export function renderMethodology(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.methodology);
-  root.textContent = '';
+  // One shell for every page (B2). This page used to carry the orphan
+  // `.briefs-nav` — the nav that a 533-line stylesheet existed to dress and
+  // whose links included the deleted /intel.
+  const main = pageShell(root, { active: '/methodology' });
 
   // The worked example is the censorship horizon; both figures are DERIVED,
   // so changing the rule changes this page without anyone editing it.
   const cov14 = coverageRequirement(14);
   const page = createElement('div', { className: 'briefs-page' });
   page.innerHTML = `
-    <nav class="briefs-nav">
-      <a href="#/" class="briefs-nav-logo">NexusWatch</a>
-      <div class="briefs-nav-links">
-        <a href="#/intel" class="briefs-nav-link">PLATFORM</a>
-        <a href="#/briefs" class="briefs-nav-link">BRIEFS</a>
-        <a href="https://brief.nexuswatch.dev" target="_blank" class="briefs-nav-link briefs-nav-subscribe">SUBSCRIBE</a>
-      </div>
-    </nav>
 
     <article class="brief-article method-article">
       <div class="method-eyebrow">METHODOLOGY</div>
@@ -272,7 +268,7 @@ export function renderMethodology(root: HTMLElement): void {
     </footer>
   `;
 
-  root.appendChild(page);
+  main.appendChild(page);
 
   // Load live CII scores
   const ciiEl = document.getElementById('method-live-cii');

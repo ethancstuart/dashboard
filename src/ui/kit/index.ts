@@ -234,3 +234,91 @@ export function row(opts: RowOptions): HTMLElement {
   root.appendChild(createElement('span', { className: 'nw-row__trail', textContent: opts.trail }));
   return root;
 }
+
+// ---------------------------------------------------------------------------
+// The shell — one nav, one footer, one page frame (B2, 2026-09-06)
+// ---------------------------------------------------------------------------
+
+/**
+ * Why a fifth and sixth component when the file above argues for four: the
+ * audit found FOUR nav implementations plus an SSR masthead plus ~18 one-off
+ * "back" links — every page carried its own idea of where it lived. The shell
+ * is not a component in the stat/figure sense; it is the frame the components
+ * sit in, and there being exactly one of it is the point.
+ *
+ * The link set is the register's real information architecture, ordered by
+ * how a reader uses the product: the record, the writing, the method, the
+ * operations. It deliberately matches the SSR masthead in
+ * api/_lib/ssr-shell.ts — the two shells are hand-kept twins until the
+ * redesign's B4 unifies them, and each names the other so a drift is a
+ * greppable lie rather than a quiet one.
+ */
+const NAV_LINKS: ReadonlyArray<readonly [label: string, href: string]> = [
+  ['The Ledger', '/ledger'],
+  ['Briefs', '/briefs'],
+  ['Methodology', '/methodology'],
+  ['Status', '/status'],
+  ['About', '/about'],
+] as const;
+
+export function shellNav(active?: string): HTMLElement {
+  const nav = createElement('nav', { className: 'nw-shell-nav' });
+  nav.setAttribute('aria-label', 'Primary');
+  const brand = createElement('a', { className: 'nw-shell-brand' });
+  (brand as HTMLAnchorElement).href = '/';
+  brand.textContent = 'NexusWatch';
+  nav.appendChild(brand);
+  const links = createElement('div', { className: 'nw-shell-links' });
+  for (const [label, href] of NAV_LINKS) {
+    const a = createElement('a', { className: 'nw-shell-link' });
+    (a as HTMLAnchorElement).href = href;
+    a.textContent = label;
+    if (active && href === active) a.setAttribute('aria-current', 'page');
+    links.appendChild(a);
+  }
+  nav.appendChild(links);
+  return nav;
+}
+
+export function shellFooter(): HTMLElement {
+  const footer = createElement('footer', { className: 'nw-shell-footer' });
+  const line = createElement('div', { className: 'nw-shell-footer-links' });
+  const links: ReadonlyArray<readonly [string, string]> = [
+    ['The Ledger', '/ledger'],
+    ['Methodology', '/methodology'],
+    ['Roadmap', '/roadmap'],
+    ['Why free', '/why-free'],
+    ['RSS', '/api/feed'],
+    ['GitHub', 'https://github.com/ethancstuart/nexus-watch'],
+    ['Terms', '/terms'],
+    ['Privacy', '/privacy'],
+    ['Security', '/security'],
+  ];
+  for (const [label, href] of links) {
+    const a = createElement('a', { className: 'nw-shell-footer-link' });
+    (a as HTMLAnchorElement).href = href;
+    a.textContent = label;
+    line.appendChild(a);
+  }
+  footer.appendChild(line);
+  const tag = createElement('p', { className: 'nw-shell-footer-tag' });
+  tag.textContent = 'Dated calls, resolved by sources that aren’t us. Rules published first; misses kept forever.';
+  footer.appendChild(tag);
+  return footer;
+}
+
+/**
+ * The page frame: nav → main → footer, on the dossier surface, with the
+ * reveal choreography wired to the motion tokens (and therefore OFF under
+ * prefers-reduced-motion by construction). Returns the <main> the caller
+ * renders into — pages own their content, the shell owns everything else.
+ */
+export function pageShell(root: HTMLElement, opts: { active?: string } = {}): HTMLElement {
+  root.textContent = '';
+  root.className = 'surface-dossier nw-shell';
+  root.appendChild(shellNav(opts.active));
+  const main = createElement('main', { className: 'nw-shell-main' });
+  root.appendChild(main);
+  root.appendChild(shellFooter());
+  return main;
+}

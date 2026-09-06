@@ -1,30 +1,12 @@
 import { createElement } from '../utils/dom.ts';
+import { pageShell } from '../ui/kit/index.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
 
 export function renderRoadmap(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.roadmap);
-  root.textContent = '';
+  const main = pageShell(root, { active: '/roadmap' });
 
   const page = createElement('div', { className: 'roadmap-page' });
-
-  // Nav
-  const nav = createElement('nav', { className: 'landing-nav' });
-  const navBrand = document.createElement('a');
-  navBrand.href = '#/';
-  navBrand.className = 'landing-nav-brand';
-  navBrand.textContent = 'NexusWatch';
-  navBrand.style.textDecoration = 'none';
-  navBrand.style.color = 'inherit';
-
-  const navLinks = createElement('div', { className: 'landing-nav-links' });
-  const dashLink = document.createElement('a');
-  dashLink.href = '#/app';
-  dashLink.className = 'landing-nav-link';
-  dashLink.textContent = 'Dashboard';
-  navLinks.appendChild(dashLink);
-  nav.appendChild(navBrand);
-  nav.appendChild(navLinks);
-  page.appendChild(nav);
 
   // Title
   const header = createElement('div', { className: 'roadmap-header' });
@@ -220,5 +202,5 @@ export function renderRoadmap(root: HTMLElement): void {
   footer.appendChild(footerLinks);
   page.appendChild(footer);
 
-  root.appendChild(page);
+  main.appendChild(page);
 }
