@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hexHitsIn, maskComments, compareToBaseline } from './check-hex-literals.ts';
+import { hexHitsIn, maskComments, compareToBaseline, fingerprint } from './check-hex-literals.ts';
 
 const values = (src: string, ext = '.ts') => hexHitsIn(src, ext).map((h) => h.value);
 
@@ -85,46 +85,84 @@ describe('what counts as a colour literal', () => {
   });
 });
 
+describe('the fingerprint is the pin', () => {
+  it('groups by value, commonest first, ties alphabetical', () => {
+    const hits = [
+      { line: 1, value: '#fff' },
+      { line: 2, value: '#ff6600' },
+      { line: 3, value: '#ff6600' },
+      { line: 4, value: '#aaa' },
+    ];
+    expect(fingerprint(hits)).toBe('2×#ff6600 1×#aaa 1×#fff');
+  });
+
+  it('folds case, because #FAF8F3 and #faf8f3 are one colour', () => {
+    // index.html writes the page background both ways. Two entries for one
+    // colour would make the pin depend on typing rather than on the palette.
+    expect(
+      fingerprint([
+        { line: 1, value: '#FAF8F3' },
+        { line: 2, value: '#faf8f3' },
+      ]),
+    ).toBe('2×#faf8f3');
+  });
+
+  it('is empty for a clean file, which is what a clean file is pinned at', () => {
+    expect(fingerprint([])).toBe('');
+  });
+});
+
 describe('what counts as disagreeing with the baseline', () => {
   it('passes when every file matches its pin exactly', () => {
-    const v = compareToBaseline({ 'a.css': 3, 'b.ts': 0 }, { 'a.css': 3 });
-    expect(v.failures).toEqual([]);
-    expect(v.debt).toBe(3);
+    expect(compareToBaseline({ 'a.css': '3×#fff', 'b.ts': '' }, { 'a.css': '3×#fff' }).failures).toEqual([]);
   });
 
   it('fails a clean file that gains one — the case the guard exists for', () => {
-    const v = compareToBaseline({ 'src/ui/kit/index.ts': 1 }, {});
+    const v = compareToBaseline({ 'src/ui/kit/index.ts': '1×#9a1b1b' }, {});
     expect(v.failures).toHaveLength(1);
     expect(v.failures[0]?.overBudget).toBe(true);
-    expect(v.failures[0]?.correction).toBe(`  'src/ui/kit/index.ts': 1,`);
+    expect(v.failures[0]?.correction).toBe(`  'src/ui/kit/index.ts': '1×#9a1b1b',`);
   });
 
-  it('fails a file that is NOT in the baseline at all, so a new file starts at zero', () => {
+  it('fails a file that is NOT in the baseline at all, so a new file starts at empty', () => {
     // Fails by default rather than passing by omission: the enumerate-vs-derive
     // rule this repo wrote into .githooks/pre-push after the fifth guard would
     // have slipped through a hand-kept list.
-    expect(compareToBaseline({ 'src/pages/brand-new.ts': 2 }, {}).failures).toHaveLength(1);
+    expect(compareToBaseline({ 'src/pages/brand-new.ts': '2×#fff' }, {}).failures).toHaveLength(1);
+  });
+
+  it('FAILS A SWAP AT THE SAME TOTAL — the hole a count-only pin left open', () => {
+    // Two independent review rounds named this: with a bare count, trading
+    // #ff6600 for #123456 in a dirty file kept the number and passed. The pin
+    // is the multiset, so the trade is visible.
+    const v = compareToBaseline({ 'a.css': '1×#123456 1×#fff' }, { 'a.css': '1×#ff6600 1×#fff' });
+    expect(v.failures).toHaveLength(1);
+    expect(v.failures[0]?.message).toContain('did not grow');
+    expect(v.failures[0]?.correction).toBe(`  'a.css': '1×#123456 1×#fff',`);
   });
 
   it('fails a REDUCTION too, and prints the tightened line', () => {
     // Deliberate. A pin only ever checked upward is a ceiling nobody lowers.
-    const v = compareToBaseline({ 'a.css': 2 }, { 'a.css': 5 });
+    const v = compareToBaseline({ 'a.css': '2×#fff' }, { 'a.css': '5×#fff' });
     expect(v.failures[0]?.overBudget).toBe(false);
-    expect(v.failures[0]?.correction).toBe(`  'a.css': 2,`);
+    expect(v.failures[0]?.correction).toBe(`  'a.css': '2×#fff',`);
   });
 
-  it('tells a file cleaned to zero apart from a file that left the scope', () => {
-    const cleaned = compareToBaseline({ 'a.css': 0 }, { 'a.css': 5 });
+  it('tells a file cleaned to empty apart from a file that left the scope', () => {
+    const cleaned = compareToBaseline({ 'a.css': '' }, { 'a.css': '5×#fff' });
     expect(cleaned.failures[0]?.message).toContain('clean now');
-    const gone = compareToBaseline({}, { 'a.css': 5 });
+    const gone = compareToBaseline({}, { 'a.css': '5×#fff' });
     expect(gone.failures[0]?.message).toContain('no longer scanned');
     // Both want the line deleted, and both say so.
     expect(cleaned.failures[0]?.correction).toContain('(delete)');
     expect(gone.failures[0]?.correction).toContain('(delete)');
   });
 
-  it('counts outstanding debt as what is actually still there', () => {
-    expect(compareToBaseline({ 'a.css': 2, 'b.css': 4 }, { 'a.css': 5, 'b.css': 4 }).debt).toBe(6);
+  it('marks growth as over budget and a same-size change as not', () => {
+    // Only an over-budget file gets its sites printed, so this flag decides
+    // whether the reader is handed a list of lines or just a corrected pin.
+    expect(compareToBaseline({ 'a.css': '3×#fff' }, { 'a.css': '2×#fff' }).failures[0]?.overBudget).toBe(true);
+    expect(compareToBaseline({ 'a.css': '2×#eee' }, { 'a.css': '2×#fff' }).failures[0]?.overBudget).toBe(false);
   });
 });
 

@@ -17,46 +17,53 @@
  * this lands. The retired terminal orange `#ff6600` alone appears 39 times on
  * a branch whose whole premise is that the terminal identity is gone — still
  * the most common literal in the tree, ahead of the dossier's own oxblood at
- * 12. A guard
- * that fails 302 times on arrival is a guard someone switches off, and the
- * lesson already written into `.githooks/pre-push` is that friction gets
- * skipped rather than paid. So the SCOPE is derived and only the DEBT is
- * enumerated. The 113 files that are clean today are protected at zero, a file
- * that does not exist yet is protected at zero, and each dirty file is pinned
- * at exactly what it has.
+ * 12. A guard that fails 302 times on arrival is a guard someone switches off,
+ * and the lesson already written into `.githooks/pre-push` is that friction
+ * gets skipped rather than paid. So the SCOPE is derived and only the DEBT is
+ * enumerated. The 117 files that are clean today are pinned at empty, a file
+ * that does not exist yet is pinned at empty, and each dirty file is pinned at
+ * exactly the colours it holds.
  *
- * THE PIN IS EXACT IN BOTH DIRECTIONS, deliberately. A budget that is only
- * ever checked upward becomes a ceiling nobody lowers — which is how three
- * enumerated guard lists in this repo were found stale on 2026-08-30, two of
- * them silently. So REMOVING a literal fails too, with the corrected line
- * printed ready to paste. The cost is one line per cleanup commit. The benefit
- * is that BASELINE cannot quietly stop describing the tree.
+ * THE PIN IS THE MULTISET, NOT A COUNT, and it matches exactly in both
+ * directions. `'14×#ff6600 6×#e0e0e0'` says which colours are stranded where,
+ * so BASELINE reads as an inventory of the identity debt rather than as a
+ * column of numbers. A count alone would let a file swap one literal for a
+ * different one at the same total and pass — an independent review named that
+ * hole twice, and pinning the values closes it. Removing a literal fails too,
+ * with the corrected line printed ready to paste: a budget only ever checked
+ * upward is the ceiling nobody lowers, which is how three enumerated guard
+ * lists in this repo were found stale on 2026-08-30, two of them silently.
  *
- * WHY THE SCOPE IS WIDER THAN IT FIRST WAS. The first version walked `src/`
- * and `api/` and then named `index.html` and `public/site.webmanifest` as two
- * known "unreachable surfaces". An independent review blocked it for exactly
- * that: naming the two files that had already burned us leaves a third to pass
- * by omission, which is the enumerate-don't-derive failure this repo has
- * legislated against, committed inside a guard whose own subject is deriving.
+ * WHY THE SCOPE IS WIDER THAN IT FIRST WAS, TWICE. The first version walked
+ * `src/` and `api/` and then NAMED `index.html` and `public/site.webmanifest`
+ * as two known "unreachable surfaces". An independent review blocked it for
+ * exactly that: naming the two files that had already burned us leaves a third
+ * to pass by omission, which is the enumerate-don't-derive failure this repo
+ * has legislated against, committed inside a guard whose own subject is
+ * deriving. The second version replaced them with a walk of `public/` and a
+ * derived root-document rule, and the same review blocked it again for the
+ * extension allowlist underneath — a new served file type would still pass by
+ * omission. So membership is now decided by CONTENT: every file under the
+ * served roots that is text is in scope, and binaries fall out because they
+ * hold a NUL byte. Measured when it changed: four files joined the scan
+ * (`api/.gitkeep`, `api/tsconfig.json`, `api/_fonts/README.md`,
+ * `public/robots.txt`) and all four are clean, so the widening cost nothing.
  *
- * Widening it to every served document found one immediately. `public/icons/
- * icon-192.svg` and `icon-512.svg` are a black `#0a0a0a` tile with an
- * `#ff6600` "NW" set in Courier New — the whole retired terminal identity,
- * font included. `index.html:6` points the browser tab at one and
- * `index.html:100` gives the other as the JSON-LD organisation logo, and the
- * manifest lists both for the install prompt. B1 reclaimed the two files that
- * POINT at these icons and not the icons themselves. The verdict that forced
- * the widening is in `.codex-reviews/feat-hex-literal-guard/`.
+ * WHAT WIDENING IT FOUND. `public/icons/icon-192.svg` and `icon-512.svg` are a
+ * `#0a0a0a` tile with an `#ff6600` "NW" set in Courier New — the whole retired
+ * terminal identity, font included. `index.html:6` points the browser tab at
+ * one and `index.html:100` gives the other as the JSON-LD organisation logo,
+ * and the manifest lists both for the install prompt. B1 reclaimed the two
+ * files that POINT at these icons and not the icons themselves.
  *
- * WHAT IT DOES NOT PROVE. A per-file count cannot see a swap: delete one
- * literal and add a different one in the same file and the number is
- * unchanged. The blind spot is exactly the size of the remaining debt and
- * closes as each file reaches zero. Stated here rather than left to be
- * discovered, because a measurement without its conditions protects nothing.
+ * WHAT IT STILL DOES NOT PROVE. It reads text, so a colour computed at runtime
+ * (`'#' + code`) or held in a database row is invisible to it. And it says
+ * nothing about whether a pinned literal is the RIGHT colour — only that the
+ * set has not changed behind anyone's back.
  *
  * Usage: npx tsx scripts/check-hex-literals.ts
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,22 +79,22 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 /**
  * The guarded property is "a colour that reaches a browser", so the scope is
  * the three directories whose contents reach one: `src/` and `api/` generate
- * the markup, `public/` is served verbatim. Everything inside them is walked
- * by extension. No file is named.
+ * the markup, `public/` is served verbatim. Everything inside them that is
+ * text is walked. No file and no file type is named.
  */
-const SCAN_ROOTS = ['src', 'api', 'public'];
-
-/** Anything a browser can be handed and read as text. Binaries are excluded
- *  by omission from this set, not by a skip list. */
-const SERVED_TEXT = /\.(tsx?|css|html|svg|webmanifest|js)$/;
+const SERVED_ROOTS = ['src', 'api', 'public'];
 
 /**
  * Served documents that sit at the repo ROOT rather than inside a served
- * directory — `index.html` today, and nothing else. DERIVED from the root
- * listing by extension rather than named, so a second root document is in
- * scope the day it appears. Non-recursive, and deliberately excluding `.ts`
- * and `.js`: `vite.config.ts` and `eslint.config.js` live here too and are
- * build configuration, never served.
+ * directory — `index.html` today. Derived from the root listing by extension
+ * rather than named, so a second root document is in scope the day it appears.
+ *
+ * This is the one place an extension rule survives, and it is narrower than
+ * the served roots ON PURPOSE. Nothing at the repo root is served except the
+ * app shell: Vercel serves `public/` and the build output, and the rest of the
+ * root is build configuration — `package.json`, `vercel.json`,
+ * `eslint.config.js`, `vite.config.ts`, `CLAUDE.md`. Scanning root text files
+ * by content would charge the repo for colours in its own documentation.
  */
 const ROOT_DOCUMENT = /\.(html|css|svg|webmanifest)$/;
 
@@ -133,8 +140,8 @@ export interface HexHit {
  * line after it, and a guard that points at the wrong line is telling the
  * reader something false.
  *
- * Stripping is per extension rather than one dialect for everything: `//` is
- * not a comment in CSS or JSON, and `<!-- -->` is not one in TypeScript.
+ * Stripping is per dialect rather than one rule for everything: `//` is not a
+ * comment in CSS or JSON, and `<!-- -->` is not one in TypeScript.
  */
 export function maskComments(src: string, ext: string): string {
   const blank = (m: string) => m.replace(/[^\n]/g, ' ');
@@ -144,7 +151,7 @@ export function maskComments(src: string, ext: string): string {
   if (ext !== '.webmanifest' && ext !== '.json') out = out.replace(/\/\*[\s\S]*?\*\//g, blank);
   // Line comments: the script dialects only. The `[^:]` guard keeps `https://`
   // intact, and CSS is excluded because `//` is not a comment there.
-  if (/^\.(tsx?|js)$/.test(ext)) out = out.replace(/(^|[^:])\/\/[^\n]*/g, (_m, p1: string) => p1);
+  if (/^\.(tsx?|js|mjs)$/.test(ext)) out = out.replace(/(^|[^:])\/\/[^\n]*/g, (_m, p1: string) => p1);
   // Markup comments: index.html, where the identity notes sit beside the CSS,
   // and the icon SVGs, which are XML and take the same form.
   if (ext === '.html' || ext === '.svg') out = out.replace(/<!--[\s\S]*?-->/g, blank);
@@ -166,121 +173,147 @@ export function hexHitsIn(src: string, ext: string): HexHit[] {
 }
 
 /**
- * THE DEBT, file by file, as it stood when this guard landed. Every entry is a
- * hex literal that should be a token. Counts may only move by editing this
- * block in the same commit that moves them.
+ * The multiset of colours in a file, as one readable line: `14×#ff6600 6×#fff`,
+ * commonest first, ties broken alphabetically so the string is stable.
+ *
+ * Case is folded because `#FAF8F3` and `#faf8f3` are the same colour and
+ * `index.html` writes it both ways. The total is the sum of the counts, so
+ * there is no second number that can disagree with this one.
  */
-export const BASELINE: Readonly<Record<string, number>> = {
-  'api/admin/brief/preview.ts': 1,
-  'api/alerts/subscribe.ts': 8,
-  'api/alerts/unsubscribe.ts': 10,
-  'api/alerts/verify.ts': 10,
-  'api/brief/og.ts': 9,
-  'api/briefs-sample.ts': 9,
-  'api/cron/daily-brief.ts': 9,
-  'api/unsubscribe.ts': 3,
-  'index.html': 8,
+export function fingerprint(hits: readonly HexHit[]): string {
+  const tally = new Map<string, number>();
+  for (const h of hits) {
+    const v = h.value.toLowerCase();
+    tally.set(v, (tally.get(v) ?? 0) + 1);
+  }
+  return [...tally]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([v, n]) => `${n}×${v}`)
+    .join(' ');
+}
+
+/**
+ * THE DEBT, file by file, as it stood when this guard landed — an inventory of
+ * every colour that should be a token and is not. Entries may only change by
+ * editing this block in the same commit that changes the file.
+ */
+export const BASELINE: Readonly<Record<string, string>> = {
+  'api/admin/brief/preview.ts': '1×#faf8f3',
+  'api/alerts/subscribe.ts': '3×#9a1b1b 1×#12161c 1×#3b4252 1×#888 1×#faf8f3 1×#fff',
+  'api/alerts/unsubscribe.ts': '2×#9a1b1b 2×#fff 1×#12161c 1×#22c55e 1×#3b4252 1×#dc2626 1×#e5e0d4 1×#faf8f3',
+  'api/alerts/verify.ts': '2×#9a1b1b 2×#fff 1×#12161c 1×#22c55e 1×#3b4252 1×#dc2626 1×#e5e0d4 1×#faf8f3',
+  'api/brief/og.ts': '3×#9a1b1b 2×#12161c 2×#c9c3b4 1×#3b4252 1×#faf8f3',
+  'api/briefs-sample.ts': '2×#06b6d4 2×#dc2626 2×#ff6600 1×#22c55e 1×#a855f7 1×#eab308',
+  'api/cron/daily-brief.ts': '2×#2a2f38 2×#e8e6de 1×#0e1116 1×#161b22 1×#8b8478 1×#c2bcab 1×#d66a64',
+  'api/unsubscribe.ts': '1×#12161c 1×#4a4f57 1×#faf8f3',
+  'index.html': '3×#faf8f3 1×#12161c 1×#1a1a1a 1×#3b4252 1×#666 1×#c9a86b',
   // PINNED, NOT ACCEPTED. These are the favicon, the PWA install icon and the
   // JSON-LD organisation logo, and they are still the retired terminal
   // identity: a #0a0a0a tile with an #ff6600 "NW" set in Courier New. B1
   // reclaimed index.html and site.webmanifest, which POINT at these two files.
   // The recolour is a design decision and belongs to the identity lane.
-  'public/icons/icon-192.svg': 4,
-  'public/icons/icon-512.svg': 4,
+  'public/icons/icon-192.svg': '3×#ff6600 1×#0a0a0a',
+  'public/icons/icon-512.svg': '3×#ff6600 1×#0a0a0a',
   // An unreferenced manual OG-image tool from the terminal era. #00ff88 belongs
   // to no palette in this repo. A deletion candidate, not a token candidate.
-  'public/og-gen.html': 19,
-  'public/site.webmanifest': 2,
-  'src/main.ts': 16,
-  'src/pages/briefs.ts': 19,
-  'src/pages/mcp.ts': 20,
-  'src/pages/status.ts': 10,
-  'src/services/confidenceScoring.ts': 3,
-  'src/services/countryInstabilityIndex.ts': 4,
-  'src/services/dataProvenance.ts': 4,
-  'src/services/verificationEngine.ts': 4,
-  'src/styles/auth.css': 3,
-  'src/styles/base.css': 3,
-  'src/styles/briefs-dossier.css': 26,
-  'src/styles/briefs.css': 46,
-  'src/styles/design-tokens.css': 21,
-  'src/styles/landing.css': 9,
-  'src/styles/mobile.css': 7,
-  'src/styles/pwa.css': 3,
-  'src/styles/toast.css': 2,
-  'src/ui/dataToast.ts': 6,
+  'public/og-gen.html': '12×#00ff88 1×#0a0a0f 1×#111 1×#1a1a2e 1×#555 1×#666 1×#888 1×#fff',
+  'public/site.webmanifest': '2×#faf8f3',
+  'src/main.ts': '4×#757575 4×#ededed 4×#ff6600 2×#000 2×#222',
+  'src/pages/briefs.ts':
+    '3×#3d3a35 3×#ddd8ce 2×#8b8478 2×#b8341c 1×#06b6d4 1×#1f7a4c 1×#222 1×#6b7280 1×#999 1×#9a1b1b 1×#dc2626 1×#e5e0d4 1×#ff6600',
+  'src/pages/mcp.ts': '6×#ff6600 4×#2a2a2a 3×#888 2×#0f0f0f 2×#22c55e 2×#ccc 1×#e0e0e0',
+  'src/pages/status.ts': '3×#22c55e 3×#dc2626 3×#eab308 1×#757575',
+  'src/services/confidenceScoring.ts': '1×#22c55e 1×#dc2626 1×#eab308',
+  'src/services/countryInstabilityIndex.ts': '1×#22c55e 1×#dc2626 1×#eab308 1×#f97316',
+  'src/services/dataProvenance.ts': '1×#22c55e 1×#dc2626 1×#eab308 1×#f97316',
+  'src/services/verificationEngine.ts': '1×#22c55e 1×#6b7280 1×#eab308 1×#f97316',
+  'src/styles/auth.css': '2×#8b5cf6 1×#f59e0b',
+  'src/styles/base.css': '1×#0a0a0a 1×#ededed 1×#fff',
+  'src/styles/briefs-dossier.css':
+    '2×#757575 2×#999 2×#ededed 2×#ff6600 2×#ffffff 1×#111 1×#12161c 1×#1f7a4c 1×#222 1×#3b4252 1×#6b7280 1×#9a1b1b 1×#b8341c 1×#c7453f 1×#c9a86b 1×#c9c3b4 1×#e5d8b6 1×#e5e0d4 1×#f2efe6 1×#f6e4e2 1×#faf8f3',
+  'src/styles/briefs.css':
+    '14×#ff6600 5×#888 5×#e0e0e0 3×#0a0a0a 3×#1a1a1a 3×#333 3×#666 2×#555 1×#000 1×#aaa 1×#ccc 1×#ff660010 1×#ff660015 1×#ff660030 1×#ff660040 1×#ff7722',
+  'src/styles/design-tokens.css':
+    '2×#00d4aa 2×#1a1a1a 2×#dc2626 2×#e5a913 2×#ff6600 1×#000000 1×#0a0a0a 1×#111111 1×#181818 1×#222222 1×#22c55e 1×#6b8aff 1×#757575 1×#999999 1×#ededed 1×#ff7722',
+  'src/styles/landing.css': '5×#000 2×#050505 1×#0a0a0a 1×#0c0c0c',
+  'src/styles/mobile.css': '2×#000 1×#0a0a0a 1×#1a1a1a 1×#888 1×#ff6600 1×#fff',
+  'src/styles/pwa.css': '1×#000 1×#ff6600 1×#fff',
+  'src/styles/toast.css': '2×#fff',
+  'src/ui/dataToast.ts': '1×#1a0a0a 1×#1a1400 1×#666 1×#dc2626 1×#e5a913 1×#ededed',
 };
 
 export interface Failure {
   file: string;
   /** Why the pin is wrong, in the imperative the reader has to act on. */
   message: string;
-  /** True when the file carries more literals than it is pinned for. */
+  /** True when the file carries colours its pin does not account for. */
   overBudget: boolean;
   /** The paste-ready BASELINE line that would make this file agree. */
   correction: string;
 }
 
-export interface Verdict {
-  /** Empty means the tree matches the baseline exactly. */
-  failures: Failure[];
-  /** Total pinned literals still outstanding. */
-  debt: number;
-}
-
 /**
- * Compare a full scan against the baseline. `counts` must carry EVERY scanned
- * file, including the clean ones at zero: that is what lets a file cleaned to
- * zero be told apart from a file that left the scope entirely, and the two
+ * Compare a full scan against the baseline. `found` must carry EVERY scanned
+ * file, including the clean ones at `''`: that is what lets a file cleaned to
+ * empty be told apart from a file that left the scope entirely, and the two
  * want different edits.
  */
-export function compareToBaseline(counts: Record<string, number>, baseline: Record<string, number>): Verdict {
+export function compareToBaseline(
+  found: Record<string, string>,
+  baseline: Record<string, string>,
+): { failures: Failure[] } {
   const failures: Failure[] = [];
-  let debt = 0;
+  const total = (fp: string) =>
+    fp === '' ? 0 : fp.split(' ').reduce((n, part) => n + Number(part.split('×')[0] ?? 0), 0);
 
-  for (const file of Object.keys(counts).sort()) {
-    const found = counts[file] ?? 0;
-    const pinned = baseline[file] ?? 0;
-    debt += Math.min(found, pinned);
-    if (found === pinned) continue;
-    if (found > pinned) {
-      failures.push({
-        file,
-        overBudget: true,
-        message:
-          pinned === 0
-            ? `${found} hex literal(s) in a file that had none`
-            : `${found} hex literals against a pin of ${pinned} — ${found - pinned} added`,
-        correction: `  '${file}': ${found},`,
-      });
-    } else if (found === 0) {
+  for (const file of Object.keys(found).sort()) {
+    const now = found[file] ?? '';
+    const pinned = baseline[file] ?? '';
+    if (now === pinned) continue;
+    if (now === '') {
       failures.push({
         file,
         overBudget: false,
-        message: `clean now, pinned at ${pinned} — delete its BASELINE line`,
-        correction: `  (delete) '${file}': ${pinned},`,
+        message: `clean now, pinned at "${pinned}" — delete its BASELINE line`,
+        correction: `  (delete) '${file}',`,
       });
-    } else {
-      failures.push({
-        file,
-        overBudget: false,
-        message: `down to ${found} from ${pinned} — tighten the pin, don't leave slack`,
-        correction: `  '${file}': ${found},`,
-      });
+      continue;
     }
-  }
-
-  for (const file of Object.keys(baseline).sort()) {
-    if (file in counts) continue;
+    const grew = total(now) > total(pinned);
     failures.push({
       file,
-      overBudget: false,
-      message: `pinned at ${baseline[file]} but no longer scanned — deleted, renamed, or exempted`,
-      correction: `  (delete) '${file}': ${baseline[file]},`,
+      overBudget: grew,
+      message:
+        pinned === ''
+          ? `${total(now)} hex literal(s) in a file that had none — ${now}`
+          : grew
+            ? `pinned at "${pinned}", now "${now}"`
+            : `changed and did not grow: pinned "${pinned}", now "${now}" — tighten the pin, don't leave slack`,
+      correction: `  '${file}': '${now}',`,
     });
   }
 
-  return { failures, debt };
+  for (const file of Object.keys(baseline).sort()) {
+    if (file in found) continue;
+    failures.push({
+      file,
+      overBudget: false,
+      message: `pinned at "${baseline[file]}" but no longer scanned — deleted, renamed, or exempted`,
+      correction: `  (delete) '${file}',`,
+    });
+  }
+
+  return { failures };
+}
+
+/**
+ * Membership by CONTENT, not by extension. An extension allowlist is a list of
+ * known cases, and the next served file type is exactly the case a list does
+ * not have — which is what an independent review blocked the previous version
+ * for. A binary holds a NUL byte in its first pages; nothing text does.
+ */
+function isTextFile(path: string): boolean {
+  return !readFileSync(path).subarray(0, 8192).includes(0);
 }
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -292,7 +325,7 @@ function walk(dir: string, out: string[] = []): string[] {
     // Tests are excluded on purpose: a test that asserts the card background
     // EQUALS the token can only do that by writing the value down, and
     // api/_lib/satori-html.test.ts is doing exactly the right thing.
-    else if (SERVED_TEXT.test(full) && !/\.test\.tsx?$/.test(full)) out.push(full);
+    else if (!/\.test\.tsx?$/.test(full) && isTextFile(full)) out.push(full);
   }
   return out;
 }
@@ -306,7 +339,7 @@ function rootDocuments(): string[] {
 }
 
 function main(): void {
-  const files = [...SCAN_ROOTS.flatMap((r) => walk(join(ROOT, r))), ...rootDocuments()];
+  const files = [...SERVED_ROOTS.flatMap((r) => walk(join(ROOT, r))), ...rootDocuments()];
 
   // A filter that silently matches nothing is how a guard passes while
   // guarding nothing. run-guards.mjs refuses the same way.
@@ -315,25 +348,30 @@ function main(): void {
     process.exit(1);
   }
 
-  const counts: Record<string, number> = {};
+  const found: Record<string, string> = {};
   const hitsByFile = new Map<string, HexHit[]>();
+  let debt = 0;
 
   for (const file of files) {
     const rel = relative(ROOT, file).split('\\').join('/');
     if (TOKEN_SOURCES.has(rel)) continue;
     const hits = hexHitsIn(readFileSync(file, 'utf8'), extname(file));
-    counts[rel] = hits.length;
-    if (hits.length > 0) hitsByFile.set(rel, hits);
+    found[rel] = fingerprint(hits);
+    if (hits.length > 0) {
+      hitsByFile.set(rel, hits);
+      if (rel in BASELINE) debt += hits.length;
+    }
   }
 
-  const { failures, debt } = compareToBaseline(counts, BASELINE);
+  const { failures } = compareToBaseline(found, BASELINE);
 
   if (failures.length > 0) {
     console.error(`\n[check-hex-literals] FAILED — ${failures.length} file(s) disagree with the baseline:\n`);
     for (const f of failures) {
       console.error(`  ${f.file} — ${f.message}`);
-      // Only an over-budget file gets its sites printed: those are the ones
-      // someone has to go and change. A stale pin needs a number, not a tour.
+      // Only a file carrying MORE than its pin gets its sites printed: those
+      // are the ones someone has to go and change. A stale pin needs a line,
+      // not a tour.
       const hits = f.overBudget ? (hitsByFile.get(f.file) ?? []) : [];
       for (const h of hits.slice(0, 10)) console.error(`      ${f.file}:${h.line}  ${h.value}`);
       if (hits.length > 10) console.error(`      … and ${hits.length - 10} more`);
@@ -353,7 +391,7 @@ ${failures.map((f) => f.correction).join('\n')}
   }
 
   console.log(
-    `[check-hex-literals] OK — ${Object.keys(counts).length} files scanned, ` +
+    `[check-hex-literals] OK — ${Object.keys(found).length} files scanned, ` +
       `no hex outside the ${TOKEN_SOURCES.size} token sources except ${debt} pinned literal(s) ` +
       `in ${Object.keys(BASELINE).length} file(s).`,
   );
