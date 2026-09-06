@@ -1,560 +1,184 @@
-/**
- * Landing — editorial rebuild (Track C).
- *
- * Surfaces the "Free." positioning. Hero is the live globe with kinetic
- * typographic overlay; below the fold are restrained editorial sections
- * (feature grid, layer breadth, Cinema preview, sample brief, why-free
- * teaser, newsletter, receipts, footer).
- *
- * Mobile-first. The globe is a decorative background — interactivity is
- * disabled on the landing surface and the desktop boots MapLibre lazily.
- * On mobile we paint a static dark globe (no MapLibre cost) so first paint
- * is measured in milliseconds, not megabytes.
- */
-
-import '../styles/landing.css';
+import '../styles/landing-register.css';
 import { createElement } from '../utils/dom.ts';
-import { trackEvent } from '../services/analytics.ts';
 import { setPageSeo, PAGE_SEO } from '../utils/seo.ts';
-import { capture, installSurfaces } from '../ui/kit/index.ts';
+import { pageShell, capture, sectionRule } from '../ui/kit/index.ts';
+import { installSurfaces } from '../ui/kit/surfaces.ts';
 
-const FALLBACK_BRIEF = {
-  date: 'Sample',
-  headline: 'A reading on the world, written each morning at 05:00 ET.',
-  excerpt:
-    'Three minutes. The conflicts that moved overnight, the disasters that landed, the markets that flinched. Each line evidence-chained back to the source — USGS, ACLED, GDELT, AIS — so you can audit anything that smells off. The full archive is open.',
-};
-
-interface BriefResponse {
-  date?: string;
-  headline?: string;
-  summary?: string;
-}
-
+/**
+ * The landing page, rebuilt register-first (redesign B3, 2026-09-06).
+ *
+ * What it replaced: 577 lines of platform-era marketing — a decorative
+ * MapLibre globe (the dependency's last consumer; it leaves package.json
+ * with this file), a Cinema teaser for a deleted surface, a feature grid for
+ * layers that no longer exist, and a second subscribe form the kit's
+ * capture() was built to retire.
+ *
+ * Copy comes from docs/copy/landing-narrative.md. The branch preview IS the
+ * sign-off surface for these words — nothing here reaches production until
+ * the owner has read the page itself.
+ *
+ * The one rule about numbers: every figure is FETCHED from the ledger at
+ * view time. A number typed into this file would be true today and a lie by
+ * Friday (the seed-data ruling: true-at-write-time is a bug with a delay
+ * fuse). No fallback constants either — if the fetch fails, the strip shows
+ * an em-dash, because a stale number dressed as live is worse than a dash.
+ */
 export function renderLanding(root: HTMLElement): void {
   setPageSeo(PAGE_SEO.landing);
-  root.textContent = '';
-
-  // Reduced motion + viewport-based decisions.
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isNarrow = window.matchMedia('(max-width: 767px)').matches;
-
-  // Top-level <main> opts into the marketing surface (Source Serif, generous
-  // rhythm). Adding nw-landing-surface on top scopes our overrides.
-  const main = createElement('main', { className: 'marketing-surface nw-landing-surface' });
-  main.id = 'main-content';
-  main.setAttribute('role', 'main');
-
-  main.innerHTML = `
-    <nav class="nw-nav" aria-label="Primary">
-      <a href="#/" class="nw-nav-brand"><span class="nw-nav-mark">●</span>&nbsp;NexusWatch</a>
-      <div class="nw-nav-links">
-        <a href="#/ledger">The Ledger</a>
-        <a href="#/briefs">Briefs</a>
-        <a href="#/about">About</a>
-      </div>
-    </nav>
-
-    <section class="nw-hero" aria-label="Hero">
-      <div class="nw-hero-globe" id="nw-hero-globe" aria-hidden="true"></div>
-
-      <div class="nw-hero-live" aria-hidden="true">
-        <span class="nw-hero-live-dot"></span>
-        <span>LIVE</span>
-      </div>
-
-      <div class="nw-hero-content" id="nw-hero-content">
-        <span class="nw-eyebrow" id="nw-hero-eyebrow">The public forecasting ledger</span>
-        <h1 class="nw-hero-headline word-stagger" aria-label="The world, graded.">
-          <span>The</span> <span>world,</span> <span>graded<span class="nw-hero-period">.</span></span>
-        </h1>
-        <p class="nw-hero-sub">
-          Every call we make is dated, falsifiable, and scored against someone else's data —
-          published whether it flatters us or not.
-        </p>
-        <div id="nw-hero-capture"></div>
-        <p class="nw-hero-fineprint">
-          <a href="#/ledger">See every call we have open &rarr;</a> &middot; free, no account
-        </p>
-      </div>
-    </section>
-
-    <section class="nw-reveal" aria-label="How grading works">
-      <span class="nw-section-eyebrow">How it works</span>
-      <h2 class="nw-section-heading">A call, a criterion, a resolution date.</h2>
-      <p class="nw-section-lede">
-        Every morning we put dated probabilities on record — censorship events, currency moves — each with a
-        threshold frozen at issue and an external resolver named in advance. OONI and the FX reference rates
-        decide, not us. The score is published either way.
-      </p>
-      <div class="nw-features-grid">
-        <article class="nw-feature">
-          <span class="nw-feature-label">The Ledger</span>
-          <h3 class="nw-feature-title">Scored in public.</h3>
-          <p class="nw-feature-desc">Every call beside its country's own base rate, so you can see when we're actually saying something. Misses stay on the page — a record that only reports wins is not a record.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">Daily Brief</span>
-          <h3 class="nw-feature-title">Three minutes. Every morning.</h3>
-          <p class="nw-feature-desc">Opens with the ledger: what resolved, what's open, one dated call. Then the day's signal, vetted against sources you can read for yourself. Free in your inbox or via RSS.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">85 Countries</span>
-          <h3 class="nw-feature-title">The evidence surface.</h3>
-          <p class="nw-feature-desc">The live map and the Country Instability Index are where calls come from — six weighted components, evidence chains, confidence badges. Click a number, see the data behind it.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">45+ Layers</span>
-          <h3 class="nw-feature-title">Live data, every minute.</h3>
-          <p class="nw-feature-desc">Earthquakes, conflict, sanctions, shipping, satellites, AI sentiment, dark vessels, undersea cables, and thirty-seven more — refreshed continuously.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">Open API</span>
-          <h3 class="nw-feature-title">Query the firehose.</h3>
-          <p class="nw-feature-desc">A v2 REST surface over the same data the dashboard reads, including the full ledger as JSON. No key required for basic queries.</p>
-        </article>
-        <article class="nw-feature">
-          <span class="nw-feature-label">Receipts</span>
-          <h3 class="nw-feature-title">Goalposts held by GitHub.</h3>
-          <p class="nw-feature-desc">MIT-licensed, open data. The call book is snapshotted daily to the public repo, so the thresholds carry GitHub's timestamps — verify us without trusting us.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="nw-reveal" aria-label="Layers">
-      <span class="nw-section-eyebrow">Layers / 45+</span>
-      <h2 class="nw-section-heading">The breadth of the surface.</h2>
-      <p class="nw-section-lede">
-        Five categories, thirty named layers visible above; fifteen more under the hood. Toggle any of them on
-        the live map.
-      </p>
-      <div class="nw-layers-rail" id="nw-layers-rail">
-        <article class="nw-layer-card">
-          <div class="nw-layer-head">
-            <span class="nw-layer-name">Conflict & Military</span>
-            <span class="nw-layer-count">7 <span class="nw-layer-dot" aria-hidden="true"></span></span>
-          </div>
-          <ul class="nw-layer-list">
-            <li>Conflict Events (GDELT-derived)</li>
-            <li>Conflict Zones</li>
-            <li>Military Bases (28)</li>
-            <li>Cyber Threat Corridors</li>
-            <li>OFAC Sanctions</li>
-            <li>GPS Jamming Zones</li>
-            <li>Frontlines</li>
-          </ul>
-        </article>
-        <article class="nw-layer-card">
-          <div class="nw-layer-head">
-            <span class="nw-layer-name">Natural Hazards</span>
-            <span class="nw-layer-count">5 <span class="nw-layer-dot" aria-hidden="true"></span></span>
-          </div>
-          <ul class="nw-layer-list">
-            <li>Earthquakes (USGS, 1 min)</li>
-            <li>Wildfires (NASA FIRMS)</li>
-            <li>GDACS Disasters</li>
-            <li>WHO Disease Outbreaks</li>
-            <li>Weather Alerts</li>
-          </ul>
-        </article>
-        <article class="nw-layer-card">
-          <div class="nw-layer-head">
-            <span class="nw-layer-name">Infrastructure</span>
-            <span class="nw-layer-count">9 <span class="nw-layer-dot" aria-hidden="true"></span></span>
-          </div>
-          <ul class="nw-layer-list">
-            <li>Ship Tracking (26)</li>
-            <li>Chokepoint Status (6)</li>
-            <li>Undersea Cables (12)</li>
-            <li>Oil & Gas Pipelines</li>
-            <li>Nuclear Facilities (22)</li>
-            <li>Strategic Ports (18)</li>
-            <li>Trade Routes</li>
-            <li>Space Launches</li>
-            <li>Energy Grid</li>
-          </ul>
-        </article>
-        <article class="nw-layer-card">
-          <div class="nw-layer-head">
-            <span class="nw-layer-name">Intelligence</span>
-            <span class="nw-layer-count">7 <span class="nw-layer-dot" aria-hidden="true"></span></span>
-          </div>
-          <ul class="nw-layer-list">
-            <li>GDELT News Events</li>
-            <li>Prediction Markets</li>
-            <li>Satellites (animated orbits)</li>
-            <li>Internet Outages</li>
-            <li>Election Calendar</li>
-            <li>Refugee Displacement Arcs</li>
-            <li>Sentiment</li>
-          </ul>
-        </article>
-        <article class="nw-layer-card">
-          <div class="nw-layer-head">
-            <span class="nw-layer-name">Environment</span>
-            <span class="nw-layer-count">2 <span class="nw-layer-dot" aria-hidden="true"></span></span>
-          </div>
-          <ul class="nw-layer-list">
-            <li>Air Quality AQI (30 cities)</li>
-            <li>Live Aircraft (OpenSky)</li>
-          </ul>
-        </article>
-      </div>
-    </section>
-
-
-
-    <section class="nw-reveal" aria-label="Today's brief">
-      <span class="nw-section-eyebrow">Today's Brief</span>
-      <h2 class="nw-section-heading">A reading on the world, every morning.</h2>
-      <article class="nw-brief-card" id="nw-brief-card">
-        <div class="nw-brief-meta">
-          <span id="nw-brief-date">${FALLBACK_BRIEF.date}</span>
-          <span>NexusWatch · Daily Intelligence</span>
-        </div>
-        <h3 class="nw-brief-headline" id="nw-brief-headline">${FALLBACK_BRIEF.headline}</h3>
-        <p class="nw-brief-excerpt" id="nw-brief-excerpt">${FALLBACK_BRIEF.excerpt}</p>
-        <a href="#/briefs" class="nw-brief-link">Read the full brief <span aria-hidden="true">→</span></a>
-      </article>
-    </section>
-
-    <section class="nw-reveal nw-whyfree-teaser" aria-label="Why free">
-      <p class="nw-whyfree-teaser-quote">
-        "The existing platforms are paywalled and unreadable. Free, forever-ish, no tiers."
-      </p>
-      <p class="nw-whyfree-teaser-attribution">
-        — Ethan, operator
-        <a href="#/why-free">Read the full case →</a>
-      </p>
-    </section>
-
-    <section class="nw-reveal" aria-label="Newsletter">
-      <span class="nw-section-eyebrow">Subscribe</span>
-      <h2 class="nw-section-heading">Get the daily brief in your inbox. Free.</h2>
-      <div class="nw-signup">
-        <form class="nw-signup-form" id="nw-subscribe-form" novalidate>
-          <label for="nw-subscribe-email" class="sr-only">Email address</label>
-          <input
-            type="email"
-            id="nw-subscribe-email"
-            name="email"
-            class="nw-signup-input"
-            placeholder="you@somewhere.com"
-            autocomplete="email"
-            required
-          />
-          <button type="submit" class="nw-signup-button">Subscribe</button>
-        </form>
-        <p class="nw-signup-status" id="nw-subscribe-status" role="status" aria-live="polite"></p>
-      </div>
-    </section>
-
-    <section class="nw-reveal" aria-label="Sources and receipts">
-      <span class="nw-section-eyebrow">Sources / Receipts</span>
-      <h2 class="nw-section-heading">Public data. Public method.</h2>
-      <p class="nw-section-lede">
-        Everything on the map traces back to one of these. Open repo on GitHub; open API at <code>/api</code>.
-      </p>
-      <ul class="nw-trust-list">
-        <li>USGS</li>
-        <li>GDELT</li>
-        <li>NASA FIRMS</li>
-        <li>OpenSky</li>
-        <li>OpenAQ</li>
-        <li>GDACS</li>
-        <li>WHO</li>
-        <li>AIS / Marine Traffic</li>
-        <li>Polymarket</li>
-        <li>OFAC Sanctions</li>
-        <li>OONI</li>
-        <li>UNHCR</li>
-        <li>Cloudflare Radar</li>
-      </ul>
-    </section>
-
-    <footer class="nw-footer">
-      <div class="nw-footer-top">
-        <div class="nw-footer-brand"><span>●</span> NexusWatch</div>
-        <div class="nw-footer-links">
-          <a href="#/ledger">The Ledger</a>
-          <a href="#/briefs">Briefs</a>
-          <a href="#/why-free">Why Free</a>
-          <a href="#/about">About</a>
-          <a href="#/api">API</a>
-          <a href="https://github.com/ethancstuart/nexus-watch" target="_blank" rel="noopener">GitHub</a>
-          <a href="/api/feed" rel="alternate" type="application/rss+xml">RSS</a>
-        </div>
-      </div>
-      <div class="nw-footer-meta">
-        © ${new Date().getFullYear()} NexusWatch · MIT License · Built in the open.
-      </div>
-    </footer>
-  `;
-
-  root.appendChild(main);
-
-  // ── Hero capture — the single shared implementation ──
-  // The primary action is SUBSCRIBE, not "open the dashboard". A stranger
-  // dropped onto a 45-layer dark globe with no legend bounces and is never
-  // seen again; a subscriber gets a chance every morning, and the brief is the
-  // only surface here with demonstrated daily engagement. The old hero sent
-  // everyone to the map and put the only email field seven sections below it.
   installSurfaces();
-  const heroCapture = main.querySelector<HTMLElement>('#nw-hero-capture');
-  if (heroCapture) {
-    heroCapture.appendChild(capture({ source: 'landing-hero', cta: 'Get tomorrow’s brief' }));
-  }
+  const main = pageShell(root, { active: '/' });
 
-  // ── Live count from the ledger ──
-  // Reads the real number rather than stating one. The eyebrow says something
-  // deliberately unimpressive but true; the previous hero claimed "158
-  // countries scored" against a real 85.
-  const eyebrow = main.querySelector<HTMLElement>('#nw-hero-eyebrow');
-  if (eyebrow) {
-    void fetch('/api/calls/ledger')
-      .then((r) => (r.ok ? (r.json() as Promise<{ counts?: { open?: number; resolved?: number } }>) : null))
-      .then((d) => {
-        const open = d?.counts?.open;
-        const resolved = d?.counts?.resolved;
-        if (typeof open !== 'number') return;
-        eyebrow.textContent =
-          typeof resolved === 'number' && resolved > 0
-            ? `${open} calls open · ${resolved} resolved and scored`
-            : `${open} calls open · the public forecasting ledger`;
-      })
-      .catch(() => {
-        /* leave the static eyebrow — never invent a count */
-      });
-  }
+  // --- Hero -----------------------------------------------------------
+  const hero = createElement('section', { className: 'lr-hero' });
+  hero.appendChild(
+    createElement('div', { className: 'lr-kicker', textContent: 'NEXUSWATCH — A PUBLIC REGISTER OF FORECASTS' }),
+  );
 
-  // ── Hero globe — lazy MapLibre on desktop, static fallback on mobile ──
-  const heroGlobe = main.querySelector<HTMLElement>('#nw-hero-globe');
-  if (heroGlobe) {
-    if (isNarrow) {
-      // Mobile: paint a stylized dark globe. Skip MapLibre entirely.
-      heroGlobe.classList.add('nw-hero-globe-static');
-    } else {
-      // Desktop: dynamic-import MapLibre + boot a decorative globe in the
-      // background. The headline paints first; the globe arrives 50–500ms later.
-      void bootDecorativeGlobe(heroGlobe, prefersReducedMotion);
-    }
-  }
-
-  // ── Hero headline dim after 2s so globe stays legible ──
-  const heroContent = main.querySelector<HTMLElement>('#nw-hero-content');
-  if (heroContent && !prefersReducedMotion) {
-    setTimeout(() => heroContent.classList.add('is-dim'), 2400);
-  }
-
-  // ── Scroll-reveal sections ──
-  const reveals = main.querySelectorAll<HTMLElement>('.nw-reveal');
-  if (prefersReducedMotion) {
-    reveals.forEach((el) => el.classList.add('is-revealed'));
-  } else if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-revealed');
-            io.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -8% 0px' },
-    );
-    reveals.forEach((el) => io.observe(el));
-  } else {
-    reveals.forEach((el) => el.classList.add('is-revealed'));
-  }
-
-  // ── Newsletter form ──
-  const form = main.querySelector<HTMLFormElement>('#nw-subscribe-form');
-  const statusEl = main.querySelector<HTMLElement>('#nw-subscribe-status');
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = form.querySelector<HTMLInputElement>('input[type=email]');
-    const email = input?.value.trim() ?? '';
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      if (statusEl) {
-        statusEl.textContent = 'Enter a valid email.';
-        statusEl.dataset.state = 'err';
-      }
-      return;
-    }
-    if (statusEl) {
-      statusEl.textContent = 'Subscribing…';
-      statusEl.dataset.state = '';
-    }
-    try {
-      const res = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          source: 'landing-rebuild',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
-      });
-      const data = (await res.json()) as { success?: boolean; error?: string };
-      if (statusEl) {
-        if (data.success) {
-          statusEl.textContent = "You're in. First brief tomorrow.";
-          statusEl.dataset.state = 'ok';
-          form.reset();
-          trackEvent('brief_signup', { source: 'landing-rebuild' });
-        } else {
-          statusEl.textContent = data.error || "That didn't work — try again.";
-          statusEl.dataset.state = 'err';
-        }
-      }
-    } catch {
-      if (statusEl) {
-        statusEl.textContent = 'Network error. Try again.';
-        statusEl.dataset.state = 'err';
-      }
-    }
+  const headline = createElement('h1', { className: 'lr-headline' });
+  // Kinetic type: one span per word, stagger driven by --i and the motion
+  // tokens. Reading order is untouched; reduced-motion renders it static.
+  const words = 'We say what we think will happen. Something that isn’t us decides if we were right.'.split(' ');
+  words.forEach((w, i) => {
+    const span = createElement('span', { className: 'lr-word', textContent: w });
+    span.style.setProperty('--i', String(i));
+    headline.appendChild(span);
+    headline.appendChild(document.createTextNode(' '));
   });
+  hero.appendChild(headline);
 
-  // ── Sample brief — pull today's brief if available ──
-  const briefHeadline = main.querySelector<HTMLElement>('#nw-brief-headline');
-  const briefExcerpt = main.querySelector<HTMLElement>('#nw-brief-excerpt');
-  const briefDate = main.querySelector<HTMLElement>('#nw-brief-date');
-  if (briefHeadline && briefExcerpt) {
-    fetch('/api/v1/brief')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: BriefResponse | null) => {
-        if (!data) return;
-        if (data.headline) briefHeadline.textContent = data.headline;
-        if (data.summary) {
-          // Strip markdown/HTML to plain text and trim to ~340 chars
-          const text = stripToPlain(data.summary).slice(0, 340);
-          briefExcerpt.textContent = text + (data.summary.length > 340 ? '…' : '');
+  hero.appendChild(
+    createElement('p', {
+      className: 'lr-sub',
+      textContent:
+        'Dated, falsifiable calls on censorship and currency moves — each resolved against an external source, on a date fixed before the outcome existed. Rules published first. Misses kept forever.',
+    }),
+  );
+
+  const strip = createElement('div', { className: 'lr-strip' });
+  strip.setAttribute('aria-label', 'The book, live');
+  hero.appendChild(strip);
+
+  const ctas = createElement('div', { className: 'lr-ctas' });
+  const primary = createElement('a', { className: 'lr-cta-primary', textContent: 'Read the Ledger →' });
+  (primary as HTMLAnchorElement).href = '/ledger';
+  ctas.appendChild(primary);
+  hero.appendChild(ctas);
+  main.appendChild(hero);
+
+  // --- How it works ---------------------------------------------------
+  main.appendChild(sectionRule({ kicker: 'HOW IT WORKS', title: 'Three moves, none of them ours to fudge' }));
+  const beats = createElement('div', { className: 'lr-beats' });
+  const BEATS: Array<[string, string]> = [
+    [
+      'We state a claim.',
+      'A probability, a country, a threshold, a date. Written to the book before the window opens; never edited after.',
+    ],
+    [
+      'The world answers.',
+      'OONI’s measurements or the FX reference rate — sources we don’t control — settle every call on schedule, unattended.',
+    ],
+    [
+      'The score publishes either way.',
+      'Brier per kind; skill only when three independent batches exist. A withheld number states its reason. The misses stay on the page.',
+    ],
+  ];
+  BEATS.forEach(([t, b], i) => {
+    const beat = createElement('div', { className: 'lr-beat lr-reveal' });
+    beat.style.setProperty('--i', String(i));
+    beat.appendChild(createElement('div', { className: 'lr-beat-n', textContent: String(i + 1).padStart(2, '0') }));
+    beat.appendChild(createElement('h3', { className: 'lr-beat-t', textContent: t }));
+    beat.appendChild(createElement('p', { className: 'lr-beat-b', textContent: b }));
+    beats.appendChild(beat);
+  });
+  main.appendChild(beats);
+
+  // --- The honest bit -------------------------------------------------
+  const quote = createElement('blockquote', { className: 'lr-quote lr-reveal' });
+  quote.appendChild(
+    createElement('p', {
+      textContent:
+        'Our first cohort settled on 5 September 2026: ten hits, twenty-four misses, five held for thin evidence — and the sharpest finding was about our own instrument. We published that, too.',
+    }),
+  );
+  const qLink = createElement('a', { className: 'lr-quote-link', textContent: 'See the record →' });
+  (qLink as HTMLAnchorElement).href = '/ledger';
+  quote.appendChild(qLink);
+  main.appendChild(quote);
+
+  // --- The brief ------------------------------------------------------
+  main.appendChild(sectionRule({ kicker: 'THE DAILY BRIEF', title: 'The record first, then the board' }));
+  const briefP = createElement('p', {
+    className: 'lr-brief-p lr-reveal',
+    textContent:
+      'One email a day. Written by a model, gated by rules that refuse ungrounded numbers — with a deterministic edition when the draft doesn’t clear the gate, and it says so.',
+  });
+  main.appendChild(briefP);
+  main.appendChild(
+    capture({ source: 'landing-register', note: 'Free. Unsubscribe is one click, and the link works.' }),
+  );
+
+  // --- Live numbers ---------------------------------------------------
+  void hydrateStrip(strip);
+
+  // --- Scroll reveals -------------------------------------------------
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          (e.target as HTMLElement).classList.add('is-in');
+          observer.unobserve(e.target);
         }
-        if (data.date && briefDate) briefDate.textContent = formatBriefDate(data.date);
-      })
-      .catch(() => {
-        // Fallback copy already present.
-      });
-  }
-
-  // ── Referral capture (preserve from previous landing) ──
-  const refParam = new URLSearchParams(window.location.search).get('ref');
-  if (refParam && /^[\w-]{1,128}$/.test(refParam)) {
-    localStorage.setItem('nw-referral', refParam);
-    const cleanUrl = new URL(window.location.href);
-    cleanUrl.searchParams.delete('ref');
-    history.replaceState(null, '', cleanUrl.toString());
-  }
+      }
+    },
+    { threshold: 0.2 },
+  );
+  main.querySelectorAll('.lr-reveal').forEach((n) => observer.observe(n));
 }
 
-// =============================================================================
-// Helpers
-// =============================================================================
+/** The live strip: open / settled / hit, ticked up from zero on first view. */
+async function hydrateStrip(strip: HTMLElement): Promise<void> {
+  const cell = (label: string): HTMLElement => {
+    const c = createElement('div', { className: 'lr-strip-cell' });
+    const v = createElement('span', { className: 'lr-strip-value', textContent: '—' });
+    c.appendChild(v);
+    c.appendChild(createElement('span', { className: 'lr-strip-label', textContent: label }));
+    strip.appendChild(c);
+    return v;
+  };
+  const openEl = cell('CALLS OPEN');
+  const settledEl = cell('SETTLED');
+  const hitEl = cell('HIT');
 
-function stripToPlain(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/[#*_`>]/g, '')
-    .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function formatBriefDate(iso: string): string {
   try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+    const res = await fetch('/api/calls/ledger');
+    if (!res.ok) return;
+    const j = (await res.json()) as { counts?: { open?: number; resolved?: number; hits?: number } };
+    const c = j.counts;
+    if (!c) return;
+    tick(openEl, c.open ?? 0);
+    tick(settledEl, c.resolved ?? 0);
+    tick(hitEl, c.hits ?? 0);
   } catch {
-    return iso;
+    // The dash stays. A stale number dressed as live is worse than a dash.
   }
 }
 
-/**
- * Decorative MapLibre globe for the hero. Non-interactive, slowly auto-
- * rotating. Lazy-imports MapLibre so the marketing surface doesn't pay
- * 1MB of map bundle until after first paint. Falls back silently to the
- * static globe styling on any error.
- */
-async function bootDecorativeGlobe(container: HTMLElement, reducedMotion: boolean): Promise<void> {
-  // Tag with the static fallback first so if MapLibre fails or is slow,
-  // the user always sees the dark globe stylization.
-  container.classList.add('nw-hero-globe-static');
-
-  try {
-    const maplibreMod = await import('maplibre-gl');
-    const maplibregl = maplibreMod.default;
-
-    // Inject MapLibre CSS — same pattern as MapView.
-    if (!document.querySelector('link[data-nw-maplibre-css]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/maplibre-gl@latest/dist/maplibre-gl.css';
-      link.crossOrigin = 'anonymous';
-      link.dataset.nwMaplibreCss = '1';
-      document.head.appendChild(link);
-    }
-
-    const map = new maplibregl.Map({
-      container,
-      style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      center: [10, 25],
-      zoom: 1.6,
-      pitch: 0,
-      bearing: 0,
-      attributionControl: false,
-      interactive: false,
-      maxZoom: 4,
-      minZoom: 1.2,
-      fadeDuration: 600,
-    });
-
-    // Once the style loads, switch to globe projection + atmosphere.
-    map.on('style.load', () => {
-      try {
-        map.setProjection({ type: 'globe' } as maplibregl.ProjectionSpecification);
-      } catch {
-        // mercator fallback is fine
-      }
-      try {
-        (map as unknown as { setFog: (opts: Record<string, unknown>) => void }).setFog({
-          color: 'rgba(0, 0, 0, 1)',
-          'high-color': 'rgba(20, 10, 5, 1)',
-          'horizon-blend': 0.12,
-          'space-color': 'rgba(0, 0, 0, 1)',
-          'star-intensity': 0.55,
-        });
-      } catch {
-        // fog not supported
-      }
-      // Now that real tiles are coming in, peel back the static painting.
-      container.classList.remove('nw-hero-globe-static');
-    });
-
-    // Slow ambient rotation, gated on reduced motion.
-    if (!reducedMotion) {
-      const speed = 0.04; // degrees per frame ≈ 0.05 deg/sec at 60fps roughly
-      let rafId: number | null = null;
-      const tick = () => {
-        const c = map.getCenter();
-        map.setCenter([c.lng + speed * 0.04, c.lat]);
-        rafId = requestAnimationFrame(tick);
-      };
-      map.on('load', () => {
-        rafId = requestAnimationFrame(tick);
-      });
-      // Pause on hidden tab to be neighborly.
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && rafId) {
-          cancelAnimationFrame(rafId);
-          rafId = null;
-        } else if (!document.hidden && !rafId) {
-          rafId = requestAnimationFrame(tick);
-        }
-      });
-    }
-  } catch (err) {
-    // Map failed — the static fallback class is still on the container.
-    console.warn('Hero globe failed to boot, using static fallback', err);
+/** Count up to `target` over --motion-slow; instant under reduced motion. */
+function tick(el: HTMLElement, target: number): void {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const duration = reduced
+    ? 0
+    : parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--motion-slow')) || 480;
+  if (duration <= 0) {
+    el.textContent = String(target);
+    return;
   }
+  const t0 = performance.now();
+  const frame = (t: number) => {
+    const p = Math.min(1, (t - t0) / duration);
+    const eased = 1 - Math.pow(1 - p, 4);
+    el.textContent = String(Math.round(target * eased));
+    if (p < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
 }

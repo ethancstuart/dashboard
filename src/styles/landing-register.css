@@ -1,0 +1,190 @@
+/* ---------------------------------------------------------------------------
+   The register-first landing (redesign B3). Rides the root dossier tokens and
+   the motion vocabulary; zero hex literals by construction. The retired
+   landing.css remains only for the pages that haven't converted yet
+   (about / why-free / mcp) and dies with their conversion.
+--------------------------------------------------------------------------- */
+
+.lr-hero {
+  padding: 56px 0 48px;
+}
+
+.lr-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--color-text-secondary);
+  margin-bottom: 22px;
+}
+
+.lr-headline {
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 5.4vw, 58px);
+  line-height: 1.12;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  max-width: 21ch;
+  margin: 0 0 22px;
+}
+
+.lr-word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.35em);
+  animation: lr-word-in var(--motion-base) var(--motion-ease) forwards;
+  animation-delay: calc(var(--i) * 28ms);
+}
+
+@keyframes lr-word-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.lr-sub {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  max-width: 62ch;
+  margin: 0 0 34px;
+}
+
+.lr-strip {
+  display: flex;
+  gap: 48px;
+  padding: 22px 0;
+  border-top: 2px solid var(--color-border-2);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.lr-strip-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lr-strip-value {
+  font-family: var(--font-mono);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.lr-strip-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--color-text-tertiary);
+}
+
+.lr-ctas {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.lr-cta-primary {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-inverse);
+  background: var(--color-text-primary);
+  padding: 12px 22px;
+  text-decoration: none;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    background var(--motion-fast) var(--motion-ease);
+}
+
+.lr-cta-primary:hover {
+  transform: translateY(-1px);
+  background: var(--color-text-secondary);
+}
+
+.lr-beats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 34px;
+  margin: 26px 0 56px;
+}
+
+.lr-beat-n {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin-bottom: 10px;
+}
+
+.lr-beat-t {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--color-text-primary);
+}
+
+.lr-beat-b {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.lr-quote {
+  border-left: 3px solid var(--color-accent);
+  margin: 0 0 56px;
+  padding: 8px 0 8px 26px;
+}
+
+.lr-quote p {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  margin: 0 0 12px;
+  max-width: 56ch;
+}
+
+.lr-quote-link {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.lr-quote-link:hover {
+  color: var(--color-text-primary);
+}
+
+.lr-brief-p {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--color-text-secondary);
+  max-width: 62ch;
+  margin: 22px 0 26px;
+}
+
+/* Scroll reveals: rise once when entering the viewport. Fully readable
+   without JS or with reduced motion — the base state is only offset when
+   animation is available to resolve it. */
+@media (prefers-reduced-motion: no-preference) {
+  .lr-reveal {
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity var(--motion-base) var(--motion-ease),
+      transform var(--motion-base) var(--motion-ease);
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+  .lr-reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+}
