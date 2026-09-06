@@ -300,7 +300,13 @@ describe('formatResolvedCallLines', () => {
     const lines = formatResolvedCallLines([], 5, undefined, { total: 0, hits: 0 });
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('5 calls came due and none has resolved yet');
-    expect(lines[0]).toContain('coverage-grace');
+    // CHANGED WITH ARGUMENT: this used to assert 'coverage-grace' — the exact
+    // wording that mis-attributed 63 FX resolver failures to a censorship
+    // coverage rule in the 2026-09-06 Sunday edition. The line now states
+    // only what is true of every pending row: held, never auto-missed,
+    // reason on the ledger.
+    expect(lines[0]).toContain('never scored as a miss by default');
+    expect(lines[0]).not.toContain('coverage-grace');
   });
 
   it('is empty when there is genuinely nothing to say', () => {

@@ -25,6 +25,18 @@ export interface ShellOptions {
   description: string;
   /** Path only, e.g. "/ledger" or "/call/1234" — the canonical is built from it. */
   canonicalPath: string;
+  /**
+   * ABSOLUTE url of the unfurl card, e.g.
+   * "https://nexuswatch.dev/api/og?type=call&id=47". Optional, and the card
+   * TYPE is derived from it rather than declared: this shell used to emit
+   * `twitter:card=summary_large_image` unconditionally while emitting no
+   * image at all, which is the one combination that unfurls to nothing —
+   * every /ledger and /call/:id link posted anywhere was a bare url. A
+   * caller that has no image now gets `summary`, which degrades to a real
+   * (small) card instead of none, and a caller that adds an image gets the
+   * large one without having to remember to also change the card type.
+   */
+  ogImage?: string;
 }
 
 export function shell(body: string, opts: ShellOptions): string {
@@ -41,8 +53,20 @@ export function shell(body: string, opts: ShellOptions): string {
 <meta property="og:title" content="${esc(opts.title)}">
 <meta property="og:description" content="${esc(opts.description)}">
 <meta property="og:url" content="${esc(canonical)}">
-<meta name="twitter:card" content="summary_large_image">
+<meta property="og:site_name" content="NexusWatch">
+<meta name="twitter:card" content="${opts.ogImage ? 'summary_large_image' : 'summary'}">
 <meta name="twitter:site" content="@NexusWatchDev">
+<meta name="twitter:title" content="${esc(opts.title)}">
+<meta name="twitter:description" content="${esc(opts.description)}">${
+    opts.ogImage
+      ? `
+<meta property="og:image" content="${esc(opts.ogImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${esc(opts.title)}">
+<meta name="twitter:image" content="${esc(opts.ogImage)}">`
+      : ''
+  }
 <style>
   :root {
     --ink: ${colors.textPrimary}; --ink2: ${colors.textSecondary}; --ink3: ${colors.textTertiary};
