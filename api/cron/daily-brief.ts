@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { truncateForX, xWeightedLength } from '../_lib/x-post.js';
 import { channelsToAlert, formatAlertBody } from '../_lib/delivery-health.js';
 import { groundDraft, type GroundingReport } from '../_lib/grounding.js';
 import {
@@ -477,7 +476,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
      * to avoid storing multi-KB API response bodies in Postgres.
      */
     async function logDelivery(params: {
-      channel: 'archive' | 'beehiiv' | 'buffer' | 'resend' | 'notion';
+      channel: 'archive' | 'beehiiv' | 'resend' | 'notion';
       status: 'success' | 'failed' | 'partial';
       recipientCount?: number;
       failedCount?: number;
@@ -1432,173 +1431,12 @@ ${(() => {
       }
     }
 
-    // === Post to X via Buffer (GraphQL API) ===
-    const bufferToken = process.env.BUFFER_ACCESS_TOKEN;
-    // Hardcoded NexusWatchDev channel ID (stable, verified working)
-    const bufferChannelId = '69d95485031bfa423cee6b71';
-    if (bufferToken) {
-      const bufferT0 = Date.now();
-      try {
-        // Build post content from brief
-        const gmMatch = briefText.match(/## ☕ Good Morning\n+([\s\S]*?)(?=\n##)/);
-        // Strip the spliced ledger line — bold markdown shipped raw to X once
-        // is once too many, and the social copy's job is the greeting.
-        const goodMorning = gmMatch ? gmMatch[1].replace(/^\*\*The Ledger\*\*.*$/m, '').trim() : '';
-
-        const storiesMatch = briefText.match(/## 📍 Today's Top Stories\n+([\s\S]*?)(?=\n##)/);
-        const topStory = storiesMatch
-          ? storiesMatch[1]
-              .trim()
-              .split(/\n\d+\./)[1]
-              ?.trim()
-              .slice(0, 180) || ''
-          : '';
-
-        // NOT `.slice(0, 280)`. X counts weighted characters — the ☕ and 📍
-        // weigh 2 each and the trailing link weighs a flat 23 — so a string
-        // sliced to 280 JS characters measures over 280 at X and Buffer
-        // rejects the whole post. See api/_lib/x-post.ts.
-        const postText = truncateForX(
-          [
-            `☕ ${goodMorning.slice(0, 220)}`,
-            topStory ? `\n\n📍 ${topStory}` : '',
-            `\n\nFull brief → brief.nexuswatch.dev`,
-          ].join(''),
-        );
-
-        // Create and queue the post on @NexusWatchDev
-        const bufferRes = await fetch('https://api.buffer.com', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${bufferToken}`,
-          },
-          body: JSON.stringify({
-            query: `mutation CreatePost($text: String!, $channelId: ChannelId!) {
-              createPost(input: {
-                text: $text,
-                channelId: $channelId,
-                schedulingType: automatic,
-                mode: addToQueue
-              }) {
-                ... on PostActionSuccess { post { id } }
-                ... on MutationError { message }
-              }
-            }`,
-            variables: {
-              text: postText,
-              channelId: bufferChannelId,
-            },
-          }),
-          signal: AbortSignal.timeout(10000),
-        });
-
-        if (!bufferRes.ok) {
-          const body = await bufferRes.text().catch(() => '');
-          throw new Error(`buffer ${bufferRes.status}: ${body.slice(0, 200)}`);
-        }
-
-        // Buffer returns 200 even on GraphQL-level errors — inspect the body.
-        let bufferPostId: string | undefined;
-        let bufferMutationError: string | undefined;
-        let bufferDuplicate = false;
-        try {
-          const bufferData = (await bufferRes.json()) as {
-            data?: { createPost?: { post?: { id?: string }; message?: string } };
-            errors?: Array<{ message?: string }>;
-          };
-          bufferPostId = bufferData.data?.createPost?.post?.id;
-          bufferMutationError = bufferData.data?.createPost?.message || bufferData.errors?.[0]?.message;
-        } catch {
-          /* non-JSON response — treat as soft success, Buffer's GraphQL is stable */
-        }
-
-        if (bufferMutationError) {
-          // Buffer refuses an identical post already queued for the same
-          // window. That is the pipeline behaving correctly, not a delivery
-          // failure — recording it as `failed` buried the ONE error in this
-          // channel that actually needed a human (the 280-char rejection)
-          // among six that never did. Distinguish them.
-          if (/already got this one scheduled or posted/i.test(bufferMutationError)) {
-            console.log('[daily-brief] buffer duplicate — already queued, skipping.');
-            await logDelivery({
-              channel: 'buffer',
-              status: 'partial',
-              latencyMs: Date.now() - bufferT0,
-              metadata: { reason: 'duplicate_content' },
-            });
-            bufferMutationError = undefined;
-            bufferDuplicate = true;
-          } else {
-            throw new Error(`buffer mutation: ${bufferMutationError}`);
-          }
-        }
-
-        if (bufferPostId !== undefined || !bufferDuplicate) {
-          await logDelivery({
-            channel: 'buffer',
-            status: 'success',
-            latencyMs: Date.now() - bufferT0,
-            metadata: {
-              post_id: bufferPostId,
-              post_length: postText.length,
-              post_weighted_length: xWeightedLength(postText),
-            },
-          });
-        }
-
-        // === Track C.2 — Also enqueue the X thread draft for
-        // human-in-loop review via the Track C.1 social queue.
-        //
-        // Dual-write: the legacy Buffer path above still posts the
-        // thread to X directly via Buffer's scheduled pipeline. This
-        // enqueue call ALSO puts the same text into social_queue as a
-        // pending draft so, once the Track C.5 send worker ships, we
-        // can flip from "Buffer pipeline" to "queue + send worker"
-        // by removing the Buffer call and letting the worker drain
-        // approved drafts. No-op if SOCIAL_AUTONOMY_ENABLED is not
-        // 'true' — the core function short-circuits and returns 503.
-        // Non-fatal: an enqueue failure here never breaks the brief
-        // cron, only logs.
-        try {
-          const enqueueResult = await enqueueDraftCore(sql, {
-            platform: 'x',
-            action_type: 'thread',
-            draft_content: postText,
-            rationale: `daily brief X thread for ${today}`,
-            source: `daily-brief cron run ${runId}`,
-            source_url: `https://nexuswatch.dev/brief/${today}`,
-          });
-          if (enqueueResult.ok) {
-            const enqueuedId = (enqueueResult.body as { id?: number }).id;
-            console.log(
-              `[daily-brief] C.2 enqueue: queued X thread draft id=${enqueuedId} (SOCIAL_AUTONOMY_ENABLED=true)`,
-            );
-          } else if (enqueueResult.status === 503) {
-            // Kill switch off — expected until autonomy is enabled.
-            // Log at debug level, not error, so we don't spam the
-            // cron logs with expected output.
-            console.log('[daily-brief] C.2 enqueue skipped — SOCIAL_AUTONOMY_ENABLED is off (expected during staging)');
-          } else {
-            console.error(`[daily-brief] C.2 enqueue returned ${enqueueResult.status}:`, enqueueResult.body);
-          }
-        } catch (enqueueErr) {
-          console.error(
-            '[daily-brief] C.2 enqueue threw (non-fatal):',
-            enqueueErr instanceof Error ? enqueueErr.message : enqueueErr,
-          );
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error('[daily-brief] Buffer/X post failed:', msg);
-        await logDelivery({
-          channel: 'buffer',
-          status: 'failed',
-          error: msg,
-          latencyMs: Date.now() - bufferT0,
-        });
-      }
-    }
+    // The Buffer/X channel was DELETED with the marketing subsystem
+    // (2026-09-05, plan witty-finding-crystal PR-3). It was building its post
+    // from two regexes that matched section names which no longer exist —
+    // '## ☕ Good Morning' on weekdays and '## 📍 Today's Top Stories' ever —
+    // so six days a week it shipped a post assembled from two empty matches.
+    // The social_queue dual-write went with it.
 
     // === Email delivery delegated to deliver-briefs.ts (D-2, 2026-04-18) ===
     // Resend batch sending removed. The deliver-briefs hourly cron handles
@@ -1807,7 +1645,6 @@ import {
   type Interests,
   type RegionId,
 } from '../../src/services/interests-types.js';
-import { enqueueDraftCore } from '../social/enqueue-core.js';
 import { requireCron } from '../_cron-utils.js';
 
 export interface RenderedBrief {

@@ -6,9 +6,6 @@
   "functions": {
     "api/v2/council.ts": {
       "maxDuration": 60
-    },
-    "api/voice/ask.ts": {
-      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -139,10 +136,6 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/marketing-instagram",
-      "schedule": "0 14,20 * * *"
-    },
-    {
       "path": "/api/cron/source-fx-rates",
       "schedule": "0 5 * * *"
     },
@@ -169,46 +162,6 @@
     {
       "path": "/api/cron/data-health",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/social-send",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/marketing-x",
-      "schedule": "0 */3 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-linkedin",
-      "schedule": "0 11 * * 1-5"
-    },
-    {
-      "path": "/api/cron/marketing-substack",
-      "schedule": "0 12 * * 0,3"
-    },
-    {
-      "path": "/api/cron/marketing-medium",
-      "schedule": "0 14 * * 0"
-    },
-    {
-      "path": "/api/cron/marketing-bluesky",
-      "schedule": "0 13,19 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-threads",
-      "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-engagement-poll",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/marketing-voice-learn",
-      "schedule": "0 4 * * 1"
-    },
-    {
-      "path": "/api/cron/marketing-abtest-promote",
-      "schedule": "0 5 * * 1"
     },
     {
       "path": "/api/cron/crisis-detection",
